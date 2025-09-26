@@ -100,3 +100,87 @@ jobs:
       - name: Commit message check
         if: github.event_name == 'pull_request'
         run: pnpm commitlint
+
+  pipeline-smoke:
+    name: Pipeline smoke (mocked)
+    runs-on: ubuntu-latest
+    needs: build-test
+    services:
+      postgres:
+        image: postgres:16-alpine
+        ports: ['5432:5432']
+        env:
+          POSTGRES_USER: w2w
+          POSTGRES_PASSWORD: w2w
+          POSTGRES_DB: w2w
+        options: >-
+          --health-cmd "pg_isready -U w2w -d w2w"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      opensearch:
+        image: opensearchproject/opensearch:2.11.1
+        ports: ['9200:9200']
+        env:
+          discovery.type: single-node
+          plugins.security.disabled: 'true'
+          bootstrap.memory_lock: 'true'
+          OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+        options: >-
+          --health-cmd "curl -sf http://localhost:9200 || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare env
+        run: |
+          echo "DATABASE_URL=postgresql://w2w:w2w@localhost:5432/w2w?schema=public" >> $GITHUB_ENV
+          echo "REDIS_URL=redis://localhost:6379" >> $GITHUB_ENV
+          echo "OPENSEARCH_URL=http://localhost:9200" >> $GITHUB_ENV
+
+      - name: Migrate and seed
+        run: |
+          pnpm prisma:generate
+          pnpm prisma:migrate:deploy
+          pnpm db:seed
+
+      - name: Run mocked ingestion and indexing
+        env:
+          CI: 'true'
+        run: |
+          pnpm worker:ingest
+          pnpm index:fromdb
+
+      - name: Assert OpenSearch documents
+        run: |
+          set -e
+          COUNT=$(curl -s http://localhost:9200/titles/_count | jq -r '.count // 0')
+          echo "Indexed docs: $COUNT"
+          if [ -z "$COUNT" ] || [ "$COUNT" -lt 1 ]; then
+            echo "::error::No documents indexed"
+            exit 1
+          fi
