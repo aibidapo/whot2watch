@@ -40,6 +40,7 @@
     "ingest:tmdb": "node scripts/require-venv.cjs && node -r ./scripts/load-env.cjs services/catalog/ingestTmdbToDb.js",
     "index:sample": "node scripts/require-venv.cjs && node -r ./scripts/load-env.cjs services/catalog/indexSample.js",
     "index:fromdb": "node scripts/require-venv.cjs && node -r ./scripts/load-env.cjs services/catalog/indexFromDb.js",
+    "worker:ingest": "node scripts/require-venv.cjs && node -r ./scripts/load-env.cjs services/catalog/worker.ingest.js",
     "api:dev": "tsx -r ./scripts/load-env.cjs server/api.ts"
   },
   "devDependencies": {

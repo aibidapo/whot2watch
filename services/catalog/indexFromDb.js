@@ -4,40 +4,7 @@ const { PrismaClient } = require('@prisma/client');
 const OPENSEARCH_URL = process.env.OPENSEARCH_URL || 'http://localhost:9200';
 const INDEX = process.env.TITLES_INDEX || 'titles';
 
-const mapping = {
-  settings: {
-    analysis: {
-      analyzer: {
-        title_edge: { tokenizer: 'edge_ngram', filter: ['lowercase'] }
-      },
-      tokenizer: {
-        edge_ngram: { type: 'edge_ngram', min_gram: 2, max_gram: 15 }
-      }
-    }
-  },
-  mappings: {
-    properties: {
-      id: { type: 'keyword' },
-      name: { type: 'text', analyzer: 'title_edge', search_analyzer: 'standard' },
-      type: { type: 'keyword' },
-      releaseYear: { type: 'integer' },
-      runtimeMin: { type: 'integer' },
-      genres: { type: 'keyword' },
-      moods: { type: 'keyword' },
-      availabilityServices: { type: 'keyword' },
-      availabilityRegions: { type: 'keyword' },
-      popularity: { type: 'float' },
-      availability: {
-        type: 'nested',
-        properties: {
-          service: { type: 'keyword' },
-          region: { type: 'keyword' },
-          offerType: { type: 'keyword' }
-        }
-      }
-    }
-  }
-};
+const { titlesMapping: mapping } = require('./mappings');
 
 async function ensureIndex() {
   const head = await fetch(`${OPENSEARCH_URL}/${encodeURIComponent(INDEX)}`, { method: 'HEAD' });
