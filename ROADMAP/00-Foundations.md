@@ -16,7 +16,7 @@ Checklist
 Governance & Ownership
 
 - [ ] NERS for: `apps/mobile`, `apps/web`, `services/api`, `packages/ui`, `packages/types`, `Whot2Watch-docs`
-- [ ] PR template with checklist: contracts changed? tests added? naming follows Glossary? no TODOs? no duplicate logic?
+- [x] PR template with checklist: contracts changed? tests added? naming follows Glossary? no TODOs? no duplicate logic?
 - [ ] ADRs directory `docs/adr/` with template; new modules/patterns must include ADR
 - [ ] Branch protection policy documented (require CI + 1 owner review; dismiss stale approvals)
 
