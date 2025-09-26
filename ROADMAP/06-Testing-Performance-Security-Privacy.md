@@ -25,5 +25,5 @@ Testing Strategy
 
 Open Items / Temporary Exceptions
 
-- [ ] JWT verification tests: stabilize Vitest mocking for `jsonwebtoken`/`jwks-rsa` and remove temporary coverage exclude for `server/security/**`.
+- [x] JWT verification tests: stabilize Vitest mocking for `jsonwebtoken`/`jwks-rsa` and remove temporary coverage exclude for `server/security/**`.
 
