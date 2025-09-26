@@ -8,8 +8,8 @@ export default defineConfig({
       reportsDirectory: 'coverage',
       reporter: ['text-summary', 'lcov'],
       all: true,
-      include: ['Whot2Watch-docs/src/**/*.ts'],
-      exclude: ['src/**/__tests__/**', '**/*.d.ts'],
+      include: ['server/**/*.ts', 'services/**/*.ts'],
+      exclude: ['**/*.d.ts'],
       thresholds: {
         lines: 80,
         branches: 80,
