@@ -21,6 +21,14 @@ describe('normalizeTitle', () => {
     expect(services).toContain('MAX')
     expect(norm.availability.every((a) => a.region === 'US')).toBe(true)
   })
+
+  it('defaults to empty availability when no providers are given', () => {
+    const raw = { name: 'NoProv', type: 'SHOW' } as RawTitle
+    const norm = normalizeTitle(raw, 'NG')
+    expect(norm.genres).toEqual([])
+    expect(norm.moods).toEqual([])
+    expect(norm.availability).toEqual([])
+  })
 })
 
 

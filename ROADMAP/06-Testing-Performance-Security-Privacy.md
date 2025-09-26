@@ -12,7 +12,7 @@ Checklist
 
 Acceptance Criteria
 
-- Coverage ≥ 80% (lines/branches/functions/statements)
+- [x] Coverage ≥ 80% (lines/branches/functions/statements) — enforced by `pnpm coverage`
 - Load tests meet P95 < 600ms for picks/search
 - Data export/deletion flows functional; Private Mode suppression verified
 - Dashboards live; alerting thresholds set
