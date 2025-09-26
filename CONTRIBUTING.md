@@ -77,6 +77,15 @@ Troubleshooting (PowerShell)
 - `curl` is an alias for `Invoke-WebRequest`. Prefer `Invoke-RestMethod` for JSON:
   - `Invoke-RestMethod -Method GET http://localhost:9200/titles/_count`
 
+## Auth / JWT (optional)
+
+- To require JWT auth for mutating routes, set in `.env` (and restart):
+  - `REQUIRE_AUTH=true`
+  - `JWT_ISSUER=...`
+  - `JWT_AUDIENCE=...`
+  - `JWKS_URI=https://<your-auth-domain>/.well-known/jwks.json`
+- When enabled, requests must send `Authorization: Bearer <token>`.
+
 ## Hooks
 
 Husky installs pre-commit (format, lint, typecheck) and pre-push (contracts + coverage) hooks during `pnpm install`. Use `HUSKY=0` to bypass in emergencies, but re-run the commands manually before pushing.
