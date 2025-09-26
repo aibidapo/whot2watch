@@ -9,6 +9,27 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        ports: ['5432:5432']
+        env:
+          POSTGRES_USER: w2w
+          POSTGRES_PASSWORD: w2w
+          POSTGRES_DB: w2w
+        options: >-
+          --health-cmd "pg_isready -U w2w -d w2w"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
         with:
@@ -25,6 +46,11 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Prepare env
+        run: |
+          echo "DATABASE_URL=postgresql://w2w:w2w@localhost:5432/w2w?schema=public" >> $GITHUB_ENV
+          echo "REDIS_URL=redis://localhost:6379" >> $GITHUB_ENV
 
       - name: Format check
         run: pnpm format:check
@@ -43,6 +69,13 @@ jobs:
 
       - name: Roadmap verification
         run: node scripts/verify-roadmap.cjs
+
+      - name: Migrate and seed
+        run: |
+          pnpm prisma:generate
+          pnpm prisma:migrate:dev --name ci --create-only || true
+          pnpm prisma:migrate:deploy
+          pnpm db:seed
 
       - name: Tests with coverage
         run: pnpm coverage

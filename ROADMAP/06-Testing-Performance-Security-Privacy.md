@@ -2,8 +2,8 @@
 
 Checklist
 
-- [ ] Unit + integration (services/resolvers)
-- [ ] Contract tests (GraphQL/REST)
+- [x] Unit + integration (services/resolvers)
+- [x] Contract tests (GraphQL/REST)
 - [ ] Mobile E2E (Detox) critical flows
 - [ ] Performance passes (cache, indexes, load tests P95 < 600ms)
 - [ ] Security & privacy (rate limiting, HPP, Helmet, strict CORS; GraphQL hardening; data export/deletion; secrets in vault)

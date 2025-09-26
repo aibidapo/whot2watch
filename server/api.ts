@@ -85,15 +85,21 @@ app.get('/search', async (request) => {
     if (cached) return JSON.parse(cached)
   } catch {}
 
-  const osRes = await fetch(`${OPENSEARCH_URL}/titles/_search`, {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(query)
-  })
-  if (!osRes.ok) {
-    const text = await osRes.text()
-    logger.error('OpenSearch error', { status: osRes.status, text })
+  let data: any
+  try {
+    const osRes = await fetch(`${OPENSEARCH_URL}/titles/_search`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(query)
+    })
+    if (!osRes.ok) {
+      const text = await osRes.text()
+      logger.error('OpenSearch error', { status: osRes.status, text })
+      return { items: [], total: 0, took: 0, from, size }
+    }
+    data = await osRes.json()
+  } catch (err) {
+    logger.warn('OpenSearch unreachable, returning empty search result', { err: String(err) })
     return { items: [], total: 0, took: 0, from, size }
   }
-  const data = await osRes.json()
   const hits = (data.hits?.hits || []).map((h: any) => ({ id: h._id, score: h._score, ...h._source }))
   const total = typeof data.hits?.total?.value === 'number' ? data.hits.total.value : hits.length
   const response = { items: hits, total, took: data.took ?? 0, from, size }
@@ -272,14 +278,22 @@ declare module 'fastify' {
 }
 
 app.addHook('onReady', async () => {
-  const client = createClient({ url: REDIS_URL })
-  client.on('error', (err) => logger.warn('redis_error', { err: String(err) }))
-  await client.connect()
-  app.redis = client
+  try {
+    const client = createClient({ url: REDIS_URL })
+    client.on('error', (err) => logger.warn('redis_error', { err: String(err) }))
+    await client.connect()
+    app.redis = client
+  } catch (err) {
+    logger.warn('redis_disabled_or_unreachable', { err: String(err) })
+  }
 })
 
-app.listen({ port: PORT, host: '0.0.0.0' }).then(() => {
-  logger.info(`API listening on http://localhost:${PORT}`)
-})
+if (process.env.NODE_ENV !== 'test') {
+  app.listen({ port: PORT, host: '0.0.0.0' }).then(() => {
+    logger.info(`API listening on http://localhost:${PORT}`)
+  })
+}
+
+export default app
 
 
