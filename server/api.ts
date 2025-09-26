@@ -158,6 +158,25 @@ app.post('/feedback', async (request) => {
   return { feedback: rec }
 })
 
+// ---- Alerts (create/list) ----
+app.get('/profiles/:profileId/alerts', async (request) => {
+  const { profileId } = (request.params as any)
+  if (!profileId) return { items: [] }
+  const alerts = await prisma.alert.findMany({ where: { profileId }, orderBy: { createdAt: 'desc' } })
+  return { items: alerts }
+})
+
+app.post('/profiles/:profileId/alerts', async (request) => {
+  const { profileId } = (request.params as any)
+  const body = (request.body as any) || {}
+  const titleId: string | undefined = body.titleId
+  const services: string[] = Array.isArray(body.services) ? body.services : []
+  const region: string = typeof body.region === 'string' ? body.region : 'US'
+  if (!profileId || (!titleId && services.length === 0)) return { error: 'invalid_input' }
+  const rec = await prisma.alert.create({ data: { profileId, titleId, alertType: 'AVAILABILITY', services, region, status: 'ACTIVE' } })
+  return { alert: rec }
+})
+
 // ---- Picks v1 (simple rules) ----
 app.get('/picks/:profileId', async (request) => {
   const { profileId } = (request.params as any)
