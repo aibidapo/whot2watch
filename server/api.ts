@@ -4,6 +4,8 @@ import * as path from 'path'
 import { createClient } from 'redis'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
+import helmet from '@fastify/helmet'
+import rateLimit from '@fastify/rate-limit'
 import { withRequestId } from './common/requestId'
 import { logger } from './common/logger'
 
@@ -21,6 +23,8 @@ function arr(v: unknown): string[] | undefined {
 
 const app = Fastify({ logger: false })
 app.register(cors, { origin: true })
+app.register(helmet, { contentSecurityPolicy: false })
+app.register(rateLimit, { max: 100, timeWindow: '1 minute' })
 
 // request-id middleware
 app.addHook('onRequest', (req, reply, done) => {
@@ -50,6 +54,9 @@ app.get('/search', async (request) => {
   const yearMax = parsed.query.yearMax !== undefined ? Number(parsed.query.yearMax) : undefined
   const runtimeMin = parsed.query.runtimeMin !== undefined ? Number(parsed.query.runtimeMin) : undefined
   const runtimeMax = parsed.query.runtimeMax !== undefined ? Number(parsed.query.runtimeMax) : undefined
+  if ([yearMin, yearMax, runtimeMin, runtimeMax].some((n) => n !== undefined && !Number.isFinite(n as number))) {
+    return { items: [], total: 0, took: 0, from, size }
+  }
 
   const filter: any[] = []
   if (services && services.length) filter.push({ terms: { availabilityServices: services } })
