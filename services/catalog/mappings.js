@@ -14,6 +14,7 @@ const titlesMapping = {
   mappings: {
     properties: {
       id: { type: 'keyword' },
+      tmdbId: { type: 'long' },
       name: { type: 'text', analyzer: 'title_edge', search_analyzer: 'standard' },
       type: { type: 'keyword' },
       releaseYear: { type: 'integer' },
@@ -29,6 +30,7 @@ const titlesMapping = {
           service: { type: 'keyword' },
           region: { type: 'keyword' },
           offerType: { type: 'keyword' },
+          deepLink: { type: 'keyword' },
         },
       },
     },

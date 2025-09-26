@@ -35,7 +35,8 @@ function toIndexedDoc(title) {
     availability: (title.availability || []).map(a => ({
       service: a.service,
       region: a.region,
-      offerType: a.offerType
+      offerType: a.offerType,
+      deepLink: a.deepLink || undefined
     }))
   };
 }
