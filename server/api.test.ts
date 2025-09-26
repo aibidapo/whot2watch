@@ -134,4 +134,43 @@ describe('API contract', () => {
     const json = await res.json()
     expect(Array.isArray(json.items)).toBe(true)
   })
+
+  it('alerts: invalid inputs return error', async () => {
+    const profile = await prisma.profile.findFirst()
+    const bad = await fetch(`${serverUrl}/profiles/${profile!.id}/alerts`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ services: [] })
+    })
+    expect(bad.ok).toBe(true)
+    const json = await bad.json()
+    expect(json.error).toBe('invalid_input')
+  })
+
+  it('subscriptions: missing service returns error', async () => {
+    const profile = await prisma.profile.findFirst()
+    const bad = await fetch(`${serverUrl}/profiles/${profile!.id}/subscriptions`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({})
+    })
+    expect(bad.ok).toBe(true)
+    const json = await bad.json()
+    expect(json.error).toBe('invalid_input')
+  })
+
+  it('list item add is idempotent', async () => {
+    const profile = await prisma.profile.findFirst()
+    const title = await prisma.title.findFirst()
+    const createRes = await fetch(`${serverUrl}/profiles/${profile!.id}/lists`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: `IdemList ${Date.now()}` })
+    })
+    const created = await createRes.json()
+    const listId = created.list.id
+    const add1 = await fetch(`${serverUrl}/lists/${listId}/items`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ titleId: title!.id }) })
+    const j1 = await add1.json()
+    expect(j1.item).toBeTruthy()
+    const add2 = await fetch(`${serverUrl}/lists/${listId}/items`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ titleId: title!.id }) })
+    const j2 = await add2.json()
+    expect(j2.idempotent).toBe(true)
+  })
 })

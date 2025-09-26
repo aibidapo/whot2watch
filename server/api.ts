@@ -137,6 +137,9 @@ app.post('/lists/:listId/items', async (request) => {
   const position: number | undefined = typeof body.position === 'number' ? body.position : undefined
   const note: string | undefined = typeof body.note === 'string' ? body.note : undefined
   if (!listId || !titleId) return { error: 'invalid_input' }
+  // Idempotent add: return existing if already present
+  const existing = await prisma.listItem.findFirst({ where: { listId, titleId } })
+  if (existing) return { item: existing, idempotent: true }
   const item = await prisma.listItem.create({ data: { listId, titleId, position, note } })
   return { item }
 })
