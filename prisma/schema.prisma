@@ -53,7 +53,7 @@ model Subscription {
 
 model Title {
   id            String           @id @default(uuid()) @db.Uuid
-  tmdbId        BigInt?
+  tmdbId        BigInt?          @unique
   type          String
   name          String
   releaseYear   Int?
