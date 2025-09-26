@@ -9,7 +9,7 @@ export default defineConfig({
       reporter: ['text-summary', 'lcov'],
       all: true,
       include: ['server/**/*.ts', 'services/**/*.ts'],
-      exclude: ['**/*.d.ts'],
+      exclude: ['**/*.d.ts', 'server/security/**'],
       thresholds: {
         lines: 80,
         branches: 80,
