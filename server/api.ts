@@ -151,6 +151,9 @@ app.post('/feedback', async (request) => {
   const reasonOpt: string | undefined = typeof body.reasonOpt === 'string' ? body.reasonOpt : undefined
   const allowed = new Set(['LIKE', 'DISLIKE', 'SAVE'])
   if (!profileId || !titleId || !allowed.has(action)) return { error: 'invalid_input' }
+  // Private mode: suppress write, still return success for UX
+  const isPrivate = request.headers['x-private-mode'] === 'true' || (request.query as any)?.private === 'true'
+  if (isPrivate) return { suppressed: true }
   const rec = await prisma.feedback.create({ data: { profileId, titleId, action, reasonOpt } })
   return { feedback: rec }
 })
