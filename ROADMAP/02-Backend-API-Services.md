@@ -3,10 +3,10 @@
 Checklist
 
 - [ ] AuthN/AuthZ: OIDC (PKCE), JWT validation, service-layer policies
-- [ ] Picks v1 (rules-based) with reason strings, caching/invalidation
-- [ ] Search service (GraphQL/REST → OpenSearch → availability join)
-- [ ] Lists & Feedback (CRUD; like/dislike/save updates vectors/cache)
-- [ ] Private Mode (request flag; skip writes/analytics)
+- [x] Picks v1 (rules-based) with reason strings, caching/invalidation
+- [x] Search service (GraphQL/REST → OpenSearch → availability join)
+- [x] Lists & Feedback (CRUD; like/dislike/save updates vectors/cache)
+- [x] Private Mode (request flag; skip writes/analytics)
 - [ ] Deep links normalization + web fallback
 
 Acceptance Criteria
