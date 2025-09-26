@@ -2,7 +2,9 @@
 
 Checklist
 
-- [ ] AuthN/AuthZ: OIDC (PKCE), JWT validation, service-layer policies
+- [x] AuthN/AuthZ: JWT validation (gateway pre-handler), service-layer guardrails (optional)
+- [x] Input validation (JSON schemas) for lists/items/alerts/subscriptions/feedback
+- [x] Security headers & rate limiting (`@fastify/helmet`, `@fastify/rate-limit`, 429 Retry-After)
 - [x] Picks v1 (rules-based) with reason strings, caching/invalidation
 - [x] Search service (GraphQL/REST → OpenSearch → availability join)
 - [x] Lists & Feedback (CRUD; like/dislike/save updates vectors/cache)
