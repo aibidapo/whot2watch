@@ -31,6 +31,16 @@
 - jscpd (`pnpm qa:jscpd`) keeps duplication below 5%.
 - Gitleaks (`pnpm qa:gitleaks`) scans for secrets before merge.
 
+## CI Pipelines
+
+- Manual run of full CI (including pipeline-smoke):
+  - In GitHub, go to Actions → "ci" workflow → "Run workflow" → select branch → "Run workflow".
+  - This triggers the standard CI plus the pipeline-smoke job that spins up Postgres/Redis/OpenSearch, runs mocked ingestion, indexes from DB, and asserts indexed documents > 0.
+
+- Nightly real pipeline:
+  - Actions → "nightly-pipeline" → "Run workflow" to run on demand, or wait for the scheduled daily cron.
+  - If `TMDB_API_KEY`/`TMDB_ACCESS_TOKEN` GitHub secrets are set, the worker uses real TMDB; otherwise it falls back to sample data.
+
 ## Hooks
 
 Husky installs pre-commit (format, lint, typecheck) and pre-push (contracts + coverage) hooks during `pnpm install`. Use `HUSKY=0` to bypass in emergencies, but re-run the commands manually before pushing.
