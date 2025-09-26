@@ -166,6 +166,44 @@ app.get('/profiles/:profileId/alerts', async (request) => {
   return { items: alerts }
 })
 
+// ---- Subscriptions (list/upsert/delete) ----
+app.get('/profiles/:profileId/subscriptions', async (request) => {
+  const { profileId } = (request.params as any)
+  if (!profileId) return { items: [] }
+  const subs = await prisma.subscription.findMany({ where: { profileId, active: true } })
+  return { items: subs }
+})
+
+app.post('/profiles/:profileId/subscriptions', async (request) => {
+  const { profileId } = (request.params as any)
+  const body = (request.body as any) || {}
+  const service: string = body.service
+  const region: string | undefined = typeof body.region === 'string' ? body.region : undefined
+  if (!profileId || !service) return { error: 'invalid_input' }
+  const sub = await prisma.subscription.upsert({
+    where: { id: `${profileId}:${service}` },
+    update: { active: true, region },
+    create: { profileId, service, region, active: true }
+  }).catch(async () => {
+    // fallback when no composite key; find existing
+    const existing = await prisma.subscription.findFirst({ where: { profileId, service } })
+    if (existing) return prisma.subscription.update({ where: { id: existing.id }, data: { active: true, region } })
+    return prisma.subscription.create({ data: { profileId, service, region, active: true } })
+  })
+  return { subscription: sub }
+})
+
+app.delete('/profiles/:profileId/subscriptions', async (request) => {
+  const { profileId } = (request.params as any)
+  const body = (request.body as any) || {}
+  const service: string = body.service
+  if (!profileId || !service) return { error: 'invalid_input' }
+  const existing = await prisma.subscription.findFirst({ where: { profileId, service, active: true } })
+  if (!existing) return { ok: true }
+  await prisma.subscription.update({ where: { id: existing.id }, data: { active: false } })
+  return { ok: true }
+})
+
 app.post('/profiles/:profileId/alerts', async (request) => {
   const { profileId } = (request.params as any)
   const body = (request.body as any) || {}
