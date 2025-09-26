@@ -41,6 +41,7 @@
     "index:sample": "node scripts/require-venv.cjs && node -r ./scripts/load-env.cjs services/catalog/indexSample.js",
     "index:fromdb": "node scripts/require-venv.cjs && node -r ./scripts/load-env.cjs services/catalog/indexFromDb.js",
     "worker:ingest": "node scripts/require-venv.cjs && node -r ./scripts/load-env.cjs services/catalog/worker.ingest.js",
+    "pipeline:ingest-index": "pnpm worker:ingest && pnpm index:fromdb",
     "api:dev": "tsx -r ./scripts/load-env.cjs server/api.ts"
   },
   "devDependencies": {
