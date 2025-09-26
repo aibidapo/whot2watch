@@ -4,7 +4,7 @@ Checklist
 
 - [x] Postgres + migrations (Prisma)
   - [x] Tables: users, profiles, subscriptions, titles, availability, lists, list_items, feedback, recommendations, alerts
-  - [ ] Index strategy for title, region, service, profile_id
+  - [x] Index strategy for title, region, service, profile_id
 - [ ] Redis cache (picks per profile/day; invalidation)
 - [x] OpenSearch index (schema, analyzers)
 - [x] Ingestion worker (TMDB, availability provider, aliasing)

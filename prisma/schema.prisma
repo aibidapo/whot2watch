@@ -123,6 +123,7 @@ model Alert {
   status    String   // ACTIVE | FIRED | CANCELLED
   createdAt DateTime @default(now())
   profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  @@index([profileId])
 }
 
 model List {
@@ -134,6 +135,7 @@ model List {
   createdAt   DateTime  @default(now())
   profile     Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
   items       ListItem[]
+  @@index([profileId])
 }
 
 model ListItem {
@@ -146,6 +148,7 @@ model ListItem {
   list     List   @relation(fields: [listId], references: [id], onDelete: Cascade)
   title    Title  @relation(fields: [titleId], references: [id], onDelete: Cascade)
   @@index([listId])
+  @@index([titleId])
 }
 
 model Friend {
