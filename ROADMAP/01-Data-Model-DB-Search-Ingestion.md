@@ -5,10 +5,11 @@ Checklist
 - [x] Postgres + migrations (Prisma)
   - [x] Tables: users, profiles, subscriptions, titles, availability, lists, list_items, feedback, recommendations, alerts
   - [x] Index strategy for title, region, service, profile_id
-- [ ] Redis cache (picks per profile/day; invalidation)
+- [x] Redis cache (picks per profile/day; invalidation)
 - [x] OpenSearch index (schema, analyzers)
 - [x] Ingestion worker (TMDB, availability provider, aliasing)
 - [x] Seed initial titles; schedule refresh (6–12h)
+- [x] CI pipeline-smoke (mocked) on PR; nightly real pipeline with TMDB
 
 Acceptance Criteria
 
