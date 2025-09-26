@@ -77,6 +77,17 @@ jobs:
           pnpm prisma:migrate:deploy
           pnpm db:seed
 
+      - name: Schema drift check
+        run: |
+          set -e
+          DIFF=$(npx --yes prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --script)
+          if [ -n "$DIFF" ]; then
+            echo "$DIFF"
+            echo "::error::Schema drift detected"
+            exit 1
+          fi
+          echo "No schema drift detected"
+
       - name: Tests with coverage
         run: pnpm coverage
 
