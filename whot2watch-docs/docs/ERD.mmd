@@ -1,0 +1,57 @@
+erDiagram
+  USERS ||--o{ PROFILES : has
+
+  PROFILES {
+    uuid id PK
+    string locale
+  }
+
+  LISTS {
+    uuid id PK
+    uuid profileId FK
+    string name
+    string visibility
+    datetime createdAt
+  }
+
+  ALERTS {
+    uuid id PK
+    uuid profileId FK
+    string alertType
+    string region
+    string status
+    datetime createdAt
+  }
+
+  SUBSCRIPTIONS {
+    uuid id PK
+    uuid profileId FK
+    string service
+    string region
+  }
+
+  FRIENDS {
+    uuid id PK
+    uuid fromProfileId FK
+    uuid toProfileId FK
+    FriendStatus status
+  }
+
+  GROUP_SESSIONS {
+    uuid id PK
+    uuid hostProfileId FK
+    string name
+    string status
+    datetime createdAt
+  }
+
+  PROFILES ||--o{ LISTS : owns
+  PROFILES ||--o{ ALERTS : sets
+  PROFILES ||--o{ SUBSCRIPTIONS : has
+  PROFILES ||--o{ FRIENDS : relates
+  PROFILES ||--o{ GROUP_SESSIONS : hosts
+
+  FriendStatus {
+    REQUESTED
+    ACCEPTED
+  }

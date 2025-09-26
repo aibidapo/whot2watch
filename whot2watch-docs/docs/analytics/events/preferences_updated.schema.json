@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/preferences_updated.schema.json",
+  "title": "preferences_updated properties",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "genres_added": { "type": "array", "items": { "type": "string" } },
+    "disliked_genres": { "type": "array", "items": { "type": "string" } },
+    "moods": { "type": "array", "items": { "type": "string" } }
+  }
+}

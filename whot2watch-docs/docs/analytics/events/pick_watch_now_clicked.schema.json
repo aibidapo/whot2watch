@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/pick_watch_now_clicked.schema.json",
+  "title": "pick_watch_now_clicked properties",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title_id": { "type": "string", "format": "uuid" },
+    "provider": { "type": "string", "enum": ["NETFLIX", "PRIME"] },
+    "deep_link_used": { "type": "boolean" }
+  },
+  "required": ["title_id", "provider", "deep_link_used"]
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/event-envelope.schema.json",
+  "title": "Whot2Watch Event Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "event_name": { "type": "string" },
+    "ts_iso": { "type": "string", "format": "date-time" },
+    "user_id": { "type": ["string", "null"], "format": "uuid" },
+    "profile_id": { "type": ["string", "null"], "format": "uuid" },
+    "anonymous_id": { "type": "string" },
+    "session_id": { "type": "string" },
+    "region": { "type": "string", "enum": ["US", "CA", "GB", "AU", "IN"] },
+    "device": { "type": "string", "enum": ["ios", "android", "web"] },
+    "app_version": { "type": "string" },
+    "private_mode": { "type": "boolean" },
+    "properties": { "type": "object" }
+  },
+  "required": [
+    "event_name",
+    "ts_iso",
+    "anonymous_id",
+    "session_id",
+    "region",
+    "device",
+    "private_mode",
+    "properties"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": { "private_mode": { "const": true } },
+        "required": ["private_mode"]
+      },
+      "then": {
+        "properties": {
+          "user_id": { "type": "null" },
+          "profile_id": { "type": "null" }
+        }
+      }
+    }
+  ]
+}

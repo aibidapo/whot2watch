@@ -1,0 +1,6 @@
+#!/bin/sh
+
+node scripts/require-venv.cjs || exit 1
+pnpm contracts:check
+node scripts/verify-roadmap.cjs || exit 1
+pnpm coverage

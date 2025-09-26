@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/feedback_given.schema.json",
+  "title": "feedback_given properties",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title_id": { "type": "string", "format": "uuid" },
+    "action": { "type": "string", "enum": ["LIKE", "DISLIKE", "SAVE"] },
+    "reason_opt": { "type": "string" }
+  },
+  "required": ["title_id", "action"]
+}

@@ -1,0 +1,268 @@
+openapi: 3.0.3
+info:
+  title: Whot2Watch REST API (Fallback)
+  version: '0.1.0'
+servers:
+  - url: https://api.whot2watch.example.com/v1
+paths:
+  /picks:
+    get:
+      summary: Get daily picks for a profile
+      parameters:
+        - in: query
+          name: profileId
+          schema: { type: string, format: uuid }
+          required: true
+        - in: query
+          name: limit
+          schema: { type: integer, default: 5, minimum: 1, maximum: 10 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Recommendation'
+  /search:
+    get:
+      summary: Search titles
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: region
+          schema: { $ref: '#/components/schemas/Region' }
+        - in: query
+          name: providerIn
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/Provider' }
+          style: form
+          explode: false
+        - in: query
+          name: runtimeLt
+          schema: { type: integer }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Title' }
+                  nextCursor:
+                    type: string
+  /availability/{titleId}:
+    get:
+      summary: Get availability for a title
+      parameters:
+        - in: path
+          name: titleId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: region
+          schema: { $ref: '#/components/schemas/Region' }
+        - in: query
+          name: services
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/Provider' }
+          style: form
+          explode: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Availability' }
+  /lists:
+    get:
+      summary: List user lists
+      parameters:
+        - in: query
+          name: profileId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: visibility
+          schema: { type: string, enum: [PRIVATE, FRIENDS, PUBLIC, COLLAB] }
+        - in: query
+          name: first
+          schema: { type: integer, default: 20 }
+        - in: query
+          name: after
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/List' }
+                  nextCursor: { type: string }
+  /alerts:
+    get:
+      summary: List alerts
+      parameters:
+        - in: query
+          name: profileId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: status
+          schema: { type: string, enum: [ACTIVE, FIRED, CANCELLED] }
+        - in: query
+          name: first
+          schema: { type: integer, default: 20 }
+        - in: query
+          name: after
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { type: object } }
+                  nextCursor: { type: string }
+  /subscriptions:
+    get:
+      summary: List subscriptions
+      parameters:
+        - in: query
+          name: profileId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Subscription' }
+  /group-sessions:
+    get:
+      summary: List group sessions
+      parameters:
+        - in: query
+          name: hostProfileId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: participantProfileId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: status
+          schema: { type: string, enum: [open, locked, closed] }
+        - in: query
+          name: first
+          schema: { type: integer, default: 20 }
+        - in: query
+          name: after
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/GroupSession' } }
+                  nextCursor: { type: string }
+components:
+  schemas:
+    Region:
+      type: string
+      enum: [US, CA, GB, AU, IN]
+    Provider:
+      type: string
+      enum:
+        [
+          NETFLIX,
+          AMAZON_PRIME_VIDEO,
+          DISNEY_PLUS,
+          HULU,
+          MAX,
+          APPLE_TV_PLUS,
+          PARAMOUNT_PLUS,
+          PEACOCK,
+          CRUNCHYROLL,
+          TUBI,
+          OTHER,
+        ]
+    Availability:
+      type: object
+      properties:
+        service: { $ref: '#/components/schemas/Provider' }
+        region: { $ref: '#/components/schemas/Region' }
+        offerType: { type: string, enum: [SUBSCRIPTION, RENT, BUY, FREE] }
+        deepLink: { type: string }
+        lastSeenAt: { type: string, format: date-time }
+    Title:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        type: { type: string, enum: [MOVIE, SHOW] }
+        releaseYear: { type: integer }
+        runtimeMin: { type: integer }
+        genres: { type: array, items: { type: string } }
+        moods: { type: array, items: { type: string } }
+        posterUrl: { type: string }
+        backdropUrl: { type: string }
+        overview: { type: string }
+        voteAverage: { type: number }
+        popularity: { type: number }
+        availability:
+          type: array
+          items: { $ref: '#/components/schemas/Availability' }
+    Recommendation:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { $ref: '#/components/schemas/Title' }
+        score: { type: number }
+        reason: { type: string }
+        createdAt: { type: string, format: date-time }
+    Subscription:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        service: { $ref: '#/components/schemas/Provider' }
+        region: { $ref: '#/components/schemas/Region' }
+        active: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    List:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        ownerProfileId: { type: string, format: uuid }
+        name: { type: string }
+        visibility: { type: string, enum: [PRIVATE, FRIENDS, PUBLIC, COLLAB] }
+        description: { type: string }
+        createdAt: { type: string, format: date-time }
+    GroupSession:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        hostProfileId: { type: string, format: uuid }
+        name: { type: string }
+        constraints: { type: object }
+        status: { type: string, enum: [open, locked, closed] }
+        createdAt: { type: string, format: date-time }

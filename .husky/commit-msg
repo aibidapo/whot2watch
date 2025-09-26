@@ -1,0 +1,4 @@
+#!/bin/sh
+
+node scripts/require-venv.cjs || exit 1
+pnpm exec commitlint --edit "$1"

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Whot2Watch — Mock</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <img class="logo" src="./assets/logo.svg" alt="Whot2Watch" />
+        <span class="brand-name">Whot2Watch</span>
+      </div>
+      <div class="header-actions">
+        <div class="search">
+          <span aria-hidden="true">🔍</span>
+          <input type="search" placeholder="Search..." />
+        </div>
+        <button id="themeToggle" class="toggle" aria-label="Toggle theme">🌙</button>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active">Trending</button>
+      <button class="tab">For You</button>
+      <button class="tab">Genres</button>
+      <button class="tab">Watchlist</button>
+    </nav>
+
+    <section class="hero">
+      <div class="hero-content">
+        <h1>Discover what to watch</h1>
+        <p>Personalized picks from all your services.</p>
+        <div class="hero-actions">
+          <button class="btn primary">Start Exploring</button>
+          <button class="btn">Connect Services</button>
+        </div>
+      </div>
+    </section>
+
+    <main class="content">
+      <h2>Trending now</h2>
+      <div class="grid">
+        <article class="card">
+          <div class="thumb"></div>
+          <div class="meta">
+            <h3>Edge of Tomorrow</h3>
+            <p>Action • 2014 • ★ 4.5</p>
+            <div class="chips"><span class="chip">Netflix</span><span class="chip">4K</span></div>
+          </div>
+        </article>
+        <article class="card">
+          <div class="thumb"></div>
+          <div class="meta">
+            <h3>Severance</h3>
+            <p>Thriller • 2022 • ★ 4.8</p>
+            <div class="chips">
+              <span class="chip">Apple TV+</span><span class="chip">HDR</span>
+            </div>
+          </div>
+        </article>
+        <article class="card">
+          <div class="thumb"></div>
+          <div class="meta">
+            <h3>Dune: Part Two</h3>
+            <p>Sci‑Fi • 2024 • ★ 4.7</p>
+            <div class="chips"><span class="chip">Max</span><span class="chip">Atmos</span></div>
+          </div>
+        </article>
+        <article class="card">
+          <div class="thumb"></div>
+          <div class="meta">
+            <h3>The Bear</h3>
+            <p>Drama • 2024 • ★ 4.6</p>
+            <div class="chips"><span class="chip">Hulu</span><span class="chip">HD</span></div>
+          </div>
+        </article>
+      </div>
+    </main>
+
+    <footer class="app-footer">
+      <div>© 2025 Whot2Watch</div>
+      <nav class="footer-links">
+        <a href="#">Privacy</a><a href="#">Terms</a><a href="#">Support</a>
+      </nav>
+    </footer>
+
+    <script>
+      const html = document.documentElement;
+      const toggle = document.getElementById('themeToggle');
+      const apply = (t) => html.setAttribute('data-theme', t);
+      const saved = localStorage.getItem('w2w-theme') || 'dark';
+      apply(saved);
+      toggle.textContent = saved === 'dark' ? '🌙' : '☀️';
+      toggle.addEventListener('click', () => {
+        const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        apply(next);
+        localStorage.setItem('w2w-theme', next);
+        toggle.textContent = next === 'dark' ? '🌙' : '☀️';
+      });
+    </script>
+  </body>
+</html>

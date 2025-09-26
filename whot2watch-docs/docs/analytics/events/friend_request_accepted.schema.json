@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/friend_request_accepted.schema.json",
+  "title": "friend_request_accepted properties",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "to_profile_id": { "type": "string", "format": "uuid" }
+  },
+  "required": ["to_profile_id"]
+}

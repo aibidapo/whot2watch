@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/search_result_clicked.schema.json",
+  "title": "search_result_clicked properties",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title_id": { "type": "string", "format": "uuid" },
+    "rank": { "type": "integer", "minimum": 1 }
+  },
+  "required": ["title_id", "rank"]
+}

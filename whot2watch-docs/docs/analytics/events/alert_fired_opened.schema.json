@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/alert_fired_opened.schema.json",
+  "title": "alert_fired_opened properties",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "alert_id": { "type": "string", "format": "uuid" },
+    "title_id": { "type": "string", "format": "uuid" }
+  },
+  "required": ["alert_id", "title_id"]
+}

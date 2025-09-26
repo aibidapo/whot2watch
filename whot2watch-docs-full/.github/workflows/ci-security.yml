@@ -1,0 +1,3 @@
+name: security-ci
+on: { pull_request: { branches: [main] } }
+jobs: { security: { runs-on: ubuntu-latest, steps: [{ uses: 'actions/checkout@v4' }] } }

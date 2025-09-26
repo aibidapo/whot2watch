@@ -1,0 +1,9 @@
+schema: Whot2Watch-docs/docs/graphql/schema.graphql
+generates:
+  packages/types/graphql-types.ts:
+    plugins:
+      - typescript
+    config:
+      maybeValue: T | null
+      enumsAsTypes: true
+

@@ -1,0 +1,23 @@
+﻿# Environments
+.env
+.venv/
+whot2watch_venv/
+
+# Dependencies & build output
+node_modules/
+dist/
+coverage/
+
+# OS/Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Logs & temp
+*.log
+server_api_out.txt
+server_api_err.txt
+
+# Archives
+*.zip

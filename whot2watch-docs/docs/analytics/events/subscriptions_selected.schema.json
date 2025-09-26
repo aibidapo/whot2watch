@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/subscriptions_selected.schema.json",
+  "title": "subscriptions_selected properties",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "services": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "NETFLIX",
+          "AMAZON_PRIME_VIDEO",
+          "DISNEY_PLUS",
+          "HULU",
+          "MAX",
+          "APPLE_TV_PLUS",
+          "PARAMOUNT_PLUS",
+          "PEACOCK",
+          "CRUNCHYROLL",
+          "TUBI",
+          "OTHER"
+        ]
+      }
+    },
+    "region": { "type": "string", "enum": ["US", "CA", "GB", "AU", "IN"] }
+  },
+  "required": ["services", "region"]
+}

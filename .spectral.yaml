@@ -1,0 +1,23 @@
+extends: ['spectral:oas']
+rules:
+  no-todos-in-openapi:
+    description: 'OpenAPI must not contain TODO/FIXME markers.'
+    message: 'Remove TODO/FIXME from OpenAPI spec.'
+    severity: error
+    given: '$'
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: '(?i)TODO|FIXME'
+  operation-operationId: warn
+  operation-tags: warn
+  info-contact: off
+  no-todos:
+    description: 'No TODOs allowed in OpenAPI'
+    message: 'Remove TODOs before merge'
+    given: '$..*'
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "\\bTODO\\b"
+    severity: error

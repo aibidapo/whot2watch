@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/onboarding_completed.schema.json",
+  "title": "onboarding_completed properties",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "subscriptions_count": { "type": "integer", "minimum": 0 },
+    "genres_count": { "type": "integer", "minimum": 0 },
+    "moods_count": { "type": "integer", "minimum": 0 }
+  },
+  "required": ["subscriptions_count", "genres_count", "moods_count"]
+}

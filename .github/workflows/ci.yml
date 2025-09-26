@@ -1,0 +1,58 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: ESLint
+        run: pnpm lint
+
+      - name: Generate types from contracts
+        run: pnpm gen:graphql && pnpm gen:openapi
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Contracts validation
+        run: pnpm contracts:check
+
+      - name: Roadmap verification
+        run: node scripts/verify-roadmap.cjs
+
+      - name: Tests with coverage
+        run: pnpm coverage
+
+      - name: Duplication check
+        run: pnpm qa:jscpd
+
+      - name: Secret scan
+        run: pnpm qa:gitleaks
+
+      - name: Commit message check
+        if: github.event_name == 'pull_request'
+        run: pnpm commitlint

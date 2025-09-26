@@ -1,0 +1,450 @@
+# Whot2Watch GraphQL Schema (MVP)
+# This file remains the canonical schema for the docs bundle.
+
+"""
+ISO-8601 timestamp in UTC.
+"""
+scalar DateTime
+
+"""
+Regions supported for content availability (PRD currently specifies US).
+TODO: Expand once ERD lists all regions.
+"""
+enum Region {
+  US
+  CA
+  GB
+  AU
+  IN
+}
+
+"""
+Streaming services supported (PRD examples).
+TODO: Expand based on ERD/catalog (e.g., DISNEY, HULU, MAX, APPLETV, etc.).
+"""
+enum Service {
+  NETFLIX
+  AMAZON_PRIME_VIDEO
+  DISNEY_PLUS
+  HULU
+  MAX
+  APPLE_TV_PLUS
+  PARAMOUNT_PLUS
+  PEACOCK
+  CRUNCHYROLL
+  TUBI
+  OTHER
+}
+
+"""
+Visibility for user-created lists.
+"""
+enum ListVisibility {
+  PRIVATE
+  FRIENDS
+  PUBLIC
+  COLLAB
+}
+
+"""
+Alert types supported for notifications.
+"""
+enum AlertType {
+  AVAILABILITY
+  NEW_SEASON
+  ACTOR
+  GENRE
+}
+
+"""
+Feedback actions a user can take on a title.
+"""
+enum FeedbackAction {
+  LIKE
+  DISLIKE
+  SAVE
+}
+
+"""
+Friend request status codes.
+TODO: The PRD only shows REQUESTED and ACCEPTED; REJECTED added for completeness.
+"""
+enum TitleType {
+  MOVIE
+  SHOW
+}
+
+"""
+The type of availability offer for a title.
+"""
+enum OfferType {
+  SUBSCRIPTION
+  RENT
+  BUY
+  FREE
+}
+
+"""
+Lifecycle state of an alert.
+"""
+enum AlertStatus {
+  ACTIVE
+  FIRED
+  CANCELLED
+}
+
+"""
+Friend relationship status.
+"""
+enum FriendStatus {
+  REQUESTED
+  ACCEPTED
+}
+
+"""
+Group session lifecycle status.
+"""
+enum GroupSessionStatus {
+  OPEN
+  LOCKED
+  CLOSED
+}
+
+"""
+Generic identifier alias for clarity in fields.
+"""
+scalar ID
+
+"""
+A piece of content (movie, series, etc.). TODO: refine fields per ERD.
+"""
+type Title {
+  id: ID!
+  name: String!
+  type: TitleType!
+  releaseYear: Int
+  runtimeMin: Int
+  genres: [String!]!
+  moods: [String!]
+  posterUrl: String
+  backdropUrl: String
+  overview: String
+  voteAverage: Float
+  popularity: Float
+  availability(region: Region, services: [Service!]): [Availability!]!
+  topCast(limit: Int = 3): [String!]
+}
+
+"""
+Availability of a title on a specific service/region.
+"""
+type Availability {
+  service: Service!
+  region: Region!
+  offerType: OfferType!
+  deepLink: String
+  lastSeenAt: DateTime
+}
+
+"""
+Curated or algorithmic pick presented to a profile.
+"""
+type Pick {
+  id: ID!
+  title: Title!
+  score: Float
+  reason: String
+  createdAt: DateTime!
+}
+
+"""
+Search result item (lightweight projection of Title).
+"""
+type SearchItem {
+  id: ID!
+  name: String!
+  type: TitleType!
+  releaseYear: Int
+  runtimeMin: Int
+  genres: [String!]!
+  moods: [String!]
+  posterUrl: String
+  backdropUrl: String
+  overview: String
+  voteAverage: Float
+  popularity: Float
+  availability: [Availability!]!
+}
+
+"""
+Cursor-paginated search results.
+"""
+type SearchResultConnection {
+  items: [SearchItem!]!
+  nextCursor: String
+}
+
+"""
+User feedback on a title.
+"""
+type Feedback {
+  id: ID!
+  profileId: ID!
+  titleId: ID!
+  action: FeedbackAction!
+  reasonOpt: String
+  ts: DateTime!
+}
+
+"""
+User preferences stored at the profile level.
+"""
+type Preferences {
+  genres: [String!]!
+  dislikedGenres: [String!]!
+  moods: [String!]!
+  languages: [String!]!
+  runtimePreferredMin: Int
+  runtimePreferredMax: Int
+}
+
+"""
+Input for updating profile preferences.
+"""
+input PreferencesInput {
+  genres: [String!]
+  dislikedGenres: [String!]
+  moods: [String!]
+  languages: [String!]
+  runtimePreferredMin: Int
+  runtimePreferredMax: Int
+}
+
+"""
+Profile with preferences.
+"""
+type Profile {
+  id: ID!
+  preferences: Preferences
+  locale: String
+}
+
+"""
+A user-created list of titles.
+"""
+type List {
+  id: ID!
+  profileId: ID!
+  name: String!
+  visibility: ListVisibility!
+  description: String
+  items: [ListItem!]!
+  createdAt: DateTime!
+}
+
+"""
+An item within a List.
+"""
+type ListItem {
+  id: ID!
+  listId: ID!
+  title: Title!
+  position: Int
+  addedAt: DateTime!
+  note: String
+}
+
+"""
+Subscription to a streaming service in a region.
+"""
+type Subscription {
+  id: ID!
+  profileId: ID!
+  service: Service!
+  region: Region!
+}
+
+"""
+Alert configuration for availability or other triggers.
+"""
+type Alert {
+  id: ID!
+  profileId: ID!
+  titleId: ID
+  alertType: AlertType!
+  services: [Service!]
+  region: Region!
+  status: AlertStatus!
+  createdAt: DateTime!
+}
+
+"""
+Friend request between profiles.
+"""
+type Friend {
+  id: ID!
+  fromProfileId: ID!
+  toProfileId: ID!
+  status: FriendStatus!
+}
+
+"""
+Constraints used during a group session (e.g., runtime and services).
+"""
+type GroupSessionConstraints {
+  runtimeLt: Int
+  services: [Service!]
+}
+
+"""
+Input constraints used to filter candidates in a group session.
+"""
+input GroupSessionConstraintsInput {
+  runtimeLt: Int
+  services: [Service!]
+}
+
+"""
+A collaborative group watch decision session.
+"""
+type GroupSession {
+  id: ID!
+  hostProfileId: ID!
+  name: String!
+  status: GroupSessionStatus!
+  constraints: GroupSessionConstraints
+  fairnessScore: Float
+  createdAt: DateTime!
+}
+
+"""
+A vote cast in a group session.
+"""
+type Vote {
+  id: ID!
+  sessionId: ID!
+  profileId: ID!
+  titleId: ID!
+  value: Int!
+  ts: DateTime!
+}
+
+"""
+NLU parsing result (Phase 2).
+"""
+type NluParseResult {
+  intent: String
+  entities: [String!]
+  confidence: Float
+}
+
+"""
+NLU search response (Phase 2).
+"""
+type NluSearchResult {
+  parse: NluParseResult
+  results: SearchResultConnection
+  relaxed: Boolean
+  relaxNotes: String
+}
+
+# Queries
+
+"""
+Entry point for read operations.
+"""
+type Query {
+  """
+  Return picks for a profile.
+  """
+  picks(profileId: ID!, limit: Int = 5): [Pick!]!
+
+  """
+  Search titles with optional provider/region/runtime filters.
+  """
+  search(
+    q: String!
+    region: Region!
+    providerIn: [Service!]
+    runtimeLt: Int
+    first: Int = 20
+    after: String
+  ): SearchResultConnection!
+
+  """
+  Get availability for a title in a region/services.
+  """
+  availability(titleId: ID!, region: Region!, services: [Service!]): [Availability!]!
+
+  """
+  NLU search (Phase 2).
+  """
+  nluSearch(q: String!, profileId: ID!, first: Int = 20, after: String): NluSearchResult
+
+  # Read/List queries
+  lists(
+    profileId: ID!
+    visibility: ListVisibility
+    first: Int = 20
+    after: String
+  ): SearchResultConnection!
+  alerts(
+    profileId: ID!
+    status: AlertStatus
+    first: Int = 20
+    after: String
+  ): SearchResultConnection!
+  subscriptions(profileId: ID!): [Subscription!]!
+  groupSessions(
+    hostProfileId: ID
+    participantProfileId: ID
+    status: GroupSessionStatus
+    first: Int = 20
+    after: String
+  ): SearchResultConnection!
+}
+
+# Mutations
+
+"""
+Entry point for write operations.
+"""
+type Mutation {
+  """
+  Give feedback on a title.
+  """
+  giveFeedback(profileId: ID!, titleId: ID!, action: FeedbackAction!, reasonOpt: String): Feedback!
+
+  # Lists
+  createList(profileId: ID!, name: String!, visibility: ListVisibility!, description: String): List!
+  addListItem(listId: ID!, titleId: ID!, note: String, position: Int): ListItem!
+  deleteListItem(listId: ID!, itemId: ID!): Boolean!
+
+  # Subscriptions & Preferences
+  createSubscription(profileId: ID!, service: Service!, region: Region!): Subscription!
+  deleteSubscription(id: ID!): Boolean!
+  updateProfilePreferences(id: ID!, preferences: PreferencesInput!): Profile!
+
+  # Alerts
+  createAlert(
+    profileId: ID!
+    titleId: ID
+    alertType: AlertType!
+    services: [Service!]
+    region: Region!
+  ): Alert!
+  deleteAlert(id: ID!): Boolean!
+
+  # Social & Group Night
+  sendFriendRequest(profileId: ID!, toProfileId: ID!): Friend!
+  respondFriendRequest(id: ID!, accept: Boolean!): Friend!
+
+  createGroupSession(
+    hostProfileId: ID!
+    name: String!
+    constraints: GroupSessionConstraintsInput
+  ): GroupSession!
+  addGroupSessionCandidate(id: ID!, titleId: ID!): Boolean!
+  voteGroupSession(id: ID!, profileId: ID!, titleId: ID!, value: Int!): Vote!
+  closeGroupSession(id: ID!): GroupSession!
+}

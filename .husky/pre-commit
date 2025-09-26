@@ -1,0 +1,6 @@
+#!/bin/sh
+
+node scripts/require-venv.cjs || exit 1
+pnpm format:write
+pnpm lint
+pnpm typecheck

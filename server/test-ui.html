@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Whot2Watch Search Tester</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 20px; }
+    input, select, button { padding: 6px 8px; margin: 4px; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .card { border: 1px solid #ddd; border-radius: 6px; padding: 10px; margin: 8px 0; }
+    .pill { display: inline-block; background: #f2f2f2; border-radius: 999px; padding: 2px 8px; margin-right: 6px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Search</h1>
+  <div class="row">
+    <input id="q" placeholder="query (e.g., mission)" />
+    <input id="service" placeholder="service (NETFLIX,HULU)" />
+    <input id="region" placeholder="region (US,GB)" />
+    <select id="type">
+      <option value="">any</option>
+      <option>MOVIE</option>
+      <option>SHOW</option>
+    </select>
+    <input id="yearMin" placeholder="yearMin" type="number" style="width:100px" />
+    <input id="yearMax" placeholder="yearMax" type="number" style="width:100px" />
+    <input id="runtimeMax" placeholder="runtimeMax" type="number" style="width:120px" />
+    <input id="size" placeholder="size" type="number" value="10" style="width:80px" />
+    <button id="go">Search</button>
+  </div>
+  <div id="meta"></div>
+  <div id="results"></div>
+  <script>
+    async function run() {
+      const params = new URLSearchParams()
+      const q = document.getElementById('q').value.trim()
+      if (q) params.set('q', q)
+      const service = document.getElementById('service').value.trim()
+      if (service) params.set('service', service)
+      const region = document.getElementById('region').value.trim()
+      if (region) params.set('region', region)
+      const type = document.getElementById('type').value
+      if (type) params.set('type', type)
+      const yearMin = document.getElementById('yearMin').value
+      if (yearMin) params.set('yearMin', yearMin)
+      const yearMax = document.getElementById('yearMax').value
+      if (yearMax) params.set('yearMax', yearMax)
+      const runtimeMax = document.getElementById('runtimeMax').value
+      if (runtimeMax) params.set('runtimeMax', runtimeMax)
+      const size = document.getElementById('size').value
+      if (size) params.set('size', size)
+
+      const res = await fetch(`/search?${params.toString()}`)
+      const data = await res.json()
+      document.getElementById('meta').textContent = `total=${data.total} took=${data.took}ms`
+      const results = document.getElementById('results')
+      results.innerHTML = ''
+      for (const it of data.items || []) {
+        const div = document.createElement('div')
+        div.className = 'card'
+        div.innerHTML = `<div><strong>${it.name}</strong> <span class="pill">${it.type}</span> ${it.releaseYear ?? ''}</div>
+          <div>${(it.availabilityServices || []).map(s=>`<span class='pill'>${s}</span>`).join(' ')}</div>
+          <div style='color:#666'>${(it.availability || []).map(a=>`${a.service}:${a.region}`).slice(0,6).join(', ')}</div>`
+        results.appendChild(div)
+      }
+    }
+    document.getElementById('go').addEventListener('click', run)
+  </script>
+</body>
+</html>

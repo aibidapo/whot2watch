@@ -1,0 +1,12 @@
+title = "Whot2Watch Gitleaks Config"
+
+[allowlist]
+description = "Common false positives"
+paths = [
+  "^whot2watch-docs/docs/.*\\.(md|yaml|graphql)$",
+  "^coverage/.*"
+]
+regexes = [
+  "(?i)dummy|example|placeholder"
+]
+

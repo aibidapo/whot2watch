@@ -1,0 +1,8 @@
+{
+  "threshold": 5,
+  "reporters": ["console"],
+  "min-lines": 5,
+  "min-tokens": 50,
+  "languages": ["javascript", "typescript", "tsx"],
+  "ignore": ["**/dist/**", "**/coverage/**", "**/node_modules/**"]
+}

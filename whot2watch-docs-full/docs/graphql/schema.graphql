@@ -1,0 +1,307 @@
+# GraphQL API Contract (MVP + early Phase 2)
+
+scalar DateTime
+scalar JSON
+
+enum TitleType {
+  MOVIE
+  SHOW
+}
+enum OfferType {
+  SUBSCRIPTION
+  RENT
+  BUY
+  FREE
+}
+enum Visibility {
+  PRIVATE
+  FRIENDS
+  PUBLIC
+  COLLAB
+}
+enum FriendStatus {
+  REQUESTED
+  ACCEPTED
+  BLOCKED
+}
+enum FeedbackAction {
+  LIKE
+  DISLIKE
+  SAVE
+}
+enum Provider {
+  NETFLIX
+  AMAZON_PRIME_VIDEO
+  DISNEY_PLUS
+  HULU
+  MAX
+  APPLE_TV_PLUS
+  PARAMOUNT_PLUS
+  PEACOCK
+  CRUNCHYROLL
+  TUBI
+  OTHER
+}
+
+enum Region {
+  US
+  CA
+  GB
+  AU
+  IN
+}
+
+type User {
+  id: ID!
+  email: String!
+  region: Region
+  createdAt: DateTime!
+  profiles: [Profile!]!
+}
+
+type Profile {
+  id: ID!
+  userId: ID!
+  name: String!
+  avatarUrl: String
+  preferences: JSON
+  privateModeDefault: Boolean!
+  locale: String
+  createdAt: DateTime!
+  subscriptions: [Subscription!]!
+}
+
+type Subscription {
+  id: ID!
+  service: Provider!
+  region: Region
+  active: Boolean!
+  createdAt: DateTime!
+}
+
+type Title {
+  id: ID!
+  tmdbId: ID
+  type: TitleType!
+  name: String!
+  releaseYear: Int
+  runtimeMin: Int
+  genres: [String!]
+  moods: [String!]
+  posterUrl: String
+  backdropUrl: String
+  overview: String
+  voteAverage: Float
+  popularity: Float
+  availability(region: Region, services: [Provider!]): [Availability!]!
+  topCast(limit: Int = 3): [String!]
+}
+
+type Availability {
+  service: Provider!
+  region: Region!
+  offerType: OfferType!
+  deepLink: String
+  lastSeenAt: DateTime
+}
+
+type Recommendation {
+  id: ID!
+  title: Title!
+  score: Float!
+  reason: String
+  createdAt: DateTime!
+}
+
+type Feedback {
+  id: ID!
+  profileId: ID!
+  titleId: ID!
+  action: FeedbackAction!
+  reasonOpt: String
+  ts: DateTime!
+}
+
+type List {
+  id: ID!
+  ownerProfileId: ID!
+  name: String!
+  visibility: Visibility!
+  description: String
+  items(first: Int, after: String): ListItemConnection!
+  createdAt: DateTime!
+}
+
+type ListItem {
+  id: ID!
+  listId: ID!
+  title: Title!
+  position: Int
+  note: String
+  addedByProfileId: ID!
+  addedAt: DateTime!
+}
+
+type ListItemConnection {
+  edges: [ListItemEdge!]!
+  pageInfo: PageInfo!
+}
+
+type ListItemEdge {
+  cursor: String!
+  node: ListItem!
+}
+
+type Friend {
+  id: ID!
+  profileId: ID!
+  friendProfileId: ID!
+  status: FriendStatus!
+  createdAt: DateTime!
+}
+
+type GroupSession {
+  id: ID!
+  hostProfileId: ID!
+  name: String
+  constraints: JSON
+  status: String!
+  createdAt: DateTime!
+  candidates(first: Int, after: String): TitleConnection!
+  votes(first: Int, after: String): VoteConnection!
+  fairnessScore: Float
+}
+
+type Vote {
+  id: ID!
+  sessionId: ID!
+  profileId: ID!
+  titleId: ID!
+  voteValue: Int!
+  ts: DateTime!
+}
+
+type TitleConnection {
+  edges: [TitleEdge!]!
+  pageInfo: PageInfo!
+}
+
+type TitleEdge {
+  cursor: String!
+  node: Title!
+}
+
+type VoteConnection {
+  edges: [VoteEdge!]!
+  pageInfo: PageInfo!
+}
+
+type VoteEdge {
+  cursor: String!
+  node: Vote!
+}
+
+type PageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+}
+
+input SearchFilters {
+  type: TitleType
+  genres: [String!]
+  moods: [String!]
+  providerIn: [Provider!]
+  region: Region
+  runtimeLt: Int
+  releaseYearGte: Int
+  releaseYearLte: Int
+}
+
+type Query {
+  me: User
+  profile(id: ID!): Profile
+  dailyPicks(profileId: ID!, limit: Int = 5): [Recommendation!]!
+  searchTitles(q: String, filters: SearchFilters, first: Int = 20, after: String): TitleConnection!
+  list(id: ID!): List
+  lists(profileId: ID!, visibility: Visibility, first: Int = 20, after: String): [List!]!
+  friends(
+    profileId: ID!
+    status: FriendStatus = ACCEPTED
+    first: Int = 50
+    after: String
+  ): [Friend!]!
+  groupSession(id: ID!): GroupSession
+  alerts(profileId: ID!, status: String, first: Int = 20, after: String): [JSON!]!
+  subscriptions(profileId: ID!): [Subscription!]!
+  groupSessions(
+    hostProfileId: ID
+    participantProfileId: ID
+    status: String
+    first: Int = 20
+    after: String
+  ): [GroupSession!]!
+}
+
+input UpdatePreferencesInput {
+  genres: [String!]
+  dislikedGenres: [String!]
+  moods: [String!]
+  runtimePreferredMin: Int
+  runtimePreferredMax: Int
+  languages: [String!]
+}
+
+input CreateListInput {
+  profileId: ID!
+  name: String!
+  visibility: Visibility! = PRIVATE
+  description: String
+}
+
+input AddListItemInput {
+  listId: ID!
+  titleId: ID!
+  note: String
+  position: Int
+}
+
+input SetAlertInput {
+  profileId: ID!
+  titleId: ID
+  alertType: String!
+  services: [Provider!]
+  region: Region
+}
+
+input CreateGroupSessionInput {
+  hostProfileId: ID!
+  name: String
+  constraints: JSON
+}
+
+type Mutation {
+  updatePreferences(profileId: ID!, input: UpdatePreferencesInput!): Profile
+  addSubscription(profileId: ID!, service: Provider!, region: Region): Subscription
+  removeSubscription(subscriptionId: ID!): Boolean
+
+  likeTitle(profileId: ID!, titleId: ID!): Feedback
+  dislikeTitle(profileId: ID!, titleId: ID!, reasonOpt: String): Feedback
+  saveTitle(profileId: ID!, titleId: ID!): Feedback
+
+  createList(input: CreateListInput!): List
+  addListItem(input: AddListItemInput!): ListItem
+  removeListItem(listItemId: ID!): Boolean
+  updateListVisibility(listId: ID!, visibility: Visibility!): List
+
+  setAlert(input: SetAlertInput!): Boolean
+  cancelAlert(alertId: ID!): Boolean
+
+  sendFriendRequest(profileId: ID!, toProfileId: ID!): Friend
+  respondFriendRequest(friendId: ID!, accept: Boolean!): Friend
+  blockFriend(profileId: ID!, friendProfileId: ID!): Boolean
+
+  createGroupSession(input: CreateGroupSessionInput!): GroupSession
+  addCandidate(sessionId: ID!, titleId: ID!): Boolean
+  vote(sessionId: ID!, titleId: ID!, profileId: ID!, value: Int!): Vote
+  closeSession(sessionId: ID!): GroupSession
+}

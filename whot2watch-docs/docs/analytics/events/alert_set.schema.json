@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/alert_set.schema.json",
+  "title": "alert_set properties",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "alert_id": { "type": "string", "format": "uuid" },
+    "type": { "type": "string", "enum": ["availability", "new_season", "actor", "genre"] },
+    "services": { "type": "array", "items": { "type": "string", "enum": ["NETFLIX", "PRIME"] } }
+  },
+  "required": ["alert_id", "type"]
+}

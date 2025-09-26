@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/list_created.schema.json",
+  "title": "list_created properties",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "list_id": { "type": "string", "format": "uuid" },
+    "visibility": { "type": "string", "enum": ["PRIVATE", "FRIENDS", "PUBLIC", "COLLAB"] }
+  },
+  "required": ["list_id", "visibility"]
+}

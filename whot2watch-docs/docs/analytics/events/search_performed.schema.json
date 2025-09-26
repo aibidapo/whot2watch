@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/search_performed.schema.json",
+  "title": "search_performed properties",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "q": { "type": "string" },
+    "filters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "providerIn": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["NETFLIX", "PRIME"] }
+        },
+        "runtimeLt": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "results_count": { "type": "integer", "minimum": 0 },
+    "request_ms": { "type": "integer", "minimum": 0 }
+  },
+  "required": ["q"]
+}

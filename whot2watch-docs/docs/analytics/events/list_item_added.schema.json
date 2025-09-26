@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/list_item_added.schema.json",
+  "title": "list_item_added properties",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "list_id": { "type": "string", "format": "uuid" },
+    "title_id": { "type": "string", "format": "uuid" },
+    "position": { "type": "integer", "minimum": 0 }
+  },
+  "required": ["list_id", "title_id"]
+}

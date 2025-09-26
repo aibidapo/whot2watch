@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/app_open.schema.json",
+  "title": "app_open properties",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "entrypoint": { "type": "string", "enum": ["cold", "warm", "push"] },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "push": { "type": "boolean" }
+      },
+      "required": ["push"]
+    }
+  },
+  "required": ["entrypoint", "permissions"]
+}

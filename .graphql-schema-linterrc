@@ -1,0 +1,14 @@
+{
+  "rules": [
+    "defined-types-are-used",
+    "types-have-descriptions",
+    "enum-values-all-caps",
+    "fields-are-camel-cased",
+    "input-object-values-are-camel-cased",
+    "no-deprecated-fields",
+    "no-unreachable-types"
+  ],
+  "schemaPaths": ["Whot2Watch-docs/docs/graphql/schema.graphql"],
+  "customRulePaths": [],
+  "suppressions": []
+}

@@ -1,0 +1,17 @@
+{
+  "name": "whot2watch-docs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Docs workspace that defers to root tooling to avoid duplicate dependencies",
+  "scripts": {
+    "format:check": "pnpm --cwd .. format:check",
+    "format": "pnpm --cwd .. format:write",
+    "lint:markdown": "pnpm --cwd .. docs:markdown:lint",
+    "lint:openapi": "pnpm --cwd .. contracts:openapi:lint",
+    "validate:openapi": "pnpm --cwd .. contracts:openapi:validate",
+    "lint:graphql": "pnpm --cwd .. contracts:graphql:lint",
+    "dup:check": "pnpm --cwd .. docs:dup:check",
+    "contracts:check": "pnpm --cwd .. contracts:check",
+    "qa": "pnpm --cwd .. qa"
+  }
+}

@@ -1,0 +1,32 @@
+name: security-ci
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Semgrep SAST
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: p/owasp-top-ten
+          generateSarif: true
+          auditOn: push
+      - name: Semgrep Local Rules
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: .semgrep.yml
+          generateSarif: true
+          auditOn: push
+
+  zap-baseline:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: OWASP ZAP Baseline (staging)
+        uses: zapbot/zap-baseline-action@v0.14.0
+        with:
+          target: ${{ secrets.STAGING_URL }}

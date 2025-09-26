@@ -1,0 +1,186 @@
+// Prisma schema — What2Watch ERD mapping
+// Datasource configured for PostgreSQL; set DATABASE_URL in environment when running migrations.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique
+  authProvider String?
+  region       String?
+  createdAt    DateTime  @default(now())
+  profiles     Profile[]
+}
+
+model Profile {
+  id                 String          @id @default(uuid()) @db.Uuid
+  userId             String          @db.Uuid
+  name               String
+  avatarUrl          String?
+  preferences        Json?
+  privateModeDefault Boolean         @default(false)
+  locale             String?
+  createdAt          DateTime        @default(now())
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptions      Subscription[]
+  lists              List[]
+  feedback           Feedback[]
+  recommendations    Recommendation[]
+  alerts             Alert[]
+  friendsFrom        Friend[]        @relation("fromProfile")
+  friendsTo          Friend[]        @relation("toProfile")
+  groupSessions      GroupSession[]  @relation("hostProfile")
+  votes              Vote[]
+}
+
+model Subscription {
+  id        String   @id @default(uuid()) @db.Uuid
+  profileId String   @db.Uuid
+  service   String
+  region    String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  @@index([profileId])
+}
+
+model Title {
+  id            String           @id @default(uuid()) @db.Uuid
+  tmdbId        BigInt?
+  type          String
+  name          String
+  releaseYear   Int?
+  runtimeMin    Int?
+  genres        String[]
+  moods         String[]
+  cast          Json?
+  posterUrl     String?
+  backdropUrl   String?
+  createdAt     DateTime         @default(now())
+  availability  Availability[]
+  listItems     ListItem[]
+  feedback      Feedback[]
+  recommendations Recommendation[]
+  votes         Vote[]
+  @@index([type])
+  @@index([releaseYear])
+  @@index([name])
+}
+
+model Availability {
+  id         String   @id @default(uuid()) @db.Uuid
+  titleId    String   @db.Uuid
+  service    String
+  region     String
+  offerType  String
+  deepLink   String?
+  lastSeenAt DateTime?
+  title      Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  @@index([titleId])
+  @@index([region, service])
+  @@index([service])
+}
+
+model Recommendation {
+  id         String   @id @default(uuid()) @db.Uuid
+  profileId  String   @db.Uuid
+  titleId    String   @db.Uuid
+  score      Float
+  reason     String?
+  createdAt  DateTime @default(now())
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  title      Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  @@index([profileId])
+  @@index([titleId])
+}
+
+model Feedback {
+  id        String   @id @default(uuid()) @db.Uuid
+  profileId String   @db.Uuid
+  titleId   String   @db.Uuid
+  action    String   // LIKE | DISLIKE | SAVE
+  reasonOpt String?
+  ts        DateTime @default(now())
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  title     Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  @@index([profileId, titleId])
+}
+
+model Alert {
+  id        String   @id @default(uuid()) @db.Uuid
+  profileId String   @db.Uuid
+  titleId   String?  @db.Uuid
+  alertType String
+  services  String[]
+  region    String
+  status    String   // ACTIVE | FIRED | CANCELLED
+  createdAt DateTime @default(now())
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+}
+
+model List {
+  id          String    @id @default(uuid()) @db.Uuid
+  profileId   String    @db.Uuid
+  name        String
+  visibility  String    // PRIVATE | FRIENDS | PUBLIC | COLLAB
+  description String?
+  createdAt   DateTime  @default(now())
+  profile     Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  items       ListItem[]
+}
+
+model ListItem {
+  id       String @id @default(uuid()) @db.Uuid
+  listId   String @db.Uuid
+  titleId  String @db.Uuid
+  position Int?
+  note     String?
+  addedAt  DateTime @default(now())
+  list     List   @relation(fields: [listId], references: [id], onDelete: Cascade)
+  title    Title  @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  @@index([listId])
+}
+
+model Friend {
+  id            String  @id @default(uuid()) @db.Uuid
+  fromProfileId String  @db.Uuid
+  toProfileId   String  @db.Uuid
+  status        String  // REQUESTED | ACCEPTED
+  fromProfile   Profile @relation("fromProfile", fields: [fromProfileId], references: [id], onDelete: Cascade)
+  toProfile     Profile @relation("toProfile", fields: [toProfileId], references: [id], onDelete: Cascade)
+  @@index([fromProfileId])
+  @@index([toProfileId])
+}
+
+model GroupSession {
+  id            String   @id @default(uuid()) @db.Uuid
+  hostProfileId String   @db.Uuid
+  name          String?
+  constraints   Json?
+  status        String   // open | locked | closed
+  fairnessScore Float?
+  createdAt     DateTime @default(now())
+  hostProfile   Profile  @relation("hostProfile", fields: [hostProfileId], references: [id], onDelete: Cascade)
+  votes         Vote[]
+}
+
+model Vote {
+  id        String   @id @default(uuid()) @db.Uuid
+  sessionId String   @db.Uuid
+  profileId String   @db.Uuid
+  titleId   String   @db.Uuid
+  voteValue Int
+  ts        DateTime @default(now())
+  session   GroupSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  profile   Profile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  title     Title        @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  @@index([sessionId])
+  @@index([profileId])
+}

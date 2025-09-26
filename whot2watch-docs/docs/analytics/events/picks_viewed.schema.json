@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/picks_viewed.schema.json",
+  "title": "picks_viewed properties",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "count": { "type": "integer", "minimum": 1 },
+    "request_ms": { "type": "integer", "minimum": 0 }
+  },
+  "required": ["count"]
+}

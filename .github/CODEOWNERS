@@ -1,0 +1,6 @@
+# CODEOWNERS — Single-developer mode
+
+# Set the default owner to your GitHub handle. Update path-specific owners when the team grows.
+# Example: * @your-github-handle
+
+* @w2w-core
