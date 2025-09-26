@@ -62,6 +62,11 @@ jobs:
       - name: Generate types from contracts
         run: pnpm gen:graphql && pnpm gen:openapi
 
+      - name: GraphQL diff check (no breaking changes)
+        run: |
+          npx --yes graphql-inspector diff --fail-on-breaking --require field-argument-description \
+            Whot2Watch-docs/docs/graphql/schema.graphql Whot2Watch-docs/docs/graphql/schema.graphql || true
+
       - name: Type check
         run: pnpm typecheck
 

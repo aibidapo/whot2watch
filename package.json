@@ -45,6 +45,7 @@
     "api:dev": "tsx -r ./scripts/load-env.cjs server/api.ts"
   },
   "devDependencies": {
+    "@graphql-inspector/cli": "^4.0.1",
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
     "@graphql-codegen/cli": "^5.0.2",
