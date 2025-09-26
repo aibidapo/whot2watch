@@ -155,6 +155,57 @@ app.post('/feedback', async (request) => {
   return { feedback: rec }
 })
 
+// ---- Picks v1 (simple rules) ----
+app.get('/picks/:profileId', async (request) => {
+  const { profileId } = (request.params as any)
+  if (!profileId) return { items: [] }
+
+  const todayKey = new Date().toISOString().slice(0, 10)
+  const cacheKey = `picks:${profileId}:${todayKey}`
+  try {
+    const cached = await app.redis?.get(cacheKey)
+    if (cached) return JSON.parse(cached)
+  } catch {}
+
+  const subs = await prisma.subscription.findMany({ where: { profileId, active: true } })
+  const services = subs.map((s) => s.service)
+  const profile = await prisma.profile.findUnique({ where: { id: profileId } })
+  const region = profile?.locale?.split('-')[1] || 'US'
+
+  // candidates: titles with availability in user's services/region
+  const titles = await prisma.title.findMany({
+    take: 200,
+    orderBy: { createdAt: 'desc' },
+    include: { availability: true }
+  })
+
+  function score(t: any): number {
+    let s = 0
+    if (Array.isArray(t.genres)) s += Math.min(t.genres.length, 3) * 0.5
+    if (t.releaseYear) s += Math.max(0, t.releaseYear - 1990) / 100
+    const avail = (t.availability || []).some((a: any) => services.includes(a.service) && a.region === region)
+    if (avail) s += 2
+    return s
+  }
+
+  const filtered = titles
+    .filter((t: any) => (t.availability || []).some((a: any) => services.includes(a.service) && a.region === region))
+    .map((t: any) => ({ ...t, _score: score(t) }))
+    .sort((a: any, b: any) => b._score - a._score)
+    .slice(0, 5)
+    .map((t: any) => ({
+      id: t.id,
+      name: t.name,
+      type: t.type,
+      releaseYear: t.releaseYear,
+      reason: `Because it matches your services (${services.join(', ')}) in ${region}`
+    }))
+
+  const response = { items: filtered }
+  try { await app.redis?.setEx(cacheKey, 60 * 60 * 12, JSON.stringify(response)) } catch {}
+  return response
+})
+
 // attach redis
 declare module 'fastify' {
   interface FastifyInstance { redis?: ReturnType<typeof createClient> }
