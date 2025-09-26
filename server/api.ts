@@ -1,6 +1,7 @@
 import * as url from 'url'
 import * as fs from 'fs'
 import * as path from 'path'
+import { createClient } from 'redis'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import { withRequestId } from './common/requestId'
@@ -8,6 +9,7 @@ import { logger } from './common/logger'
 
 const OPENSEARCH_URL = process.env.OPENSEARCH_URL || 'http://localhost:9200'
 const PORT = Number(process.env.PORT || 4000)
+const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379'
 
 function arr(v: unknown): string[] | undefined {
   if (v === undefined) return undefined
@@ -67,6 +69,13 @@ app.get('/search', async (request) => {
     from,
     sort: q ? undefined : [{ releaseYear: { order: 'desc' } }, { _score: { order: 'desc' } }]
   }
+  // try cache first
+  const cacheKey = `search:${JSON.stringify({ q, size, from, services, regions, types, yearMin, yearMax, runtimeMin, runtimeMax })}`
+  try {
+    const cached = await app.redis?.get(cacheKey)
+    if (cached) return JSON.parse(cached)
+  } catch {}
+
   const osRes = await fetch(`${OPENSEARCH_URL}/titles/_search`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(query)
   })
@@ -78,7 +87,23 @@ app.get('/search', async (request) => {
   const data = await osRes.json()
   const hits = (data.hits?.hits || []).map((h: any) => ({ id: h._id, score: h._score, ...h._source }))
   const total = typeof data.hits?.total?.value === 'number' ? data.hits.total.value : hits.length
-  return { items: hits, total, took: data.took ?? 0, from, size }
+  const response = { items: hits, total, took: data.took ?? 0, from, size }
+  try {
+    await app.redis?.setEx(cacheKey, 60, JSON.stringify(response))
+  } catch {}
+  return response
+})
+
+// attach redis
+declare module 'fastify' {
+  interface FastifyInstance { redis?: ReturnType<typeof createClient> }
+}
+
+app.addHook('onReady', async () => {
+  const client = createClient({ url: REDIS_URL })
+  client.on('error', (err) => logger.warn('redis_error', { err: String(err) }))
+  await client.connect()
+  app.redis = client
 })
 
 app.listen({ port: PORT, host: '0.0.0.0' }).then(() => {
