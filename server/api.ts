@@ -2,6 +2,7 @@ import * as url from 'url'
 import * as fs from 'fs'
 import * as path from 'path'
 import { createClient } from 'redis'
+import { PrismaClient } from '@prisma/client'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import helmet from '@fastify/helmet'
@@ -12,6 +13,7 @@ import { logger } from './common/logger'
 const OPENSEARCH_URL = process.env.OPENSEARCH_URL || 'http://localhost:9200'
 const PORT = Number(process.env.PORT || 4000)
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379'
+const prisma = new PrismaClient()
 
 function arr(v: unknown): string[] | undefined {
   if (v === undefined) return undefined
@@ -99,6 +101,58 @@ app.get('/search', async (request) => {
     await app.redis?.setEx(cacheKey, 60, JSON.stringify(response))
   } catch {}
   return response
+})
+
+// ---- Lists ----
+app.get('/profiles/:profileId/lists', async (request) => {
+  const { profileId } = (request.params as any)
+  if (!profileId) return { items: [] }
+  const lists = await prisma.list.findMany({
+    where: { profileId },
+    include: { items: true }
+  })
+  return { items: lists }
+})
+
+app.post('/profiles/:profileId/lists', async (request) => {
+  const { profileId } = (request.params as any)
+  const body = (request.body as any) || {}
+  const name: string = body.name
+  const visibility: string = body.visibility || 'PRIVATE'
+  if (!profileId || !name) return { error: 'invalid_input' }
+  const list = await prisma.list.create({ data: { profileId, name, visibility } })
+  return { list }
+})
+
+app.post('/lists/:listId/items', async (request) => {
+  const { listId } = (request.params as any)
+  const body = (request.body as any) || {}
+  const titleId: string = body.titleId
+  const position: number | undefined = typeof body.position === 'number' ? body.position : undefined
+  const note: string | undefined = typeof body.note === 'string' ? body.note : undefined
+  if (!listId || !titleId) return { error: 'invalid_input' }
+  const item = await prisma.listItem.create({ data: { listId, titleId, position, note } })
+  return { item }
+})
+
+app.delete('/lists/:listId/items/:itemId', async (request) => {
+  const { itemId } = (request.params as any)
+  if (!itemId) return { error: 'invalid_input' }
+  await prisma.listItem.delete({ where: { id: itemId } })
+  return { ok: true }
+})
+
+// ---- Feedback ----
+app.post('/feedback', async (request) => {
+  const body = (request.body as any) || {}
+  const profileId: string = body.profileId
+  const titleId: string = body.titleId
+  const action: string = body.action
+  const reasonOpt: string | undefined = typeof body.reasonOpt === 'string' ? body.reasonOpt : undefined
+  const allowed = new Set(['LIKE', 'DISLIKE', 'SAVE'])
+  if (!profileId || !titleId || !allowed.has(action)) return { error: 'invalid_input' }
+  const rec = await prisma.feedback.create({ data: { profileId, titleId, action, reasonOpt } })
+  return { feedback: rec }
 })
 
 // attach redis
