@@ -17,8 +17,8 @@ Governance & Ownership
 
 - [ ] NERS for: `apps/mobile`, `apps/web`, `services/api`, `packages/ui`, `packages/types`, `Whot2Watch-docs`
 - [x] PR template with checklist: contracts changed? tests added? naming follows Glossary? no TODOs? no duplicate logic?
-- [ ] ADRs directory `docs/adr/` with template; new modules/patterns must include ADR
-- [ ] Branch protection policy documented (require CI + 1 owner review; dismiss stale approvals)
+- [x] ADRs directory `docs/adr/` with template; new modules/patterns must include ADR
+- [x] Branch protection policy documented (require CI + 1 owner review; dismiss stale approvals)
 
 Contracts & Types (anti-drift)
 
