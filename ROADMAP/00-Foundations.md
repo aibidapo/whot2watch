@@ -54,7 +54,7 @@ Tests, Coverage & Mutation
 Data Model & Migrations
 
 - [x] Prisma schema + initial migrations matching ERD
-- [ ] CI schema drift check (`prisma migrate diff`)
+- [x] CI schema drift check (`prisma migrate diff`)
 
 Dependency & Tooling Health
 
