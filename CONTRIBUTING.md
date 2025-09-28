@@ -55,6 +55,7 @@ Prereqs: Docker Desktop, Node.js 20, pnpm, Python venv activated.
 - Copy `.env.example` to `.env` and fill values as needed.
 - Minimum for local: `DATABASE_URL`, `REDIS_URL`, `OPENSEARCH_URL`.
 - Optional: `TMDB_API_KEY` (v3) or `TMDB_ACCESS_TOKEN` (v4) to use real TMDB.
+ - Optional analytics forwarding: set `ANALYTICS_WEBHOOK_URL` (and optional `ANALYTICS_TOKEN`). When present, the API forwards `/analytics` events to this endpoint; otherwise they are logged locally. Private Mode suppresses sends.
 
 3. DB setup
 

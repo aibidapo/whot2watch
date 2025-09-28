@@ -1,27 +1,29 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { Card } from '@/components/ui/Card'
-import { Thumb } from '@/components/ui/Thumb'
-import { Chip } from '@/components/ui/Chip'
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Card } from '@/components/ui/Card';
+import { Thumb } from '@/components/ui/Thumb';
+import { Chip } from '@/components/ui/Chip';
 
 type PickItem = {
-  id: string
-  name: string
-  type?: string
-  releaseYear?: number
-  posterUrl?: string
-  voteAverage?: number
-  availabilityServices?: string[]
-  watchUrl?: string
-  reason?: string
+  id: string;
+  name: string;
+  type?: string;
+  releaseYear?: number;
+  posterUrl?: string;
+  voteAverage?: number;
+  availabilityServices?: string[];
+  watchUrl?: string;
+  reason?: string;
 };
 
 export default function PicksPage() {
-  const [profileId, setProfileId] = useState<string>(process.env.NEXT_PUBLIC_DEFAULT_PROFILE_ID || '');
+  const [profileId, setProfileId] = useState<string>(
+    process.env.NEXT_PUBLIC_DEFAULT_PROFILE_ID || '',
+  );
   const [items, setItems] = useState<PickItem[]>([]);
-  const [profiles, setProfiles] = useState<{ id: string; name?: string }[]>([])
+  const [profiles, setProfiles] = useState<{ id: string; name?: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', []);
@@ -44,11 +46,11 @@ export default function PicksPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`${apiBase}/profiles`)
-        const json = await res.json()
-        if (Array.isArray(json.items)) setProfiles(json.items)
+        const res = await fetch(`${apiBase}/profiles`);
+        const json = await res.json();
+        if (Array.isArray(json.items)) setProfiles(json.items);
       } catch {}
-    })()
+    })();
   }, []);
 
   return (
@@ -68,9 +70,9 @@ export default function PicksPage() {
           <Button
             variant="secondary"
             onClick={() => {
-              const envId = process.env.NEXT_PUBLIC_DEFAULT_PROFILE_ID || ''
-              const found = profiles.find((p) => p.id === envId) || profiles[0]
-              if (found?.id) setProfileId(found.id)
+              const envId = process.env.NEXT_PUBLIC_DEFAULT_PROFILE_ID || '';
+              const found = profiles.find((p) => p.id === envId) || profiles[0];
+              if (found?.id) setProfileId(found.id);
             }}
           >
             Use my profile
@@ -81,11 +83,14 @@ export default function PicksPage() {
       {loading && <div className="text-slate-500">Loading…</div>}
       {error && <div className="text-red-600">{error}</div>}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map((it) => (
           <Card key={it.id} className="hover:shadow-sm">
             <div className="flex gap-3">
-              <Thumb posterUrl={it.posterUrl} className="w-16 h-24 rounded-md overflow-hidden flex-shrink-0" />
+              <Thumb
+                posterUrl={it.posterUrl}
+                className="w-16 h-24 rounded-md overflow-hidden flex-shrink-0"
+              />
               <div>
                 <div className="text-base font-semibold">{it.name}</div>
                 <div className="text-sm text-slate-500">
@@ -102,8 +107,38 @@ export default function PicksPage() {
                   </div>
                 ) : null}
                 {it.watchUrl && (
-                  <div className="mt-2">
-                    <a className="text-sky-300 hover:underline" href={it.watchUrl} target="_blank" rel="noreferrer">Watch now →</a>
+                  <div className="mt-2 flex items-center gap-3">
+                    <a
+                      className="text-sky-300 hover:underline"
+                      href={it.watchUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() => {
+                        try {
+                          // lightweight client-side beacon to API
+                          navigator.sendBeacon?.(`${apiBase}/analytics`,
+                            new Blob([JSON.stringify({
+                              event: 'pick_watch_now_clicked',
+                              titleId: it.id,
+                              provider: Array.isArray(it.availabilityServices) && it.availabilityServices.length ? it.availabilityServices[0] : undefined,
+                              deepLinkUsed: true,
+                            })], { type: 'application/json' })
+                          );
+                        } catch {}
+                      }}
+                    >
+                      Watch now →
+                    </a>
+                    <button
+                      className="text-xs text-slate-400 hover:text-slate-200"
+                      onClick={() => {
+                        try {
+                          navigator.clipboard.writeText(it.watchUrl!);
+                        } catch {}
+                      }}
+                    >
+                      Copy link
+                    </button>
                   </div>
                 )}
                 {it.reason && <div className="text-sm text-slate-500 mt-2">{it.reason}</div>}

@@ -6,7 +6,20 @@
   "additionalProperties": false,
   "properties": {
     "title_id": { "type": "string", "format": "uuid" },
-    "provider": { "type": "string", "enum": ["NETFLIX", "PRIME"] },
+    "provider": {
+      "type": "string",
+      "enum": [
+        "NETFLIX",
+        "AMAZON_PRIME_VIDEO",
+        "DISNEY_PLUS",
+        "HULU",
+        "MAX",
+        "APPLE_TV_PLUS",
+        "PARAMOUNT_PLUS",
+        "PEACOCK",
+        "OTHER"
+      ]
+    },
     "deep_link_used": { "type": "boolean" }
   },
   "required": ["title_id", "provider", "deep_link_used"]

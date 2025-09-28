@@ -262,6 +262,75 @@ app.get(
 );
 
 app.post(
+  '/analytics',
+  {
+    schema: {
+      body: {
+        type: 'object',
+        properties: {
+          event: { type: 'string' },
+          titleId: { type: 'string' },
+          provider: { type: 'string' },
+          deepLinkUsed: { type: 'boolean' },
+          profileId: { type: 'string' },
+          anonymousId: { type: 'string' },
+        },
+        required: ['event'],
+      },
+      response: { 204: { type: 'null' } },
+    },
+  },
+  async (request, reply) => {
+    try {
+      const body = (request.body as any) || {};
+      const isPrivate =
+        request.headers['x-private-mode'] === 'true' || (request.query as any)?.private === 'true';
+      if (!isPrivate) {
+        logger.info('analytics_event', {
+          event: body.event,
+          titleId: body.titleId,
+          provider: body.provider,
+          deepLinkUsed: Boolean(body.deepLinkUsed),
+          profileId: body.profileId,
+          anonymousId: body.anonymousId,
+          ip: (request.headers['x-forwarded-for'] as string) || (request.ip as string),
+          ua: request.headers['user-agent'],
+          ts: new Date().toISOString(),
+        });
+        // Optional forwarding to external analytics provider if configured
+        const sinkUrl = process.env.ANALYTICS_WEBHOOK_URL;
+        const sinkToken = process.env.ANALYTICS_TOKEN;
+        if (sinkUrl) {
+          try {
+            await fetch(sinkUrl, {
+              method: 'POST',
+              headers: {
+                'content-type': 'application/json',
+                ...(sinkToken ? { authorization: `Bearer ${sinkToken}` } : {}),
+              },
+              body: JSON.stringify({
+                event: body.event,
+                properties: {
+                  title_id: body.titleId,
+                  provider: body.provider,
+                  deep_link_used: Boolean(body.deepLinkUsed),
+                  profile_id: body.profileId,
+                  anonymous_id: body.anonymousId,
+                },
+                sent_at: new Date().toISOString(),
+              }),
+            });
+          } catch (err) {
+            logger.warn('analytics_forward_failed', { err: String(err) });
+          }
+        }
+      }
+    } catch {}
+    reply.code(204).send();
+  },
+);
+
+app.post(
   '/profiles/:profileId/lists',
   {
     preHandler: authPreHandler,
@@ -657,6 +726,7 @@ app.get(
                 titleName: t.name,
                 tmdbId: t.tmdbId ? String(t.tmdbId) : undefined,
                 type: t.type,
+                releaseYear: t.releaseYear,
               })
             : undefined);
         return {

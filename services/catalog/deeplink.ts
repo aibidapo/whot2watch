@@ -37,11 +37,13 @@ export interface DeepLinkContext {
   titleName: string;
   tmdbId?: bigint | number | string;
   type?: 'MOVIE' | 'SHOW';
+  releaseYear?: number;
 }
 
 export function normalizeDeepLink(ctx: DeepLinkContext): string | undefined {
-  // Prefer provider search by title for portability
-  const search = providerSearchUrl(ctx.service, ctx.titleName);
+  // Prefer provider search by title for portability. Include year for precision when present.
+  const titleQuery = ctx.releaseYear ? `${ctx.titleName} (${ctx.releaseYear})` : ctx.titleName;
+  const search = providerSearchUrl(ctx.service, titleQuery);
   if (search) return search;
   // Fallback to TMDB page when available
   if (ctx.tmdbId) {

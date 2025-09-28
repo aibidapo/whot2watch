@@ -6,6 +6,7 @@ API
 
 - NODE_ENV=development
 - PORT=4000
+- NEXT_PUBLIC_API_URL=http://localhost:4000
 
 External APIs
 
@@ -26,3 +27,8 @@ Auth
 Observability
 
 - SENTRY_DSN=
+
+Analytics (optional)
+
+- ANALYTICS_WEBHOOK_URL=
+- ANALYTICS_TOKEN=
