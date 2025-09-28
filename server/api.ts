@@ -99,7 +99,9 @@ app.get(
       response: {
         200: {
           type: 'object',
-          properties: { items: { type: 'array', items: { type: 'object', additionalProperties: true } } },
+          properties: {
+            items: { type: 'array', items: { type: 'object', additionalProperties: true } },
+          },
           required: ['items'],
         },
       },
@@ -495,10 +497,10 @@ app.post(
           data: { profileId, service, region: region ?? null, active: true },
         });
       });
-    // Invalidate picks cache for today
+    // Invalidate picks cache for today (both legacy and current cache versions)
     try {
       const todayKey = new Date().toISOString().slice(0, 10);
-      await app.redis?.del(`picks:${profileId}:${todayKey}`);
+      await app.redis?.del(`picks:${profileId}:${todayKey}`, `picks:v2:${profileId}:${todayKey}`);
     } catch {}
     return { subscription: sub };
   },
@@ -529,10 +531,10 @@ app.delete(
     });
     if (!existing) return { ok: true };
     await prisma.subscription.update({ where: { id: existing.id }, data: { active: false } });
-    // Invalidate picks cache for today
+    // Invalidate picks cache for today (both legacy and current cache versions)
     try {
       const todayKey = new Date().toISOString().slice(0, 10);
-      await app.redis?.del(`picks:${profileId}:${todayKey}`);
+      await app.redis?.del(`picks:${profileId}:${todayKey}`, `picks:v2:${profileId}:${todayKey}`);
     } catch {}
     return { ok: true };
   },
@@ -596,7 +598,8 @@ app.get(
     if (!profileId) return { items: [] };
 
     const todayKey = new Date().toISOString().slice(0, 10);
-    const cacheKey = `picks:${profileId}:${todayKey}`;
+    // Bump cache key version to ensure new fields like watchUrl are present
+    const cacheKey = `picks:v2:${profileId}:${todayKey}`;
     try {
       const cached = await app.redis?.get(cacheKey);
       if (cached) return JSON.parse(cached);
