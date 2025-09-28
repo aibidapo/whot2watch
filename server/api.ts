@@ -722,46 +722,93 @@ app.get(
       return `Because it ${reason} in ${region}`;
     }
 
+    // ranking and diversity sampling
     const tRankStart = Date.now();
-    const filtered = titles
-      .filter((t: any) =>
-        (t.availability || []).some(
-          (a: any) => services.includes(a.service) && a.region === region,
-        ),
-      )
-      .map((t: any) => ({ ...t, _score: score(t) }))
-      .sort((a: any, b: any) => b._score - a._score)
-      .slice(0, 6)
-      .map((t: any) => {
-        const match = (t.availability || []).find(
-          (a: any) => services.includes(a.service) && a.region === region,
-        );
-        const availabilityServices = Array.from(
-          new Set((t.availability || []).map((a: any) => a.service).filter(Boolean)),
-        );
-        const watchUrl =
-          match?.deepLink ||
-          (match?.service
-            ? normalizeDeepLink({
-                service: match.service,
-                titleName: t.name,
-                tmdbId: t.tmdbId ? String(t.tmdbId) : undefined,
-                type: t.type,
-                releaseYear: t.releaseYear,
-              })
-            : undefined);
-        return {
-          id: t.id,
-          name: t.name,
-          type: t.type,
-          releaseYear: t.releaseYear,
-          posterUrl: t.posterUrl || undefined,
-          voteAverage: typeof t.voteAverage === 'number' ? t.voteAverage : undefined,
-          availabilityServices,
-          watchUrl,
-          reason: buildReason(t, services, region),
-        };
-      });
+    const withScores = titles.map((t: any) => ({ ...t, _score: score(t) }));
+    const availMatch = (t: any) =>
+      (t.availability || []).some((a: any) => services.includes(a.service) && a.region === region);
+    const rankedAvail = withScores.filter(availMatch).sort((a: any, b: any) => b._score - a._score);
+    const rankedAll = withScores.slice().sort((a: any, b: any) => b._score - a._score);
+
+    const limit = 6;
+    const maxPerBucket = 3;
+    function bucketOf(t: any): string {
+      const svc = (t.availability || []).map((a: any) => a.service).find(Boolean);
+      return svc || 'unknown';
+    }
+    function diversityPick(list: any[], n: number): any[] {
+      const selected: any[] = [];
+      const counts: Record<string, number> = {};
+      for (const t of list) {
+        if (selected.length >= n) break;
+        const b = bucketOf(t);
+        counts[b] = counts[b] || 0;
+        if (counts[b] < maxPerBucket) {
+          selected.push(t);
+          counts[b]++;
+        }
+      }
+      // fill remainder if needed
+      if (selected.length < n) {
+        for (const t of list) {
+          if (selected.length >= n) break;
+          if (!selected.includes(t)) selected.push(t);
+        }
+      }
+      return selected.slice(0, n);
+    }
+
+    let broadened = false;
+    let picked = diversityPick(rankedAvail, limit);
+    if (picked.length < limit) {
+      broadened = true;
+      const need = limit - picked.length;
+      const addFromAll = rankedAll.filter((t) => !picked.includes(t)).slice(0, need);
+      picked = picked.concat(addFromAll);
+    }
+    // exploration slot: try to include a bucket not yet present
+    const presentBuckets = new Set(picked.map(bucketOf));
+    const exploreCandidate = rankedAll.find((t) => !presentBuckets.has(bucketOf(t)));
+    let exploreIndex = -1;
+    if (exploreCandidate) {
+      exploreIndex = picked.length === limit ? limit - 1 : picked.length;
+      if (picked.length === limit) picked[exploreIndex] = exploreCandidate;
+      else picked.push(exploreCandidate);
+    }
+
+    const filtered = picked.map((t: any, idx: number) => {
+      const match = (t.availability || []).find(
+        (a: any) => services.includes(a.service) && a.region === region,
+      );
+      const availabilityServices = Array.from(
+        new Set((t.availability || []).map((a: any) => a.service).filter(Boolean)),
+      );
+      const watchUrl =
+        match?.deepLink ||
+        (match?.service
+          ? normalizeDeepLink({
+              service: match.service,
+              titleName: t.name,
+              tmdbId: t.tmdbId ? String(t.tmdbId) : undefined,
+              type: t.type,
+              releaseYear: t.releaseYear,
+            })
+          : undefined);
+      return {
+        id: t.id,
+        name: t.name,
+        type: t.type,
+        releaseYear: t.releaseYear,
+        posterUrl: t.posterUrl || undefined,
+        voteAverage: typeof t.voteAverage === 'number' ? t.voteAverage : undefined,
+        availabilityServices,
+        watchUrl,
+        reason: buildReason(t, services, region) + (broadened ? ' • broadened' : ''),
+        explore: exploreIndex === idx,
+        diversityBucket: bucketOf(t),
+        _score: t._score,
+      } as any;
+    });
     const rankMs = Date.now() - tRankStart;
 
     const response = { items: filtered };
@@ -783,6 +830,20 @@ app.get(
         isNew: Boolean(it.releaseYear && it.releaseYear >= new Date().getFullYear() - 1),
         diversityBucket: (it.availabilityServices || [])[0] || 'unknown',
       }));
+      // experiments: from header x-exp (JSON) or query exp.*
+      const exp: Record<string, any> = {};
+      try {
+        const hexp = (request.headers['x-exp'] as string) || '';
+        if (hexp) Object.assign(exp, JSON.parse(hexp));
+      } catch {}
+      try {
+        const q: any = (request.query as any) || {};
+        if (typeof q.exp === 'string') {
+          try { Object.assign(exp, JSON.parse(q.exp)); } catch {}
+        }
+        for (const k of Object.keys(q)) if (k.startsWith('exp.')) exp[k.slice(4)] = q[k];
+      } catch {}
+
       const evt = {
         event: 'picks_served',
         profileId,
@@ -793,7 +854,8 @@ app.get(
         candidateSource: 'db_recent+availability',
         items,
         latency: { candidateGenMs, rankMs, totalMs },
-        exp: {},
+        exp,
+        broadened,
       } as any;
       // forward via webhook if configured
       const sinkUrl = process.env.ANALYTICS_WEBHOOK_URL;
