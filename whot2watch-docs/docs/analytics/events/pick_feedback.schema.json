@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/pick_feedback.schema.json",
+  "title": "pick_feedback",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "event": { "type": "string", "const": "pick_feedback" },
+    "profileId": { "type": "string" },
+    "requestId": { "type": "string" },
+    "titleId": { "type": "string" },
+    "rank": { "type": "integer" },
+    "action": { "type": "string", "enum": ["LIKE", "DISLIKE", "SAVE", "SEEN_IT", "NOT_INTERESTED"] },
+    "reasonCode": { "type": "string" }
+  },
+  "required": ["event", "titleId", "action"]
+}
+
+

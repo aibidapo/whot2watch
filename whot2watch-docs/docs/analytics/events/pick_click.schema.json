@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/pick_click.schema.json",
+  "title": "pick_click",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "event": { "type": "string", "const": "pick_click" },
+    "profileId": { "type": "string" },
+    "requestId": { "type": "string" },
+    "titleId": { "type": "string" },
+    "rank": { "type": "integer" },
+    "service": { "type": "string" },
+    "destination": { "type": "string", "enum": ["deep_link", "details"] },
+    "linkUrlHash": { "type": "string" }
+  },
+  "required": ["event", "titleId", "destination"]
+}
+
+

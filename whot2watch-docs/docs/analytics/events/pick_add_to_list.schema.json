@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/pick_add_to_list.schema.json",
+  "title": "pick_add_to_list",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "event": { "type": "string", "const": "pick_add_to_list" },
+    "profileId": { "type": "string" },
+    "requestId": { "type": "string" },
+    "titleId": { "type": "string" },
+    "rank": { "type": "integer" },
+    "listId": { "type": "string" }
+  },
+  "required": ["event", "titleId"]
+}
+
+
