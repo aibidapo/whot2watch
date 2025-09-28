@@ -666,6 +666,9 @@ app.get(
     const { profileId } = request.params as any;
     if (!profileId) return { items: [] };
 
+    const reqId = (request as any).requestId || '';
+    const startTotal = Date.now();
+    const t0 = Date.now();
     const todayKey = new Date().toISOString().slice(0, 10);
     // Bump cache key version to ensure new fields like watchUrl are present
     const cacheKey = `picks:v2:${profileId}:${todayKey}`;
@@ -679,12 +682,14 @@ app.get(
     const profile = await prisma.profile.findUnique({ where: { id: profileId } });
     const region = profile?.locale?.split('-')[1] || 'US';
 
+    const tCandidateStart = Date.now();
     // candidates: titles with availability in user's services/region
     const titles = await prisma.title.findMany({
       take: 300,
       orderBy: { createdAt: 'desc' },
       include: { availability: true },
     });
+    const candidateGenMs = Date.now() - tCandidateStart;
 
     function score(t: any): number {
       let s = 0;
@@ -702,6 +707,20 @@ app.get(
       return s;
     }
 
+    function buildReason(t: any, services: string[], region: string): string {
+      const bits: string[] = [];
+      if ((t.availability || []).some((a: any) => services.includes(a.service))) {
+        bits.push(`on ${((t.availability || [])
+          .map((a: any) => a.service)
+          .filter((v: any, i: number, arr: any[]) => v && arr.indexOf(v) === i)[0] || 'your services'}`);
+      }
+      if (typeof t.voteAverage === 'number' && t.voteAverage >= 8.5) bits.push('highly rated');
+      if (t.releaseYear && t.releaseYear >= new Date().getFullYear() - 1) bits.push('new');
+      const reason = bits.length ? bits.join(' • ') : `matches your services`;
+      return `Because it ${reason} in ${region}`;
+    }
+
+    const tRankStart = Date.now();
     const filtered = titles
       .filter((t: any) =>
         (t.availability || []).some(
@@ -738,13 +757,54 @@ app.get(
           voteAverage: typeof t.voteAverage === 'number' ? t.voteAverage : undefined,
           availabilityServices,
           watchUrl,
-          reason: `Because it matches your services (${services.join(', ')}) in ${region}`,
+          reason: buildReason(t, services, region),
         };
       });
+    const rankMs = Date.now() - tRankStart;
 
     const response = { items: filtered };
     try {
       await app.redis?.setEx(cacheKey, 60 * 60 * 12, JSON.stringify(response));
+    } catch {}
+
+    // analytics: picks_served (server-side)
+    try {
+      const totalMs = Date.now() - startTotal;
+      const items = filtered.map((it: any, i: number) => ({
+        titleId: it.id,
+        rank: i + 1,
+        score: (it as any)._score,
+        reason: it.reason,
+        availabilityServices: it.availabilityServices,
+        availabilityRegions: [region],
+        isExpiringSoon: false,
+        isNew: Boolean(it.releaseYear && it.releaseYear >= new Date().getFullYear() - 1),
+        diversityBucket: (it.availabilityServices || [])[0] || 'unknown',
+      }));
+      const evt = {
+        event: 'picks_served',
+        profileId,
+        requestId: reqId,
+        region,
+        servicesFilter: services,
+        rankerVersion: 'picks@1.0.0',
+        candidateSource: 'db_recent+availability',
+        items,
+        latency: { candidateGenMs, rankMs, totalMs },
+        exp: {},
+      } as any;
+      // forward via webhook if configured
+      const sinkUrl = process.env.ANALYTICS_WEBHOOK_URL;
+      const sinkToken = process.env.ANALYTICS_TOKEN;
+      if (sinkUrl) {
+        fetch(sinkUrl, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', ...(sinkToken ? { authorization: `Bearer ${sinkToken}` } : {}) },
+          body: JSON.stringify(evt),
+        }).catch((err) => logger.warn('analytics_forward_failed', { err: String(err) }));
+      } else {
+        logger.info('analytics_event', evt);
+      }
     } catch {}
     return response;
   },

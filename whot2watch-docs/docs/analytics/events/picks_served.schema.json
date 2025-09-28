@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/picks_served.schema.json",
+  "title": "picks_served",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "event": { "type": "string", "const": "picks_served" },
+    "profileId": { "type": "string" },
+    "requestId": { "type": "string" },
+    "region": { "type": "string" },
+    "servicesFilter": { "type": "array", "items": { "type": "string" } },
+    "rankerVersion": { "type": "string" },
+    "candidateSource": { "type": "string" },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "titleId": { "type": "string" },
+          "rank": { "type": "integer" },
+          "score": { "type": "number" },
+          "reason": { "type": "string" },
+          "availabilityServices": { "type": "array", "items": { "type": "string" } },
+          "availabilityRegions": { "type": "array", "items": { "type": "string" } },
+          "isExpiringSoon": { "type": "boolean" },
+          "isNew": { "type": "boolean" },
+          "diversityBucket": { "type": "string" }
+        },
+        "required": ["titleId", "rank", "availabilityServices"]
+      }
+    },
+    "latency": {
+      "type": "object",
+      "properties": {
+        "candidateGenMs": { "type": "integer" },
+        "rankMs": { "type": "integer" },
+        "totalMs": { "type": "integer" }
+      }
+    },
+    "exp": { "type": "object", "additionalProperties": true }
+  },
+  "required": ["event", "requestId", "items"]
+}
+
+

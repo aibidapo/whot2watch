@@ -101,9 +101,10 @@ export default function PicksPage() {
                 </div>
                 {Array.isArray(it.availabilityServices) && it.availabilityServices.length ? (
                   <div className="mt-2 flex gap-2 flex-wrap">
-                    {it.availabilityServices.slice(0, 3).map((svc) => (
-                      <Chip key={svc}>{svc.replace('_', ' ')}</Chip>
-                    ))}
+                    <Chip>
+                      {(it.availabilityServices[0] || '').replace('_', ' ')}
+                      {it.availabilityServices.length > 1 ? ` +${it.availabilityServices.length - 1}` : ''}
+                    </Chip>
                   </div>
                 ) : null}
                 {it.watchUrl && (
@@ -141,6 +142,49 @@ export default function PicksPage() {
                       }}
                     >
                       Copy link
+                    </button>
+                    <button
+                      className="text-xs text-slate-400 hover:text-slate-200"
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(`${apiBase}/profiles/${profileId}/lists`, {
+                            method: 'POST',
+                            headers: { 'content-type': 'application/json' },
+                            body: JSON.stringify({ name: 'My List' }),
+                          });
+                          const json = await res.json();
+                          const listId = json?.list?.id;
+                          if (listId) {
+                            await fetch(`${apiBase}/lists/${listId}/items`, {
+                              method: 'POST',
+                              headers: { 'content-type': 'application/json' },
+                              body: JSON.stringify({ titleId: it.id }),
+                            });
+                            navigator.sendBeacon?.(`${apiBase}/analytics`,
+                              new Blob([JSON.stringify({ event: 'pick_add_to_list', titleId: it.id, rank: 0 })], { type: 'application/json' })
+                            );
+                          }
+                        } catch {}
+                      }}
+                    >
+                      Add to List
+                    </button>
+                    <button
+                      className="text-xs text-slate-400 hover:text-slate-200"
+                      onClick={async () => {
+                        try {
+                          await fetch(`${apiBase}/feedback`, {
+                            method: 'POST',
+                            headers: { 'content-type': 'application/json' },
+                            body: JSON.stringify({ profileId, titleId: it.id, action: 'DISLIKE' }),
+                          });
+                          navigator.sendBeacon?.(`${apiBase}/analytics`,
+                            new Blob([JSON.stringify({ event: 'pick_feedback', titleId: it.id, action: 'NOT_INTERESTED' })], { type: 'application/json' })
+                          );
+                        } catch {}
+                      }}
+                    >
+                      Not interested
                     </button>
                   </div>
                 )}
