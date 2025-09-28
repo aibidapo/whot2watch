@@ -129,6 +129,9 @@ export default function PicksPage() {
                     >
                       Watch now →
                     </a>
+                    {Array.isArray(it.availabilityServices) && it.availabilityServices.length ? (
+                      <Chip>{(it.availabilityServices[0] || '').replace('_', ' ')}</Chip>
+                    ) : null}
                     <button
                       className="text-xs text-slate-400 hover:text-slate-200"
                       onClick={() => {
