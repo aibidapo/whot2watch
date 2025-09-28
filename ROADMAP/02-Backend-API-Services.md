@@ -11,15 +11,15 @@ Checklist
 - [x] Lists & Feedback (CRUD; like/dislike/save updates vectors/cache)
 - [x] Private Mode (request flag; skip writes/analytics)
 - [x] Deep links normalization + web fallback
-- [ ] Picks scoring use profile subscriptions + popularity weights
+- [x] Picks scoring use profile subscriptions + popularity weights
 - [x] Expose ratings and popularity in search and picks APIs
 - [ ] Admin/on-demand refresh endpoints (by TMDB/IMDB id)
 - [ ] Affiliate link plumbing (feature-flagged) via deep-link builder
 - [ ] API versioning strategy (v1 prefix; backward compatibility policy)
 - [ ] Granular rate limits (per-user/endpoint/feature)
-- [ ] API caching strategy (Redis keys, TTLs, invalidation)
+- [x] API caching strategy (Redis keys, TTLs, invalidation)
 - [ ] Docs portal: interactive OpenAPI, SDK generation guidance
- - [ ] API performance monitoring (APM routes, latency/error dashboards)
+- [ ] API performance monitoring (APM routes, latency/error dashboards)
 
 Acceptance Criteria
 
@@ -32,7 +32,7 @@ Acceptance Criteria
 - API responses available under `/v1/*`; deprecation window documented
 - Rate limits enforced per-user and sensitive endpoints; 429 with Retry-After
 - Cache hits visible in logs/metrics; invalidation occurs on related writes
- - API latency and error rates tracked per endpoint with alerts on SLO breaches
+- API latency and error rates tracked per endpoint with alerts on SLO breaches
 
 Testing Strategy
 
@@ -55,41 +55,41 @@ Testing Strategy
 
 Step-by-Step Implementation Plan (API Exposure for Ratings & Popularity)
 
-1) Search API/Resolver Updates
+1. Search API/Resolver Updates
    - Extend search DTO/GraphQL schema and REST OpenAPI to include:
      - `popularity` (float), `voteAverage` (float), `ratings` (object), `externalIds` (tmdb/imdb/trakt)
    - In search service, pass through the additional fields from OpenSearch docs
    - Ensure nested `availability` + derived facets remain unchanged
 
-2) Picks Scoring Update
+2. Picks Scoring Update
    - Incorporate `Title.popularity` and `voteAverage` as soft boosts
    - Add profile subscription alignment: boost titles available on user’s active services
    - Keep reason strings transparent (e.g., "Popular on TMDB", "On your subscriptions: NETFLIX")
 
-3) Deep Link Normalization
+3. Deep Link Normalization
    - Use `services/catalog/deeplink.ts` normalize function for consistent provider search links
    - Fallback: TMDB page URL when provider-specific deep link is unavailable
 
-4) Admin/On-Demand Refresh Endpoints
+4. Admin/On-Demand Refresh Endpoints
    - REST endpoints:
      - `POST /v1/admin/refresh/tmdb/{tmdbId}`
      - `POST /v1/admin/refresh/imdb/{imdbId}`
    - Behavior: enqueue (or run) enrichment steps to fetch TMDB external_ids, providers, and OMDb ratings; update DB and return summary
    - Add RBAC guard (admin-only) and rate-limit
 
-5) Affiliate Plumbing (Flagged)
+5. Affiliate Plumbing (Flagged)
    - Extend deep-link builder to append provider-specific affiliate params when `AFFILIATES_ENABLED` is true
    - Add disclosure and toggle; server-side controlled
 
-6) Versioning, Limits & Caching
+6. Versioning, Limits & Caching
    - Prefix REST routes with `/v1`; document versioning and deprecation policy
    - Add per-user, per-endpoint rate limits for admin/AI/refresh endpoints
    - Introduce Redis caching for read-heavy endpoints (e.g., search with identical filters) with safe TTLs and invalidation on related writes
 
-7) Docs Portal
+7. Docs Portal
    - Serve interactive OpenAPI (Redoc or Swagger UI) in non-prod; add SDK generation guidance
 
-8) Contracts & Types
+8. Contracts & Types
    - Update `Whot2Watch-docs/docs/rest/openapi.yaml` schemas for search/picks to include added fields
    - Regenerate types: `pnpm gen:openapi` and `pnpm gen:graphql`
 

@@ -8,7 +8,7 @@ Checklist
 - [x] Theming (dark/light toggle), header search
 - [x] Dev convenience script `pnpm dev:all`
 - [x] Picks page wired to backend (v1 scoring)
-- [ ] Lists UI: add/remove inline
+- [x] Lists UI: add/remove inline
 - [ ] Subscriptions UI: service + region presets
 - [x] Watch now deep-links on cards (when available)
 - [ ] Public list sharing (PUBLIC only)
