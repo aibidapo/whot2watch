@@ -16,4 +16,3 @@ Testing Strategy
 - Unit: alert creation rules; token storage; analytics validator
 - Integration: availability delta → enqueue → push service called; analytics dispatched with required fields
 - E2E: create alert → simulate availability change → receive notification on device
-

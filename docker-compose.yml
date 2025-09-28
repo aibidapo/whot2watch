@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: w2w
       POSTGRES_DB: w2w
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
 
@@ -16,7 +16,7 @@ services:
     image: redis:7-alpine
     container_name: w2w_redis
     ports:
-      - "6379:6379"
+      - '6379:6379'
 
   opensearch:
     image: opensearchproject/opensearch:2.11.1
@@ -31,8 +31,8 @@ services:
         soft: -1
         hard: -1
     ports:
-      - "9200:9200"
-      - "9600:9600"
+      - '9200:9200'
+      - '9600:9600'
 
   dashboards:
     image: opensearchproject/opensearch-dashboards:2.11.1
@@ -41,10 +41,9 @@ services:
       - OPENSEARCH_HOSTS=["http://opensearch:9200"]
       - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
     ports:
-      - "5601:5601"
+      - '5601:5601'
     depends_on:
       - opensearch
 
 volumes:
   pgdata:
-

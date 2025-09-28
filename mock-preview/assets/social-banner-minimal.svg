@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="628" viewBox="0 0 1200 628" fill="none">
+  <defs>
+    <linearGradient id="accent" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6AE3FF"/>
+      <stop offset="1" stop-color="#A78BFA"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="628" fill="#0B0F14"/>
+  <g opacity="0.08">
+    <path d="M0 540h1200v4H0z" fill="url(#accent)"/>
+  </g>
+  <g transform="translate(90, 180)">
+    <circle cx="60" cy="60" r="56" fill="none" stroke="url(#accent)" stroke-width="6"/>
+    <path d="M52 40l40 20-40 20V40z" fill="#E6EDF3"/>
+  </g>
+  <g transform="translate(200, 190)">
+    <text x="0" y="0" font-family="Inter, Segoe UI, Roboto, Arial, sans-serif" font-size="72" font-weight="800" fill="#E6EDF3">Whot2Watch</text>
+    <text x="0" y="44" font-family="Inter, Segoe UI, Roboto, Arial, sans-serif" font-size="24" fill="#9AA7B2">Smart picks across all your services</text>
+    <rect x="0" y="72" width="360" height="6" rx="3" fill="url(#accent)"/>
+  </g>
+</svg>

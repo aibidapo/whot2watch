@@ -16,4 +16,3 @@ Acceptance Criteria
 Testing Strategy
 
 - Release checklist verification; smoke E2E on staging builds; rollback rehearsal
-

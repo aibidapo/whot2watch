@@ -30,6 +30,8 @@ Index: titles
       "runtimeMin": { "type": "integer" },
       "genres": { "type": "keyword" },
       "moods": { "type": "keyword" },
+      "availabilityServices": { "type": "keyword" },
+      "availabilityRegions": { "type": "keyword" },
       "popularity": { "type": "float" },
       "availability": {
         "type": "nested",

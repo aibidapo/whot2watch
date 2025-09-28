@@ -7,17 +7,17 @@ async function main() {
     const user = await prisma.user.upsert({
       where: { email: 'dev@example.com' },
       update: {},
-      create: { email: 'dev@example.com', region: 'US', authProvider: 'supabase' }
+      create: { email: 'dev@example.com', region: 'US', authProvider: 'supabase' },
     });
     const profile = await prisma.profile.create({
-      data: { userId: user.id, name: 'Dev', locale: 'en-US', privateModeDefault: false }
+      data: { userId: user.id, name: 'Dev', locale: 'en-US', privateModeDefault: false },
     });
     await prisma.subscription.createMany({
       data: [
         { profileId: profile.id, service: 'NETFLIX', region: 'US' },
-        { profileId: profile.id, service: 'HULU', region: 'US' }
+        { profileId: profile.id, service: 'HULU', region: 'US' },
       ],
-      skipDuplicates: true
+      skipDuplicates: true,
     });
     const title = await prisma.title.create({
       data: {
@@ -26,11 +26,11 @@ async function main() {
         releaseYear: 2024,
         runtimeMin: 95,
         genres: ['COMEDY'],
-        moods: ['feel_good']
-      }
+        moods: ['feel_good'],
+      },
     });
     await prisma.availability.create({
-      data: { titleId: title.id, service: 'NETFLIX', region: 'US', offerType: 'SUBSCRIPTION' }
+      data: { titleId: title.id, service: 'NETFLIX', region: 'US', offerType: 'SUBSCRIPTION' },
     });
     console.log('Seed completed');
   } finally {

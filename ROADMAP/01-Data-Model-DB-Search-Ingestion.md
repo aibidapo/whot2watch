@@ -8,6 +8,8 @@ Checklist
 - [x] Redis cache (picks per profile/day; invalidation)
 - [x] OpenSearch index (schema, analyzers)
 - [x] Ingestion worker (TMDB, availability provider, aliasing)
+  - [x] Multi-page ingest (TMDB_PAGES)
+  - [x] Poster/backdrop URLs + voteAverage
 - [x] Seed initial titles; schedule refresh (6–12h)
 - [x] CI pipeline-smoke (mocked) on PR; nightly real pipeline with TMDB
 
@@ -15,6 +17,7 @@ Acceptance Criteria
 
 - ERD parity with DB; Prisma migrations applied without errors
 - Title search returns relevant results; availability exists for day‑1 services/regions
+  - Ranking prefers items with images (poster/backdrop)
 
 Testing Strategy
 
@@ -26,4 +29,3 @@ Testing Strategy
   - Search query returns items with expected fields
 - E2E
   - Local compose (postgres, redis, opensearch) up → ingestion → search returns results within expected latency
-

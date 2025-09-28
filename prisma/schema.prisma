@@ -61,6 +61,7 @@ model Title {
   genres        String[]
   moods         String[]
   cast          Json?
+  voteAverage   Float?
   posterUrl     String?
   backdropUrl   String?
   createdAt     DateTime         @default(now())

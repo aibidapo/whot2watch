@@ -27,4 +27,3 @@ Testing Strategy
   - Onboarding to Picks to Watch Now
   - Search and Save to list
   - Private Mode toggle prevents analytics sends
-

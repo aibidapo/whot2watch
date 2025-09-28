@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Whot2Watch - W Monogram Mark</title>
+  <desc id="desc">A stylized W built with a smooth gradient stroke and a discovery spark accent.</desc>
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#6AE3FF"/>
+      <stop offset="100%" stop-color="#A78BFA"/>
+    </linearGradient>
+    <linearGradient id="spark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A78BFA"/>
+      <stop offset="100%" stop-color="#6AE3FF"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Stylized W with rounded joins -->
+  <path d="M40 64 L88 192 L128 64 L168 192 L216 64" 
+        fill="none" stroke="url(#g)" stroke-width="26" 
+        stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+
+  <!-- Discovery spark accent -->
+  <g transform="translate(200,36)">
+    <path d="M0 -6 L0 6 M-6 0 L6 0" stroke="url(#spark)" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="0" cy="0" r="2.5" fill="#6AE3FF"/>
+  </g>
+</svg>

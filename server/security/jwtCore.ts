@@ -1,9 +1,9 @@
-import { JwtHeader } from 'jsonwebtoken'
+import { JwtHeader } from 'jsonwebtoken';
 
 export interface JwtVerifyOptions {
-  issuer: string
-  audience: string
-  jwksUri: string
+  issuer: string;
+  audience: string;
+  jwksUri: string;
 }
 
 export interface JwtDependencies {
@@ -11,14 +11,14 @@ export interface JwtDependencies {
     getSigningKey: (
       kid: string,
       cb: (err: Error | null, key?: { getPublicKey: () => string }) => void,
-    ) => void
-  }
+    ) => void;
+  };
   jwtVerify: (
     token: string,
     getKey: (header: JwtHeader, cb: (err: Error | null, key?: string) => void) => void,
     options: { issuer: string; audience: string },
     cb: (err: Error | null, decoded?: unknown) => void,
-  ) => void
+  ) => void;
 }
 
 export async function verifyJwtWithDeps(
@@ -26,20 +26,23 @@ export async function verifyJwtWithDeps(
   opts: JwtVerifyOptions,
   deps: JwtDependencies,
 ): Promise<Record<string, unknown>> {
-  const client = deps.jwksClientFactory(opts.jwksUri)
+  const client = deps.jwksClientFactory(opts.jwksUri);
   function getKey(header: JwtHeader, cb: (err: Error | null, key?: string) => void) {
-    if (!header?.kid) return cb(new Error('Missing kid'))
+    if (!header?.kid) return cb(new Error('Missing kid'));
     client.getSigningKey(header.kid, (err, key) => {
-      if (err) return cb(err)
-      cb(null, key?.getPublicKey())
-    })
+      if (err) return cb(err);
+      cb(null, key?.getPublicKey());
+    });
   }
   return new Promise((resolve, reject) => {
-    deps.jwtVerify(token, getKey, { issuer: opts.issuer, audience: opts.audience }, (err, decoded) => {
-      if (err || !decoded) return reject(err || new Error('Invalid token'))
-      resolve(decoded as Record<string, unknown>)
-    })
-  })
+    deps.jwtVerify(
+      token,
+      getKey,
+      { issuer: opts.issuer, audience: opts.audience },
+      (err, decoded) => {
+        if (err || !decoded) return reject(err || new Error('Invalid token'));
+        resolve(decoded as Record<string, unknown>);
+      },
+    );
+  });
 }
-
-

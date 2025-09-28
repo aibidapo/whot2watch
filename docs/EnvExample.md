@@ -26,4 +26,3 @@ Auth
 Observability
 
 - SENTRY_DSN=
-

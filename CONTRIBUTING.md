@@ -45,35 +45,42 @@
 
 Prereqs: Docker Desktop, Node.js 20, pnpm, Python venv activated.
 
-1) Start local services
+1. Start local services
+
 - `docker compose up -d postgres redis opensearch dashboards`
 - OpenSearch: `http://localhost:9200` (security disabled). Dashboards: `http://localhost:5601`.
 
-2) Environment
+2. Environment
+
 - Copy `.env.example` to `.env` and fill values as needed.
 - Minimum for local: `DATABASE_URL`, `REDIS_URL`, `OPENSEARCH_URL`.
 - Optional: `TMDB_API_KEY` (v3) or `TMDB_ACCESS_TOKEN` (v4) to use real TMDB.
 
-3) DB setup
+3. DB setup
+
 - `pnpm prisma:generate`
 - `pnpm prisma:migrate:deploy`
 - `pnpm db:seed`
 
-4) Run pipeline smoke locally
+4. Run pipeline smoke locally
+
 - Mocked (no TMDB creds required; fallback sample used):
   - `pnpm pipeline:ingest-index`
 - Real TMDB (requires creds in `.env`):
   - `pnpm worker:ingest`
   - `pnpm index:fromdb`
 
-5) Verify indexing
+5. Verify indexing
+
 - `curl http://localhost:9200/titles/_count` → `{"count":N}` with N > 0
 - In Dashboards (Data Views), add fields `availabilityServices` and `availabilityRegions` to filter and visualize.
 
-6) Run API locally
+6. Run API locally
+
 - `pnpm api:dev` then visit `http://localhost:4000/` (test UI) or call `/search`.
 
 Troubleshooting (PowerShell)
+
 - `curl` is an alias for `Invoke-WebRequest`. Prefer `Invoke-RestMethod` for JSON:
   - `Invoke-RestMethod -Method GET http://localhost:9200/titles/_count`
 

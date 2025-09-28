@@ -10,22 +10,29 @@ async function main() {
     const items = [...movies, ...shows];
     let created = 0;
     for (const it of items) {
-      const exists = await prisma.title.findFirst({ where: { tmdbId: BigInt(it.tmdbId) } }).catch(() => null);
+      const exists = await prisma.title
+        .findFirst({ where: { tmdbId: BigInt(it.tmdbId) } })
+        .catch(() => null);
       if (exists) continue;
       await prisma.title.create({
         data: {
           tmdbId: BigInt(it.tmdbId),
           type: it.type,
           name: it.name,
-          releaseYear: it.releaseYear || null
-        }
+          releaseYear: it.releaseYear || null,
+        },
       });
       created++;
     }
-    console.log(`TMDB ingest completed. Created ${created} titles (skipped ${items.length - created}).`);
+    console.log(
+      `TMDB ingest completed. Created ${created} titles (skipped ${items.length - created}).`,
+    );
   } finally {
     await prisma.$disconnect();
   }
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

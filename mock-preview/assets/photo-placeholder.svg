@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="600" y2="900" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1F2937"/>
+      <stop offset="1" stop-color="#0B1220"/>
+    </linearGradient>
+    <linearGradient id="light" x1="100" y1="120" x2="520" y2="780" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6AE3FF" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#A78BFA" stop-opacity="0.12"/>
+    </linearGradient>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0.03"/>
+      </feComponentTransfer>
+    </filter>
+  </defs>
+  <rect width="600" height="900" fill="url(#bg)"/>
+  <g filter="url(#grain)"><rect width="600" height="900" fill="#000"/></g>
+  <rect x="40" y="40" width="520" height="820" rx="22" stroke="url(#light)" stroke-width="3"/>
+  <g opacity="0.18">
+    <circle cx="120" cy="260" r="80" fill="#FFF"/>
+    <rect x="210" y="210" width="240" height="24" rx="12" fill="#FFF"/>
+    <rect x="210" y="250" width="180" height="20" rx="10" fill="#FFF"/>
+  </g>
+  <g opacity="0.22">
+    <rect x="60" y="640" width="340" height="16" rx="8" fill="#FFF"/>
+    <rect x="60" y="670" width="280" height="14" rx="7" fill="#FFF"/>
+    <rect x="60" y="700" width="220" height="14" rx="7" fill="#FFF"/>
+  </g>
+</svg>

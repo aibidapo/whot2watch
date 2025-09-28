@@ -16,4 +16,3 @@ Consequences
 
 - Faster delivery; minimal lock-in by keeping business logic in gateway and migrations in-repo.
 - Optional Supabase-specific features (Realtime/Storage) must be documented in ADRs.
-

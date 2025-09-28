@@ -1,10 +1,15 @@
 /* eslint-disable no-console */
 const TMDB_BASE = 'https://api.themoviedb.org/3';
+const TMDB_IMAGE_BASE = process.env.TMDB_IMAGE_BASE || 'https://image.tmdb.org/t/p';
+const TMDB_POSTER_SIZE = process.env.TMDB_POSTER_SIZE || 'w342';
+const TMDB_BACKDROP_SIZE = process.env.TMDB_BACKDROP_SIZE || 'w780';
 const TMDB_API_KEY = process.env.TMDB_API_KEY; // v3 key
 const TMDB_ACCESS_TOKEN = process.env.TMDB_ACCESS_TOKEN; // v4 bearer token
 
 if (!TMDB_API_KEY && !TMDB_ACCESS_TOKEN) {
-  console.warn('[tmdb] Neither TMDB_API_KEY (v3) nor TMDB_ACCESS_TOKEN (v4) is set. Set one to fetch real data.');
+  console.warn(
+    '[tmdb] Neither TMDB_API_KEY (v3) nor TMDB_ACCESS_TOKEN (v4) is set. Set one to fetch real data.',
+  );
 }
 
 async function tmdbGet(path, params = {}) {
@@ -26,15 +31,27 @@ async function tmdbGet(path, params = {}) {
   return res.json();
 }
 
+function toImageUrl(path, kind = 'poster') {
+  if (!path) return undefined;
+  const size = kind === 'backdrop' ? TMDB_BACKDROP_SIZE : TMDB_POSTER_SIZE;
+  return `${TMDB_IMAGE_BASE}/${size}${path}`;
+}
+
 function toTitle(result, mediaType) {
-  const name = mediaType === 'tv' ? (result.name || result.original_name) : (result.title || result.original_title);
+  const name =
+    mediaType === 'tv'
+      ? result.name || result.original_name
+      : result.title || result.original_title;
   const date = mediaType === 'tv' ? result.first_air_date : result.release_date;
   const year = date ? Number(String(date).slice(0, 4)) : undefined;
   return {
     tmdbId: result.id,
     name: name || 'Unknown',
     type: mediaType === 'tv' ? 'SHOW' : 'MOVIE',
-    releaseYear: Number.isFinite(year) ? year : undefined
+    releaseYear: Number.isFinite(year) ? year : undefined,
+    posterUrl: toImageUrl(result.poster_path, 'poster'),
+    backdropUrl: toImageUrl(result.backdrop_path, 'backdrop'),
+    voteAverage: typeof result.vote_average === 'number' ? Math.round(result.vote_average * 10) / 10 : undefined,
   };
 }
 

@@ -8,4 +8,5 @@
 - Enforce conventional commits via commitlint
 
 How to enable:
+
 - GitHub → Settings → Branches → Branch protection rules → Add rule for `main` with the options above.

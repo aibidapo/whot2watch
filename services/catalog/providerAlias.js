@@ -15,7 +15,7 @@ const providerAliasToCanonical = {
   paramount: 'PARAMOUNT_PLUS',
   peacock: 'PEACOCK',
   crunchyroll: 'CRUNCHYROLL',
-  tubi: 'TUBI'
+  tubi: 'TUBI',
 };
 
 function canonicalizeProvider(raw) {

@@ -7,14 +7,17 @@ async function createIndexPattern() {
   const body = {
     attributes: {
       title: INDEX,
-      timeFieldName: undefined
-    }
+      timeFieldName: undefined,
+    },
   };
-  const res = await fetch(`${DASH_URL}/api/saved_objects/index-pattern/${encodeURIComponent(PATTERN_ID)}`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'osd-xsrf': 'true', 'kbn-xsrf': 'true' },
-    body: JSON.stringify(body)
-  });
+  const res = await fetch(
+    `${DASH_URL}/api/saved_objects/index-pattern/${encodeURIComponent(PATTERN_ID)}`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'osd-xsrf': 'true', 'kbn-xsrf': 'true' },
+      body: JSON.stringify(body),
+    },
+  );
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Failed to create index pattern: ${res.status} ${text}`);
@@ -26,4 +29,7 @@ async function main() {
   console.log(`Index pattern '${INDEX}' created as id '${PATTERN_ID}'.`);
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

@@ -6,4 +6,3 @@ generates:
     config:
       maybeValue: T | null
       enumsAsTypes: true
-

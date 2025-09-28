@@ -5,12 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Whot2Watch — Mock</title>
     <link rel="stylesheet" href="./styles.css" />
+    <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
+    <link rel="mask-icon" href="./assets/mask-icon.svg" color="#0b0f14" />
+    <meta name="theme-color" content="#0b0f14" />
+    <meta name="color-scheme" content="dark light" />
+
+    <!-- Open Graph / Twitter -->
+    <meta property="og:title" content="Whot2Watch — Smart picks across all your services" />
+    <meta
+      property="og:description"
+      content="Discover what to watch next with unified search, daily picks, and availability alerts."
+    />
+    <meta property="og:image" content="./assets/social-banner-pinplay.svg" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Whot2Watch — Smart picks across all your services" />
+    <meta
+      name="twitter:description"
+      content="Discover what to watch next with unified search, daily picks, and availability alerts."
+    />
+    <meta name="twitter:image" content="./assets/social-banner-pinplay.svg" />
   </head>
   <body>
     <header class="app-header">
       <div class="brand">
         <img class="logo" src="./assets/logo.svg" alt="Whot2Watch" />
-        <span class="brand-name">Whot2Watch</span>
+        <span class="brand-name gradient-text">Whot2Watch</span>
       </div>
       <div class="header-actions">
         <div class="search">
@@ -40,7 +60,7 @@
     </section>
 
     <main class="content">
-      <h2>Trending now</h2>
+      <h2 class="section-title">Trending now</h2>
       <div class="grid">
         <article class="card">
           <div class="thumb"></div>
@@ -77,6 +97,23 @@
           </div>
         </article>
       </div>
+      <section class="features">
+        <article class="feature">
+          <div class="feature-icon">🔍</div>
+          <h3>Unified Search</h3>
+          <p>Find movies and shows across all your streaming services, instantly.</p>
+        </article>
+        <article class="feature">
+          <div class="feature-icon">✨</div>
+          <h3>Daily Picks</h3>
+          <p>Smart, fresh recommendations tailored to your subscriptions and taste.</p>
+        </article>
+        <article class="feature">
+          <div class="feature-icon">🔔</div>
+          <h3>Availability Alerts</h3>
+          <p>Get notified the moment a title becomes available where you watch.</p>
+        </article>
+      </section>
     </main>
 
     <footer class="app-footer">

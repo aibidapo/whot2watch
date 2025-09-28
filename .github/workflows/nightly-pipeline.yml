@@ -90,5 +90,3 @@ jobs:
             echo "::error::No documents indexed"
             exit 1
           fi
-
-

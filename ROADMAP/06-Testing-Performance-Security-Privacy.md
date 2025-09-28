@@ -2,7 +2,6 @@
 
 Checklist
 
-
 - [x] Unit + integration (services/resolvers)
 - [x] Contract tests (GraphQL/REST)
 - [ ] Mobile E2E (Detox) critical flows
@@ -26,4 +25,3 @@ Testing Strategy
 Open Items / Temporary Exceptions
 
 - [x] JWT verification tests: stabilize Vitest mocking for `jsonwebtoken`/`jwks-rsa` and remove temporary coverage exclude for `server/security/**`.
-

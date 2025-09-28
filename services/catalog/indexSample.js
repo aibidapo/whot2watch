@@ -18,7 +18,7 @@ function normalizeTitle(raw, region) {
     moods: raw.moods || [],
     availabilityServices: services,
     availabilityRegions: [region],
-    availability: services.map((s) => ({ service: s, region, offerType: 'SUBSCRIPTION' }))
+    availability: services.map((s) => ({ service: s, region, offerType: 'SUBSCRIPTION' })),
   };
 }
 
@@ -26,14 +26,18 @@ async function ensureIndex() {
   const head = await fetch(`${OPENSEARCH_URL}/${encodeURIComponent(INDEX)}`, { method: 'HEAD' });
   if (head.status === 200) return;
   const res = await fetch(`${OPENSEARCH_URL}/${encodeURIComponent(INDEX)}`, {
-    method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(mapping)
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(mapping),
   });
   if (!res.ok) throw new Error(`Create index failed: ${res.status} ${await res.text()}`);
 }
 
 async function indexDoc(doc) {
-  const res = await fetch(`${OPENSEARCH_URL}/${encodeURIComponent(INDEX)}/_doc/${encodeURIComponent(doc.id)}`,
-    { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(doc) });
+  const res = await fetch(
+    `${OPENSEARCH_URL}/${encodeURIComponent(INDEX)}/_doc/${encodeURIComponent(doc.id)}`,
+    { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(doc) },
+  );
   if (!res.ok) throw new Error(`Index doc failed: ${res.status} ${await res.text()}`);
 }
 
@@ -41,8 +45,24 @@ async function main() {
   await ensureIndex();
   const region = process.env.DEFAULT_REGION || 'US';
   const raw = [
-    { id: 'seed-1', name: 'Seed Example', type: 'MOVIE', releaseYear: 2024, runtimeMin: 95, genres: ['COMEDY'], providers: ['netflix'] },
-    { id: 'seed-2', name: 'Bear Watch', type: 'SHOW', releaseYear: 2023, runtimeMin: 30, genres: ['DRAMA'], providers: ['hulu'] }
+    {
+      id: 'seed-1',
+      name: 'Seed Example',
+      type: 'MOVIE',
+      releaseYear: 2024,
+      runtimeMin: 95,
+      genres: ['COMEDY'],
+      providers: ['netflix'],
+    },
+    {
+      id: 'seed-2',
+      name: 'Bear Watch',
+      type: 'SHOW',
+      releaseYear: 2023,
+      runtimeMin: 30,
+      genres: ['DRAMA'],
+      providers: ['hulu'],
+    },
   ];
   for (const r of raw) {
     const doc = normalizeTitle(r, region);
@@ -51,4 +71,7 @@ async function main() {
   console.log(`Indexed ${raw.length} documents into ${INDEX}`);
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

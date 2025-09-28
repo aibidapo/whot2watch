@@ -22,29 +22,36 @@ tags:
   - name: GroupSessions
     description: Group watch sessions
 paths:
-  /picks:
+  /picks/{profileId}:
     get:
       operationId: getPicks
       tags: [Picks]
       description: Return curated or algorithmic daily picks for the given profile.
       summary: Get daily picks for a profile
       parameters:
-        - in: query
+        - in: path
           name: profileId
           schema: { type: string, format: uuid }
           required: true
-        - in: query
-          name: limit
-          schema: { type: integer, default: 5, minimum: 1, maximum: 10 }
       responses:
         '200':
           description: OK
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Recommendation'
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        name: { type: string }
+                        type: { type: string, enum: [MOVIE, SHOW] }
+                        releaseYear: { type: integer }
+                        reason: { type: string }
+                required: [items]
   /search:
     get:
       operationId: searchTitles
@@ -56,18 +63,44 @@ paths:
           name: q
           schema: { type: string }
         - in: query
-          name: region
-          schema: { $ref: '#/components/schemas/Region' }
-        - in: query
-          name: providerIn
+          name: service
           schema:
             type: array
             items: { $ref: '#/components/schemas/Provider' }
           style: form
           explode: false
         - in: query
-          name: runtimeLt
+          name: region
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/Region' }
+          style: form
+          explode: false
+        - in: query
+          name: type
+          schema:
+            type: array
+            items: { type: string, enum: [MOVIE, SHOW] }
+          style: form
+          explode: false
+        - in: query
+          name: yearMin
           schema: { type: integer }
+        - in: query
+          name: yearMax
+          schema: { type: integer }
+        - in: query
+          name: runtimeMin
+          schema: { type: integer }
+        - in: query
+          name: runtimeMax
+          schema: { type: integer }
+        - in: query
+          name: size
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+        - in: query
+          name: from
+          schema: { type: integer, default: 0, minimum: 0 }
       responses:
         '200':
           description: OK
@@ -79,8 +112,11 @@ paths:
                   items:
                     type: array
                     items: { $ref: '#/components/schemas/Title' }
-                  nextCursor:
-                    type: string
+                  total: { type: integer }
+                  took: { type: integer }
+                  from: { type: integer }
+                  size: { type: integer }
+                required: [items, total, from, size]
   /availability/{titleId}:
     get:
       operationId: getAvailability
@@ -110,26 +146,17 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/Availability' }
-  /lists:
+  /profiles/{profileId}/lists:
     get:
       operationId: listLists
       tags: [Lists]
-      description: List user-created lists for a profile with optional visibility filter.
+      description: List user-created lists for a profile.
       summary: List user lists
       parameters:
-        - in: query
+        - in: path
           name: profileId
           required: true
           schema: { type: string, format: uuid }
-        - in: query
-          name: visibility
-          schema: { type: string, enum: [PRIVATE, FRIENDS, PUBLIC, COLLAB] }
-        - in: query
-          name: first
-          schema: { type: integer, default: 20 }
-        - in: query
-          name: after
-          schema: { type: string }
       responses:
         '200':
           description: OK
@@ -141,27 +168,58 @@ paths:
                   items:
                     type: array
                     items: { $ref: '#/components/schemas/List' }
-                  nextCursor: { type: string }
-  /alerts:
-    get:
-      operationId: listAlerts
-      tags: [Alerts]
-      description: List alerts configured by a profile with optional status filter.
-      summary: List alerts
+                required: [items]
+    post:
+      operationId: createList
+      tags: [Lists]
+      summary: Create a list for a profile
+      security: [{ bearerAuth: [] }]
       parameters:
-        - in: query
+        - in: path
           name: profileId
           required: true
           schema: { type: string, format: uuid }
-        - in: query
-          name: status
-          schema: { type: string, enum: [ACTIVE, FIRED, CANCELLED] }
-        - in: query
-          name: first
-          schema: { type: integer, default: 20 }
-        - in: query
-          name: after
-          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                visibility: { type: string, enum: [PRIVATE, FRIENDS, PUBLIC, COLLAB] }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { list: { $ref: '#/components/schemas/List' } }
+                required: [list]
+  /lists/{listId}/items:
+    post:
+      operationId: addListItem
+      tags: [Lists]
+      summary: Add a title to a list (idempotent)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: listId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [titleId]
+              properties:
+                titleId: { type: string, format: uuid }
+                position: { type: integer }
+                note: { type: string }
       responses:
         '200':
           description: OK
@@ -170,16 +228,40 @@ paths:
               schema:
                 type: object
                 properties:
-                  items: { type: array, items: { type: object } }
-                  nextCursor: { type: string }
-  /subscriptions:
-    get:
-      operationId: listSubscriptions
-      tags: [Subscriptions]
-      description: List active subscriptions for a profile.
-      summary: List subscriptions
+                  item: { type: object }
+                  idempotent: { type: boolean }
+                required: [item]
+  /lists/{listId}/items/{itemId}:
+    delete:
+      operationId: removeListItem
+      tags: [Lists]
+      summary: Remove a title from a list
+      security: [{ bearerAuth: [] }]
       parameters:
-        - in: query
+        - in: path
+          name: listId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: itemId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { ok: { type: boolean } }
+                required: [ok]
+  /profiles/{profileId}/alerts:
+    get:
+      operationId: listAlerts
+      tags: [Alerts]
+      summary: List alerts for a profile
+      parameters:
+        - in: path
           name: profileId
           required: true
           schema: { type: string, format: uuid }
@@ -189,8 +271,150 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items: { $ref: '#/components/schemas/Subscription' }
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Alert' } }
+                required: [items]
+    post:
+      operationId: createAlert
+      tags: [Alerts]
+      summary: Create an availability alert
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                titleId: { type: string, format: uuid }
+                services: { type: array, items: { $ref: '#/components/schemas/Provider' } }
+                region: { $ref: '#/components/schemas/Region' }
+              anyOf:
+                - required: [titleId]
+                - required: [services]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { alert: { $ref: '#/components/schemas/Alert' } }
+                required: [alert]
+  /profiles/{profileId}/subscriptions:
+    get:
+      operationId: listSubscriptions
+      tags: [Subscriptions]
+      summary: List active subscriptions for a profile
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Subscription' } }
+                required: [items]
+    post:
+      operationId: upsertSubscription
+      tags: [Subscriptions]
+      summary: Upsert a subscription for a profile
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [service]
+              properties:
+                service: { $ref: '#/components/schemas/Provider' }
+                region: { $ref: '#/components/schemas/Region' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { subscription: { $ref: '#/components/schemas/Subscription' } }
+                required: [subscription]
+    delete:
+      operationId: deleteSubscription
+      tags: [Subscriptions]
+      summary: Deactivate a subscription for a profile
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [service]
+              properties:
+                service: { $ref: '#/components/schemas/Provider' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { ok: { type: boolean } }
+                required: [ok]
+  /feedback:
+    post:
+      operationId: postFeedback
+      tags: [Feedback]
+      summary: Send feedback for a title
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [profileId, titleId, action]
+              properties:
+                profileId: { type: string, format: uuid }
+                titleId: { type: string, format: uuid }
+                action: { type: string, enum: [LIKE, DISLIKE, SAVE] }
+                reasonOpt: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    properties: { suppressed: { type: boolean } }
+                    required: [suppressed]
+                  - type: object
+                    properties: { feedback: { $ref: '#/components/schemas/Feedback' } }
+                    required: [feedback]
   /group-sessions:
     get:
       operationId: listGroupSessions
@@ -290,17 +514,52 @@ components:
       type: object
       properties:
         id: { type: string, format: uuid }
-        ownerProfileId: { type: string, format: uuid }
+        profileId: { type: string, format: uuid }
         name: { type: string }
         visibility: { type: string, enum: [PRIVATE, FRIENDS, PUBLIC, COLLAB] }
         description: { type: string }
         createdAt: { type: string, format: date-time }
+    ListItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        listId: { type: string, format: uuid }
+        titleId: { type: string, format: uuid }
+        position: { type: integer }
+        note: { type: string }
+        addedAt: { type: string, format: date-time }
     GroupSession:
       type: object
       properties:
         id: { type: string, format: uuid }
         hostProfileId: { type: string, format: uuid }
+    Alert:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        profileId: { type: string, format: uuid }
+        titleId: { type: string, format: uuid }
+        alertType: { type: string, enum: [AVAILABILITY] }
+        services: { type: array, items: { $ref: '#/components/schemas/Provider' } }
+        region: { $ref: '#/components/schemas/Region' }
+        status: { type: string, enum: [ACTIVE, FIRED, CANCELLED] }
+        createdAt: { type: string, format: date-time }
+    Feedback:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        profileId: { type: string, format: uuid }
+        titleId: { type: string, format: uuid }
+        action: { type: string, enum: [LIKE, DISLIKE, SAVE] }
+        reasonOpt: { type: string }
+        ts: { type: string, format: date-time }
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
         name: { type: string }
         constraints: { type: object }
         status: { type: string, enum: [open, locked, closed] }
         createdAt: { type: string, format: date-time }
+

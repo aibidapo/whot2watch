@@ -21,6 +21,9 @@ const titlesMapping = {
       runtimeMin: { type: 'integer' },
       genres: { type: 'keyword' },
       moods: { type: 'keyword' },
+      posterUrl: { type: 'keyword' },
+      backdropUrl: { type: 'keyword' },
+      voteAverage: { type: 'float' },
       availabilityServices: { type: 'keyword' },
       availabilityRegions: { type: 'keyword' },
       popularity: { type: 'float' },
@@ -35,8 +38,6 @@ const titlesMapping = {
       },
     },
   },
-}
+};
 
-module.exports = { titlesMapping }
-
-
+module.exports = { titlesMapping };

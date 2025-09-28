@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="720" height="200" viewBox="0 0 720 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Whot2Watch — Logo Lockup</title>
+  <desc id="desc">Wordmark with stylized W monogram and approved slogan "Smart picks across all your services"</desc>
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#6AE3FF"/>
+      <stop offset="100%" stop-color="#A78BFA"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background safe area for preview -->
+  <rect x="0" y="0" width="720" height="200" rx="20" fill="#0B0F14"/>
+
+  <!-- Monogram -->
+  <g transform="translate(40,40)">
+    <path d="M0 16 L24 96 L40 16 L56 96 L80 16" fill="none" stroke="url(#grad)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="84" cy="8" r="3" fill="#6AE3FF"/>
+  </g>
+
+  <!-- Wordmark -->
+  <g transform="translate(150,60)">
+    <text x="0" y="40" fill="#E6EDF3" font-family="Inter, Segoe UI, Roboto, Arial, sans-serif" font-weight="700" font-size="40" letter-spacing="0.5">Whot2Watch</text>
+    <rect x="0" y="58" width="500" height="3" fill="url(#grad)" opacity="0.55"/>
+    <text x="0" y="95" fill="#9AA7B2" font-family="Inter, Segoe UI, Roboto, Arial, sans-serif" font-weight="500" font-size="20">Smart picks across all your services</text>
+  </g>
+</svg>

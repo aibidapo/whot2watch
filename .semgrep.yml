@@ -36,7 +36,7 @@ rules:
     message: Disable GraphQL introspection in production
     languages: [javascript, typescript]
     severity: WARNING
-    pattern-regex: "(?i)introspection\s*:\s*true"
+    pattern-regex: '(?i)introspection\s*:\s*true'
 
   # JWT hardcoded secret in sign
   - id: jwt.no-hardcoded-secret
@@ -54,14 +54,14 @@ rules:
     message: Avoid CORS wildcard origin in production
     languages: [javascript, typescript]
     severity: WARNING
-    pattern: cors({ origin: "*", ... })
+    pattern-regex: "cors\\(\\{\\s*origin:\\s*['\\\"]\\*['\\\"]"
 
   # Disallow NODE_TLS_REJECT_UNAUTHORIZED overrides
   - id: tls.no-disable-verification
     message: Do not disable TLS verification (NODE_TLS_REJECT_UNAUTHORIZED)
     languages: [javascript, typescript]
     severity: WARNING
-    pattern-regex: "NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*0"
+    pattern-regex: 'NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*0'
 
   # Paths filters to reduce noise
   - id: meta.paths-filter

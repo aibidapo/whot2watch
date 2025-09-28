@@ -39,4 +39,3 @@ Checklist
 - [ ] Gateway verifies JWT via JWK (iss/aud/exp/nbf), logs failures
 - [ ] RLS policies documented (deny-all baseline; owner-based checks)
 - [ ] Migrations in-repo; ADRs for Supabase-specific features
-

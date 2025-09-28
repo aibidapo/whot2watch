@@ -6,6 +6,7 @@
   --accent: #6ae3ff;
   --accent-2: #a78bfa;
   --border: #1d2330;
+  --radius: 16px;
 }
 
 html[data-theme='light'] {
@@ -67,6 +68,12 @@ body {
 .brand-name {
   font-weight: 700;
   letter-spacing: 0.2px;
+}
+.gradient-text {
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .header-actions {
@@ -207,7 +214,7 @@ body {
 
 .card {
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--radius);
   overflow: hidden;
   background: var(--bg-elev);
   transition:
@@ -268,4 +275,34 @@ body {
 }
 .footer-links a:hover {
   color: var(--text);
+}
+
+.section-title {
+  display: inline-block;
+  margin: 0 0 16px;
+  font-size: 20px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 32px 0 0;
+}
+.feature {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  padding: 16px;
+}
+.feature-icon {
+  font-size: 22px;
+  margin-bottom: 8px;
+}
+html[data-theme='light'] .logo {
+  content: url('./assets/logo-light.svg');
 }

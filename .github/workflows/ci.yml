@@ -64,8 +64,11 @@ jobs:
 
       - name: GraphQL diff check (no breaking changes)
         run: |
-          npx --yes graphql-inspector diff --fail-on-breaking --require field-argument-description \
-            Whot2Watch-docs/docs/graphql/schema.graphql Whot2Watch-docs/docs/graphql/schema.graphql || true
+          set -e
+          git fetch origin main --depth=1 || true
+          if [ -n "$GITHUB_BASE_REF" ]; then BASE_REF="origin/$GITHUB_BASE_REF"; else BASE_REF="origin/main"; fi
+          git show "$BASE_REF:Whot2Watch-docs/docs/graphql/schema.graphql" > /tmp/schema_base.graphql || cp Whot2Watch-docs/docs/graphql/schema.graphql /tmp/schema_base.graphql
+          npx --yes graphql-inspector diff --fail-on-breaking /tmp/schema_base.graphql Whot2Watch-docs/docs/graphql/schema.graphql
 
       - name: Type check
         run: pnpm typecheck

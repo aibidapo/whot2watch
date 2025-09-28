@@ -30,13 +30,19 @@ module.exports = {
       'error',
       { selector: 'variableLike', format: ['camelCase', 'UPPER_CASE'] },
       { selector: 'typeLike', format: ['PascalCase'] },
-      { selector: 'function', format: ['camelCase'] }
+      { selector: 'function', format: ['camelCase'] },
     ],
-    'no-restricted-imports': ['error', {
-      paths: [
-        { name: '@supabase/supabase-js', message: 'Use the API gateway; do not import supabase client in apps/services.' }
-      ]
-    }],
+    'no-restricted-imports': [
+      'error',
+      {
+        paths: [
+          {
+            name: '@supabase/supabase-js',
+            message: 'Use the API gateway; do not import supabase client in apps/services.',
+          },
+        ],
+      },
+    ],
   },
   ignorePatterns: ['dist/', 'coverage/', 'node_modules/', 'whot2watch-docs-full/'],
 };

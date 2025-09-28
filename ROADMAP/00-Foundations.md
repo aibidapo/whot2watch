@@ -8,8 +8,8 @@ Checklist
 - [x] OpenAPI Spectral polish
   - [x] info.description, operationIds, tags, endpoint descriptions
   - [x] Define global tags in OpenAPI root
- - [x] Align pnpm version warning (packageManager vs installed)
- - [x] Types codegen from contracts (run in CI)
+- [x] Align pnpm version warning (packageManager vs installed)
+- [x] Types codegen from contracts (run in CI)
 - [ ] Secrets policy/tooling (enforce in CONTRIBUTING and CI docs)
 - [x] Observability scaffolding (logger + request-id; Sentry placeholders later)
 

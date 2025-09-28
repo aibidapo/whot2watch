@@ -36,4 +36,3 @@ This project uses local `.env` files for development and GitHub Actions Secrets 
   2. Remove the secret from any logs and force-push history rewrite only if strictly necessary.
   3. Update GitHub Actions secret with the new value.
   4. Open a brief incident note in the repo issues for traceability.
-
