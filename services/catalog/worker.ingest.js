@@ -40,6 +40,7 @@ async function run() {
             posterUrl: t.posterUrl || existing.posterUrl,
             backdropUrl: t.backdropUrl || existing.backdropUrl,
             voteAverage: t.voteAverage ?? existing.voteAverage,
+            popularity: t.popularity ?? existing.popularity,
           },
         });
       } else {
@@ -52,6 +53,7 @@ async function run() {
             posterUrl: t.posterUrl || null,
             backdropUrl: t.backdropUrl || null,
             voteAverage: t.voteAverage ?? null,
+            popularity: t.popularity ?? null,
             availability: {
               create: [
                 { service: canonicalizeProvider('netflix'), region, offerType: 'SUBSCRIPTION' },

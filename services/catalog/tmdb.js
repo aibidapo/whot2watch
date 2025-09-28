@@ -51,7 +51,11 @@ function toTitle(result, mediaType) {
     releaseYear: Number.isFinite(year) ? year : undefined,
     posterUrl: toImageUrl(result.poster_path, 'poster'),
     backdropUrl: toImageUrl(result.backdrop_path, 'backdrop'),
-    voteAverage: typeof result.vote_average === 'number' ? Math.round(result.vote_average * 10) / 10 : undefined,
+    voteAverage:
+      typeof result.vote_average === 'number'
+        ? Math.round(result.vote_average * 10) / 10
+        : undefined,
+    popularity: typeof result.popularity === 'number' ? result.popularity : undefined,
   };
 }
 

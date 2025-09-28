@@ -37,6 +37,7 @@ function toIndexedDoc(title) {
     posterUrl: title.posterUrl || undefined,
     backdropUrl: title.backdropUrl || undefined,
     voteAverage: title.voteAverage ?? undefined,
+    popularity: title.popularity ?? undefined,
     availabilityServices: Array.from(
       new Set((title.availability || []).map((a) => a.service).filter(Boolean)),
     ),

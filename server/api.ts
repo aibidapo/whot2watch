@@ -700,6 +700,8 @@ app.get(
       if (avail) s += 2.5;
       // ratings (normalized ~0..1)
       if (typeof t.voteAverage === 'number') s += Math.min(Math.max(t.voteAverage, 0), 10) / 10;
+      // popularity soft boost
+      if (typeof t.popularity === 'number') s += Math.min(Math.max(t.popularity, 0), 1000) / 10000; // small weight
       // light recency bias
       if (t.releaseYear) s += Math.max(0, t.releaseYear - 2000) / 200;
       // presence of imagery
