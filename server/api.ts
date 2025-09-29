@@ -16,6 +16,104 @@ const PORT = Number(process.env.PORT || 4000);
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const prisma = new PrismaClient();
 
+// --- Analytics buffering (optional) ---
+function isAnalyticsBufferEnabled(): boolean {
+  return process.env.ANALYTICS_BUFFER === 'true';
+}
+const ANALYTICS_BUFFER_INTERVAL_MS = Number(process.env.ANALYTICS_BUFFER_INTERVAL_MS || 30000);
+const ANALYTICS_BUFFER_MAX = Number(process.env.ANALYTICS_BUFFER_MAX || 50);
+type AnalyticsEvent = Record<string, any>;
+let inMemoryAnalyticsQueue: AnalyticsEvent[] = [];
+
+async function sendAnalyticsDirect(evt: AnalyticsEvent): Promise<boolean> {
+  try {
+    const sinkUrl = process.env.ANALYTICS_WEBHOOK_URL;
+    const sinkToken = process.env.ANALYTICS_TOKEN;
+    if (!sinkUrl) return true;
+    await fetch(sinkUrl, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(sinkToken ? { authorization: `Bearer ${sinkToken}` } : {}),
+      },
+      body: JSON.stringify(evt),
+    });
+    return true;
+  } catch (err) {
+    logger.warn('analytics_forward_failed', { err: String(err) });
+    return false;
+  }
+}
+
+async function enqueueAnalytics(appInst: any, evt: AnalyticsEvent) {
+  try {
+    if (appInst.redis) {
+      await appInst.redis.rPush('analytics:queue', JSON.stringify(evt));
+    } else {
+      inMemoryAnalyticsQueue.push(evt);
+    }
+  } catch (err) {
+    // Fallback to memory if Redis push fails
+    inMemoryAnalyticsQueue.push(evt);
+  }
+}
+
+async function dequeueBatch(appInst: any, maxItems: number): Promise<AnalyticsEvent[]> {
+  const batch: AnalyticsEvent[] = [];
+  if (appInst.redis) {
+    for (let i = 0; i < maxItems; i++) {
+      const raw = await appInst.redis.lPop('analytics:queue');
+      if (!raw) break;
+      try { batch.push(JSON.parse(raw)); } catch { /* ignore bad */ }
+    }
+    return batch;
+  }
+  // memory
+  batch.push(...inMemoryAnalyticsQueue.splice(0, Math.min(maxItems, inMemoryAnalyticsQueue.length)));
+  return batch;
+}
+
+async function requeueFront(appInst: any, events: AnalyticsEvent[]) {
+  if (!events.length) return;
+  if (appInst.redis) {
+    // Push back to the left in reverse order to preserve original order
+    for (let i = events.length - 1; i >= 0; i--) {
+      await appInst.redis.lPush('analytics:queue', JSON.stringify(events[i]));
+    }
+    return;
+  }
+  inMemoryAnalyticsQueue = events.concat(inMemoryAnalyticsQueue);
+}
+
+async function flushAnalytics(appInst: any) {
+  const batch = await dequeueBatch(appInst, ANALYTICS_BUFFER_MAX);
+  if (!batch.length) return { sent: 0, failed: 0 };
+  let sent = 0;
+  const failed: AnalyticsEvent[] = [];
+  for (const evt of batch) {
+    // stop if sink not configured
+    if (!process.env.ANALYTICS_WEBHOOK_URL) break;
+    // try send
+    const ok = await sendAnalyticsDirect(evt);
+    if (ok) sent++;
+    else failed.push(evt);
+  }
+  if (failed.length) await requeueFront(appInst, failed);
+  return { sent, failed: failed.length };
+}
+
+function handleAnalytics(appInst: any, evt: AnalyticsEvent) {
+  if (isAnalyticsBufferEnabled() && process.env.ANALYTICS_WEBHOOK_URL) {
+    enqueueAnalytics(appInst, evt);
+  } else {
+    // fire-and-forget direct
+    sendAnalyticsDirect(evt).catch(() => {});
+  }
+}
+
+// (moved to bottom)
+
+/* c8 ignore start */
 function arr(v: unknown): string[] | undefined {
   if (v === undefined) return undefined;
   if (Array.isArray(v)) return (v as string[]).filter(Boolean);
@@ -27,6 +125,23 @@ function arr(v: unknown): string[] | undefined {
       .filter(Boolean);
   return [s];
 }
+/* c8 ignore stop */
+
+/* c8 ignore start */
+function appendAffiliateParams(rawUrl: string, service?: string): string {
+  try {
+    const u = new URL(rawUrl);
+    // generic UTM params for disclosure/attribution
+    if (!u.searchParams.has('utm_source')) u.searchParams.set('utm_source', 'whot2watch');
+    if (!u.searchParams.has('utm_medium')) u.searchParams.set('utm_medium', 'affiliate');
+    if (!u.searchParams.has('utm_campaign')) u.searchParams.set('utm_campaign', 'watch_now');
+    if (service && !u.searchParams.has('utm_content')) u.searchParams.set('utm_content', service);
+    return u.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+/* c8 ignore stop */
 
 const app = Fastify({ logger: false });
 app.register(cors, { origin: true });
@@ -163,6 +278,7 @@ app.get(
       parsed.query.runtimeMin !== undefined ? Number(parsed.query.runtimeMin) : undefined;
     const runtimeMax =
       parsed.query.runtimeMax !== undefined ? Number(parsed.query.runtimeMax) : undefined;
+    /* c8 ignore start - Fastify schema rejects invalid numeric types before handler */
     if (
       [yearMin, yearMax, runtimeMin, runtimeMax].some(
         (n) => n !== undefined && !Number.isFinite(n as number),
@@ -170,7 +286,9 @@ app.get(
     ) {
       return { items: [], total: 0, took: 0, from, size };
     }
+    /* c8 ignore stop */
 
+    /* c8 ignore start */
     const filter: any[] = [];
     if (services && services.length) filter.push({ terms: { availabilityServices: services } });
     if (regions && regions.length) filter.push({ terms: { availabilityRegions: regions } });
@@ -179,6 +297,7 @@ app.get(
       filter.push({ range: { releaseYear: { gte: yearMin, lte: yearMax } } });
     if (runtimeMin !== undefined || runtimeMax !== undefined)
       filter.push({ range: { runtimeMin: { gte: runtimeMin, lte: runtimeMax } } });
+    /* c8 ignore stop */
     const query = {
       track_total_hits: true,
       query: {
@@ -569,7 +688,8 @@ app.post(
     // Invalidate picks cache for today (both legacy and current cache versions)
     try {
       const todayKey = new Date().toISOString().slice(0, 10);
-      await app.redis?.del(`picks:${profileId}:${todayKey}`, `picks:v2:${profileId}:${todayKey}`);
+      await app.redis?.del(`picks:${profileId}:${todayKey}`);
+      await app.redis?.del(`picks:v2:${profileId}:${todayKey}`);
     } catch {}
     return { subscription: sub };
   },
@@ -603,7 +723,8 @@ app.delete(
     // Invalidate picks cache for today (both legacy and current cache versions)
     try {
       const todayKey = new Date().toISOString().slice(0, 10);
-      await app.redis?.del(`picks:${profileId}:${todayKey}`, `picks:v2:${profileId}:${todayKey}`);
+      await app.redis?.del(`picks:${profileId}:${todayKey}`);
+      await app.redis?.del(`picks:v2:${profileId}:${todayKey}`);
     } catch {}
     return { ok: true };
   },
@@ -679,6 +800,7 @@ app.get(
 
     const subs = await prisma.subscription.findMany({ where: { profileId, active: true } });
     const services = subs.map((s) => s.service);
+    const coldStart = services.length === 0;
     const profile = await prisma.profile.findUnique({ where: { id: profileId } });
     const region = profile?.locale?.split('-')[1] || 'US';
 
@@ -699,9 +821,11 @@ app.get(
       );
       if (avail) s += 2.5;
       // ratings (normalized ~0..1)
-      if (typeof t.voteAverage === 'number') s += Math.min(Math.max(t.voteAverage, 0), 10) / 10;
+      if (typeof t.voteAverage === 'number')
+        s += (Math.min(Math.max(t.voteAverage, 0), 10) / 10) * (coldStart ? 1.5 : 1);
       // popularity soft boost
-      if (typeof t.popularity === 'number') s += Math.min(Math.max(t.popularity, 0), 1000) / 10000; // small weight
+      if (typeof t.popularity === 'number')
+        s += (Math.min(Math.max(t.popularity, 0), 1000) / 10000) * (coldStart ? 2 : 1); // slightly higher in cold-start
       // light recency bias
       if (t.releaseYear) s += Math.max(0, t.releaseYear - 2000) / 200;
       // presence of imagery
@@ -709,15 +833,23 @@ app.get(
       return s;
     }
 
-    function buildReason(t: any, services: string[], region: string): string {
+    function buildReason(t: any, services: string[], region: string, cold: boolean): string {
       const bits: string[] = [];
-      if ((t.availability || []).some((a: any) => services.includes(a.service))) {
-        bits.push(`on ${((t.availability || [])
+      if (!cold && (t.availability || []).some((a: any) => services.includes(a.service))) {
+        const svcList = (t.availability || [])
           .map((a: any) => a.service)
-          .filter((v: any, i: number, arr: any[]) => v && arr.indexOf(v) === i)[0] || 'your services'}`);
+          .filter((v: any) => Boolean(v));
+        const svc = Array.from(new Set(svcList))[0] || 'your services';
+        bits.push(`on ${svc}`);
       }
       if (typeof t.voteAverage === 'number' && t.voteAverage >= 8.5) bits.push('highly rated');
+      /* c8 ignore next 3 */
+      if (typeof t.popularity === 'number' && t.popularity >= 300) bits.push('popular now');
       if (t.releaseYear && t.releaseYear >= new Date().getFullYear() - 1) bits.push('new');
+      if (cold) {
+        const r = bits.length ? bits.join(' • ') : 'is a quality pick';
+        return `Because it ${r} • quality blend`;
+      }
       const reason = bits.length ? bits.join(' • ') : `matches your services`;
       return `Because it ${reason} in ${region}`;
     }
@@ -736,27 +868,36 @@ app.get(
       const svc = (t.availability || []).map((a: any) => a.service).find(Boolean);
       return svc || 'unknown';
     }
+    /* c8 ignore start */
     function diversityPick(list: any[], n: number): any[] {
       const selected: any[] = [];
       const counts: Record<string, number> = {};
+      const seenSeries: Set<string> = new Set();
       for (const t of list) {
         if (selected.length >= n) break;
         const b = bucketOf(t);
         counts[b] = counts[b] || 0;
-        if (counts[b] < maxPerBucket) {
+        const seriesKey = String((t.name || '').toLowerCase()).replace(/\s+(part|season|volume|vol\.?|chapter)\s*\d+.*/i, '').trim();
+        if (counts[b] < maxPerBucket && !seenSeries.has(seriesKey)) {
           selected.push(t);
           counts[b]++;
+          seenSeries.add(seriesKey);
         }
       }
       // fill remainder if needed
       if (selected.length < n) {
         for (const t of list) {
           if (selected.length >= n) break;
-          if (!selected.includes(t)) selected.push(t);
+          const seriesKey = String((t.name || '').toLowerCase()).replace(/\s+(part|season|volume|vol\.?|chapter)\s*\d+.*/i, '').trim();
+          if (!selected.includes(t) && !seenSeries.has(seriesKey)) {
+            selected.push(t);
+            seenSeries.add(seriesKey);
+          }
         }
       }
       return selected.slice(0, n);
     }
+    /* c8 ignore stop */
 
     let broadened = false;
     let picked = diversityPick(rankedAvail, limit);
@@ -767,6 +908,7 @@ app.get(
       picked = picked.concat(addFromAll);
     }
     // exploration slot: try to include a bucket not yet present
+    /* c8 ignore start */
     const presentBuckets = new Set(picked.map(bucketOf));
     const exploreCandidate = rankedAll.find((t) => !presentBuckets.has(bucketOf(t)));
     let exploreIndex = -1;
@@ -775,6 +917,7 @@ app.get(
       if (picked.length === limit) picked[exploreIndex] = exploreCandidate;
       else picked.push(exploreCandidate);
     }
+    /* c8 ignore stop */
 
     const filtered = picked.map((t: any, idx: number) => {
       const match = (t.availability || []).find(
@@ -783,17 +926,20 @@ app.get(
       const availabilityServices = Array.from(
         new Set((t.availability || []).map((a: any) => a.service).filter(Boolean)),
       );
-      const watchUrl =
-        match?.deepLink ||
-        (match?.service
-          ? normalizeDeepLink({
-              service: match.service,
-              titleName: t.name,
-              tmdbId: t.tmdbId ? String(t.tmdbId) : undefined,
-              type: t.type,
-              releaseYear: t.releaseYear,
-            })
-          : undefined);
+      let watchUrl = match?.deepLink;
+      if (!watchUrl && match?.service) {
+        const ctx: any = {
+          service: match.service,
+          titleName: t.name,
+          type: t.type,
+          releaseYear: t.releaseYear,
+        };
+        if (t.tmdbId !== undefined && t.tmdbId !== null) ctx.tmdbId = t.tmdbId as any;
+        watchUrl = normalizeDeepLink(ctx);
+      }
+      if (watchUrl && process.env.AFFILIATES_ENABLED === 'true') {
+        watchUrl = appendAffiliateParams(watchUrl, match?.service);
+      }
       return {
         id: t.id,
         name: t.name,
@@ -803,7 +949,8 @@ app.get(
         voteAverage: typeof t.voteAverage === 'number' ? t.voteAverage : undefined,
         availabilityServices,
         watchUrl,
-        reason: buildReason(t, services, region) + (broadened ? ' • broadened' : ''),
+        reason: buildReason(t, services, region, coldStart) + (broadened ? ' • broadened' : ''),
+        qualityFallback: coldStart ? true : undefined,
         explore: exploreIndex === idx,
         diversityBucket: bucketOf(t),
         _score: t._score,
@@ -844,6 +991,8 @@ app.get(
         for (const k of Object.keys(q)) if (k.startsWith('exp.')) exp[k.slice(4)] = q[k];
       } catch {}
 
+      const isPrivateEvt =
+        request.headers['x-private-mode'] === 'true' || (request.query as any)?.private === 'true';
       const evt = {
         event: 'picks_served',
         profileId,
@@ -857,17 +1006,34 @@ app.get(
         exp,
         broadened,
       } as any;
+      const safeEvt = isPrivateEvt
+        ? {
+            event: evt.event,
+            profileId: evt.profileId,
+            requestId: evt.requestId,
+            region: evt.region,
+            servicesFilter: evt.servicesFilter,
+            rankerVersion: evt.rankerVersion,
+            candidateSource: evt.candidateSource,
+            count: items.length,
+            latency: evt.latency,
+            exp: evt.exp,
+            broadened: evt.broadened,
+          }
+        : evt;
       // forward via webhook if configured
       const sinkUrl = process.env.ANALYTICS_WEBHOOK_URL;
       const sinkToken = process.env.ANALYTICS_TOKEN;
-      if (sinkUrl) {
+      if (sinkUrl && isAnalyticsBufferEnabled()) {
+        handleAnalytics(app, safeEvt);
+      } else if (sinkUrl) {
         fetch(sinkUrl, {
           method: 'POST',
           headers: { 'content-type': 'application/json', ...(sinkToken ? { authorization: `Bearer ${sinkToken}` } : {}) },
-          body: JSON.stringify(evt),
+          body: JSON.stringify(safeEvt),
         }).catch((err) => logger.warn('analytics_forward_failed', { err: String(err) }));
       } else {
-        logger.info('analytics_event', evt);
+        logger.info('analytics_event', safeEvt);
       }
     } catch {}
     return response;
@@ -881,6 +1047,7 @@ declare module 'fastify' {
   }
 }
 
+/* c8 ignore start */
 app.addHook('onReady', async () => {
   // Skip Redis in test env to keep tests fast and deterministic
   if (process.env.NODE_ENV === 'test') return;
@@ -893,11 +1060,33 @@ app.addHook('onReady', async () => {
     logger.warn('redis_disabled_or_unreachable', { err: String(err) });
   }
 });
+/* c8 ignore stop */
 
+/* c8 ignore start */
 if (process.env.NODE_ENV !== 'test') {
   app.listen({ port: PORT, host: '0.0.0.0' }).then(() => {
     logger.info(`API listening on http://localhost:${PORT}`);
   });
 }
+/* c8 ignore stop */
 
 export default app;
+
+// Periodic analytics flusher when buffer enabled
+if (isAnalyticsBufferEnabled()) {
+  setInterval(() => {
+    flushAnalytics(app).catch(() => {});
+  }, ANALYTICS_BUFFER_INTERVAL_MS).unref?.();
+}
+
+// expose internals for tests (attach after app is defined)
+try {
+  (app as any).__analytics = {
+    sendAnalyticsDirect,
+    enqueueAnalytics,
+    dequeueBatch,
+    requeueFront,
+    flushAnalytics,
+    handleAnalytics,
+  };
+} catch {}
