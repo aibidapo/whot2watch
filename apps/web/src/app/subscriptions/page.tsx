@@ -1,9 +1,9 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { Select } from '@/components/ui/Select'
-import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { Card } from '@/components/ui/Card';
 
 type Sub = { id: string; service: string; region?: string };
 
@@ -33,8 +33,12 @@ export default function SubsPage() {
         body: JSON.stringify({ service, region: region || undefined }),
       });
       await list();
-    } catch (e: any) {
-      setError(e?.message || 'Update failed');
+    } catch (error_: unknown) {
+      const message =
+        typeof error_ === 'object' && error_ && 'message' in error_
+          ? String((error_ as any).message)
+          : 'Update failed';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -66,11 +70,7 @@ export default function SubsPage() {
         </div>
         <div>
           <label className="block text-sm text-slate-500">Service</label>
-          <Select
-            value={service}
-            onChange={(e) => setService(e.target.value)}
-            className="mt-1"
-          >
+          <Select value={service} onChange={(e) => setService(e.target.value)} className="mt-1">
             <option value="">Select</option>
             <option>NETFLIX</option>
             <option>DISNEY_PLUS</option>
@@ -89,12 +89,14 @@ export default function SubsPage() {
         </div>
         <div className="flex gap-2">
           <Button onClick={upsert}>Save</Button>
-          <Button variant="secondary" onClick={list}>Refresh</Button>
+          <Button variant="secondary" onClick={list}>
+            Refresh
+          </Button>
         </div>
       </Card>
       {loading && <div className="text-slate-500">Saving…</div>}
       {error && <div className="text-red-600">{error}</div>}
-        <Card>
+      <Card>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-slate-500">
@@ -109,7 +111,9 @@ export default function SubsPage() {
                 <td className="p-3">{it.service}</td>
                 <td className="p-3">{it.region || '-'}</td>
                 <td className="p-3 text-right">
-                    <Button variant="ghost" onClick={() => del(it.service)}>Remove</Button>
+                  <Button variant="ghost" onClick={() => del(it.service)}>
+                    Remove
+                  </Button>
                 </td>
               </tr>
             ))}
@@ -122,7 +126,7 @@ export default function SubsPage() {
             )}
           </tbody>
         </table>
-        </Card>
+      </Card>
     </div>
   );
 }

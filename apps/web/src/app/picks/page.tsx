@@ -36,8 +36,12 @@ export default function PicksPage() {
       const res = await fetch(`${apiBase}/picks/${profileId}`);
       const json = await res.json();
       setItems(Array.isArray(json.items) ? json.items : []);
-    } catch (e: any) {
-      setError(e?.message || 'Failed to load picks');
+    } catch (error_: unknown) {
+      const message =
+        typeof error_ === 'object' && error_ && 'message' in error_
+          ? String((error_ as any).message)
+          : 'Failed to load picks';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -103,7 +107,9 @@ export default function PicksPage() {
                   <div className="mt-2 flex gap-2 flex-wrap">
                     <Chip>
                       {(it.availabilityServices[0] || '').replace('_', ' ')}
-                      {it.availabilityServices.length > 1 ? ` +${it.availabilityServices.length - 1}` : ''}
+                      {it.availabilityServices.length > 1
+                        ? ` +${it.availabilityServices.length - 1}`
+                        : ''}
                     </Chip>
                   </div>
                 ) : null}
@@ -117,13 +123,23 @@ export default function PicksPage() {
                       onClick={() => {
                         try {
                           // lightweight client-side beacon to API
-                          navigator.sendBeacon?.(`${apiBase}/analytics`,
-                            new Blob([JSON.stringify({
-                              event: 'pick_watch_now_clicked',
-                              titleId: it.id,
-                              provider: Array.isArray(it.availabilityServices) && it.availabilityServices.length ? it.availabilityServices[0] : undefined,
-                              deepLinkUsed: true,
-                            })], { type: 'application/json' })
+                          navigator.sendBeacon?.(
+                            `${apiBase}/analytics`,
+                            new Blob(
+                              [
+                                JSON.stringify({
+                                  event: 'pick_watch_now_clicked',
+                                  titleId: it.id,
+                                  provider:
+                                    Array.isArray(it.availabilityServices) &&
+                                    it.availabilityServices.length
+                                      ? it.availabilityServices[0]
+                                      : undefined,
+                                  deepLinkUsed: true,
+                                }),
+                              ],
+                              { type: 'application/json' },
+                            ),
                           );
                         } catch {}
                       }}
@@ -160,8 +176,18 @@ export default function PicksPage() {
                               headers: { 'content-type': 'application/json' },
                               body: JSON.stringify({ titleId: it.id }),
                             });
-                            navigator.sendBeacon?.(`${apiBase}/analytics`,
-                              new Blob([JSON.stringify({ event: 'pick_add_to_list', titleId: it.id, rank: 0 })], { type: 'application/json' })
+                            navigator.sendBeacon?.(
+                              `${apiBase}/analytics`,
+                              new Blob(
+                                [
+                                  JSON.stringify({
+                                    event: 'pick_add_to_list',
+                                    titleId: it.id,
+                                    rank: 0,
+                                  }),
+                                ],
+                                { type: 'application/json' },
+                              ),
                             );
                           }
                         } catch {}
@@ -178,8 +204,18 @@ export default function PicksPage() {
                             headers: { 'content-type': 'application/json' },
                             body: JSON.stringify({ profileId, titleId: it.id, action: 'DISLIKE' }),
                           });
-                          navigator.sendBeacon?.(`${apiBase}/analytics`,
-                            new Blob([JSON.stringify({ event: 'pick_feedback', titleId: it.id, action: 'NOT_INTERESTED' })], { type: 'application/json' })
+                          navigator.sendBeacon?.(
+                            `${apiBase}/analytics`,
+                            new Blob(
+                              [
+                                JSON.stringify({
+                                  event: 'pick_feedback',
+                                  titleId: it.id,
+                                  action: 'NOT_INTERESTED',
+                                }),
+                              ],
+                              { type: 'application/json' },
+                            ),
                           );
                         } catch {}
                       }}
