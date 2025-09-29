@@ -63,7 +63,10 @@ module.exports = {
         // React hooks rule comes from react-hooks plugin (already loaded)
         'react-hooks/exhaustive-deps': 'off',
         // Be lenient on unused vars in pages during active dev
-        '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+        '@typescript-eslint/no-unused-vars': [
+          'warn',
+          { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+        ],
         '@typescript-eslint/no-explicit-any': 'off',
       },
     },

@@ -1,4 +1,4 @@
-import { JwtHeader } from 'jsonwebtoken';
+type JwtHeader = { kid?: string; [k: string]: unknown };
 
 export interface JwtVerifyOptions {
   issuer: string;

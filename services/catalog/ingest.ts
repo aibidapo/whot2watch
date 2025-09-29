@@ -13,15 +13,17 @@ export interface RawTitle {
 export interface NormalizedTitle {
   name: string;
   type: 'MOVIE' | 'SHOW';
-  releaseYear?: number;
-  runtimeMin?: number;
+  releaseYear?: number | undefined;
+  runtimeMin?: number | undefined;
   genres: string[];
   moods: string[];
   availability: { service: string; region: string; offerType: string }[];
 }
 
 export function normalizeTitle(raw: RawTitle, region: string): NormalizedTitle {
-  const services = (raw.providers || []).map(canonicalizeProvider).filter(Boolean);
+  const services = (raw.providers || [])
+    .map((p) => canonicalizeProvider(p))
+    .filter((v): v is string => typeof v === 'string' && v.length > 0);
   return {
     name: raw.name,
     type: raw.type,
