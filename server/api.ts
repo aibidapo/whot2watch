@@ -39,8 +39,8 @@ async function sendAnalyticsDirect(evt: AnalyticsEvent): Promise<boolean> {
       body: JSON.stringify(evt),
     });
     return true;
-  } catch (err) {
-    logger.warn('analytics_forward_failed', { err: String(err) });
+  } catch {
+    logger.warn('analytics_forward_failed');
     return false;
   }
 }
@@ -52,7 +52,7 @@ async function enqueueAnalytics(appInst: any, evt: AnalyticsEvent) {
     } else {
       inMemoryAnalyticsQueue.push(evt);
     }
-  } catch (err) {
+  } catch {
     // Fallback to memory if Redis push fails
     inMemoryAnalyticsQueue.push(evt);
   }
@@ -64,12 +64,18 @@ async function dequeueBatch(appInst: any, maxItems: number): Promise<AnalyticsEv
     for (let i = 0; i < maxItems; i++) {
       const raw = await appInst.redis.lPop('analytics:queue');
       if (!raw) break;
-      try { batch.push(JSON.parse(raw)); } catch { /* ignore bad */ }
+      try {
+        batch.push(JSON.parse(raw));
+      } catch {
+        /* ignore bad */
+      }
     }
     return batch;
   }
   // memory
-  batch.push(...inMemoryAnalyticsQueue.splice(0, Math.min(maxItems, inMemoryAnalyticsQueue.length)));
+  batch.push(
+    ...inMemoryAnalyticsQueue.splice(0, Math.min(maxItems, inMemoryAnalyticsQueue.length)),
+  );
   return batch;
 }
 
@@ -877,7 +883,9 @@ app.get(
         if (selected.length >= n) break;
         const b = bucketOf(t);
         counts[b] = counts[b] || 0;
-        const seriesKey = String((t.name || '').toLowerCase()).replace(/\s+(part|season|volume|vol\.?|chapter)\s*\d+.*/i, '').trim();
+        const seriesKey = String((t.name || '').toLowerCase())
+          .replace(/\s+(part|season|volume|vol\.?|chapter)\s*\d+.*/i, '')
+          .trim();
         if (counts[b] < maxPerBucket && !seenSeries.has(seriesKey)) {
           selected.push(t);
           counts[b]++;
@@ -888,7 +896,9 @@ app.get(
       if (selected.length < n) {
         for (const t of list) {
           if (selected.length >= n) break;
-          const seriesKey = String((t.name || '').toLowerCase()).replace(/\s+(part|season|volume|vol\.?|chapter)\s*\d+.*/i, '').trim();
+          const seriesKey = String((t.name || '').toLowerCase())
+            .replace(/\s+(part|season|volume|vol\.?|chapter)\s*\d+.*/i, '')
+            .trim();
           if (!selected.includes(t) && !seenSeries.has(seriesKey)) {
             selected.push(t);
             seenSeries.add(seriesKey);
@@ -986,7 +996,9 @@ app.get(
       try {
         const q: any = (request.query as any) || {};
         if (typeof q.exp === 'string') {
-          try { Object.assign(exp, JSON.parse(q.exp)); } catch {}
+          try {
+            Object.assign(exp, JSON.parse(q.exp));
+          } catch {}
         }
         for (const k of Object.keys(q)) if (k.startsWith('exp.')) exp[k.slice(4)] = q[k];
       } catch {}
@@ -1029,7 +1041,10 @@ app.get(
       } else if (sinkUrl) {
         fetch(sinkUrl, {
           method: 'POST',
-          headers: { 'content-type': 'application/json', ...(sinkToken ? { authorization: `Bearer ${sinkToken}` } : {}) },
+          headers: {
+            'content-type': 'application/json',
+            ...(sinkToken ? { authorization: `Bearer ${sinkToken}` } : {}),
+          },
           body: JSON.stringify(safeEvt),
         }).catch((err) => logger.warn('analytics_forward_failed', { err: String(err) }));
       } else {

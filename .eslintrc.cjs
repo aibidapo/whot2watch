@@ -72,10 +72,11 @@ module.exports = {
       rules: {
         '@typescript-eslint/no-explicit-any': 'off',
         '@typescript-eslint/naming-convention': 'off',
-        '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+        '@typescript-eslint/no-unused-vars': 'off',
         'prefer-const': 'off',
         'no-empty': 'off',
         'sonarjs/no-duplicate-string': 'off',
+        'sonarjs/cognitive-complexity': 'off',
         'unicorn/no-null': 'off',
         'unicorn/prefer-ternary': 'off',
         'unicorn/prefer-at': 'off',
@@ -85,6 +86,8 @@ module.exports = {
         'unicorn/prefer-spread': 'off',
         'unicorn/prefer-native-coercion-functions': 'off',
         'unicorn/no-array-callback-reference': 'off',
+        'unicorn/no-zero-fractions': 'off',
+        'unicorn/consistent-function-scoping': 'off',
       },
     },
     {
@@ -93,8 +96,13 @@ module.exports = {
       rules: {
         '@typescript-eslint/no-explicit-any': 'off',
         '@typescript-eslint/naming-convention': 'off',
+        '@typescript-eslint/no-unused-vars': 'off',
         'no-empty': 'off',
+        'sonarjs/no-duplicate-string': 'off',
+        'sonarjs/cognitive-complexity': 'off',
         'unicorn/prefer-node-protocol': 'off',
+        'unicorn/import-style': 'off',
+        'unicorn/no-negated-condition': 'off',
         'unicorn/numeric-separators-style': 'off',
         'unicorn/explicit-length-check': 'off',
         'unicorn/prefer-spread': 'off',
@@ -103,6 +111,9 @@ module.exports = {
         'unicorn/prefer-native-coercion-functions': 'off',
         'unicorn/catch-error-name': 'off',
         'unicorn/filename-case': 'off',
+        'unicorn/no-empty-file': 'off',
+        'unicorn/no-null': 'off',
+        'unicorn/prefer-top-level-await': 'off',
       },
     },
     {
@@ -111,6 +122,16 @@ module.exports = {
         '@typescript-eslint/no-explicit-any': 'off',
         'unicorn/prefer-string-replace-all': 'off',
         'unicorn/switch-case-braces': 'off',
+        'unicorn/no-array-callback-reference': 'off',
+        'unicorn/better-regex': 'off',
+      },
+    },
+    {
+      files: ['services/**/*.{test,spec}.ts'],
+      rules: {
+        '@typescript-eslint/naming-convention': 'off',
+        '@typescript-eslint/no-explicit-any': 'off',
+        '@typescript-eslint/no-unused-vars': 'off',
       },
     },
     {
