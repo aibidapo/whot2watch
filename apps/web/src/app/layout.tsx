@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import { Suspense } from 'react'
+import { Suspense } from 'react';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import { HeaderActions } from '@/components/HeaderActions'
+import { HeaderActions } from '@/components/HeaderActions';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -39,10 +39,18 @@ export default function RootLayout({
               <h1 className="text-2xl font-semibold brand-text">Whot2Watch</h1>
             </div>
             <nav className="flex gap-4 text-sm text-slate-500">
-              <a href="/" className="hover:text-slate-800">Search</a>
-              <a href="/picks" className="hover:text-slate-800">Picks</a>
-              <a href="/lists" className="hover:text-slate-800">Lists</a>
-              <a href="/subscriptions" className="hover:text-slate-800">Subscriptions</a>
+              <a href="/" className="hover:text-slate-800">
+                Search
+              </a>
+              <a href="/picks" className="hover:text-slate-800">
+                Picks
+              </a>
+              <a href="/lists" className="hover:text-slate-800">
+                Lists
+              </a>
+              <a href="/subscriptions" className="hover:text-slate-800">
+                Subscriptions
+              </a>
             </nav>
             <Suspense fallback={null}>
               <HeaderActions />

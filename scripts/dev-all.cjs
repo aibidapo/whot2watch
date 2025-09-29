@@ -61,15 +61,20 @@ const api = spawn('pnpm', ['api:dev'], { stdio: 'inherit', shell: true });
 const web = spawn('pnpm', ['web:dev'], {
   stdio: 'inherit',
   shell: true,
-  env: { ...process.env, NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000' },
+  env: {
+    ...process.env,
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000',
+  },
 });
 
 function cleanup() {
-  try { api.kill('SIGINT'); } catch {}
-  try { web.kill('SIGINT'); } catch {}
+  try {
+    api.kill('SIGINT');
+  } catch {}
+  try {
+    web.kill('SIGINT');
+  } catch {}
   process.exit(0);
 }
 process.on('SIGINT', cleanup);
 process.on('SIGTERM', cleanup);
-
-

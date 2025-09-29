@@ -94,6 +94,18 @@ module.exports = {
       },
     },
     {
+      files: ['server/security/jwt.ts'],
+      rules: {
+        'unicorn/prefer-module': 'off',
+      },
+    },
+    {
+      files: ['services/catalog/ingest.ts'],
+      rules: {
+        'unicorn/prefer-module': 'off',
+      },
+    },
+    {
       files: ['server/**/*.ts'],
       excludedFiles: ['server/**/*.{test,spec}.ts'],
       rules: {

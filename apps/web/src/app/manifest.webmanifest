@@ -1,11 +1,8 @@
 {
   "name": "Whot2Watch",
   "short_name": "W2W",
-  "icons": [
-    { "src": "/logo.svg", "sizes": "128x128", "type": "image/svg+xml" }
-  ],
+  "icons": [{ "src": "/logo.svg", "sizes": "128x128", "type": "image/svg+xml" }],
   "theme_color": "#0b1220",
   "background_color": "#0b1220",
   "display": "standalone"
 }
-

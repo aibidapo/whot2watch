@@ -10,10 +10,11 @@
     "requestId": { "type": "string" },
     "titleId": { "type": "string" },
     "rank": { "type": "integer" },
-    "action": { "type": "string", "enum": ["LIKE", "DISLIKE", "SAVE", "SEEN_IT", "NOT_INTERESTED"] },
+    "action": {
+      "type": "string",
+      "enum": ["LIKE", "DISLIKE", "SAVE", "SEEN_IT", "NOT_INTERESTED"]
+    },
     "reasonCode": { "type": "string" }
   },
   "required": ["event", "titleId", "action"]
 }
-
-

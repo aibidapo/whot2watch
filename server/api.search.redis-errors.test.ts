@@ -13,7 +13,9 @@ const sampleOsResult = {
   took: 5,
   hits: {
     total: { value: 1 },
-    hits: [{ _id: 'doc1', _score: 1.23, _source: { name: 'Doc 1', type: 'MOVIE', releaseYear: 2021 } }],
+    hits: [
+      { _id: 'doc1', _score: 1.23, _source: { name: 'Doc 1', type: 'MOVIE', releaseYear: 2021 } },
+    ],
   },
 };
 
@@ -48,5 +50,3 @@ describe('API /search redis error resilience', () => {
     expect(res.statusCode).toBe(200);
   });
 });
-
-

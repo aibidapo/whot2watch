@@ -1,5 +1,6 @@
+/* eslint-disable unicorn/prefer-module, @typescript-eslint/no-var-requires */
 import jwksClient from 'jwks-rsa';
-import jwt from 'jsonwebtoken';
+const jwt: any = require('jsonwebtoken');
 import { JwtDependencies, JwtVerifyOptions, verifyJwtWithDeps } from './jwtCore';
 
 export async function verifyJwt(

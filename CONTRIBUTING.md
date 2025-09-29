@@ -55,7 +55,16 @@ Prereqs: Docker Desktop, Node.js 20, pnpm, Python venv activated.
 - Copy `.env.example` to `.env` and fill values as needed.
 - Minimum for local: `DATABASE_URL`, `REDIS_URL`, `OPENSEARCH_URL`.
 - Optional: `TMDB_API_KEY` (v3) or `TMDB_ACCESS_TOKEN` (v4) to use real TMDB.
- - Optional analytics forwarding: set `ANALYTICS_WEBHOOK_URL` (and optional `ANALYTICS_TOKEN`). When present, the API forwards `/analytics` events to this endpoint; otherwise they are logged locally. Private Mode suppresses sends.
+- Optional analytics forwarding: set `ANALYTICS_WEBHOOK_URL` (and optional `ANALYTICS_TOKEN`). When present, the API forwards `/analytics` events to this endpoint; otherwise they are logged locally. Private Mode suppresses sends.
+- Optional analytics buffering (retry/background flush):
+  - `ANALYTICS_BUFFER=true` to enable
+  - `ANALYTICS_BUFFER_INTERVAL_MS=5000` flush interval (ms)
+  - `ANALYTICS_BUFFER_MAX=50` max batch size per flush
+  - Behavior: events are queued (Redis-backed when available, in-memory fallback) and flushed periodically; failures are requeued to preserve order.
+
+- Optional affiliate UTM parameters on Watch Now links:
+  - `AFFILIATES_ENABLED=true` to append `utm_source=whot2watch&utm_medium=affiliate&utm_campaign=watch_now` (and `utm_content=<service>`)
+  - Disabled by default; original query params are preserved
 
 3. DB setup
 

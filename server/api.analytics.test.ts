@@ -37,149 +37,163 @@ afterAll(async () => {
 });
 
 describe('analytics and ranking', () => {
-  it.skipIf(!dbReady)('emits picks_served and respects private mode', async () => {
-    const profile = await prisma.profile.findFirst();
-    expect(profile).toBeTruthy();
-    const lines: string[] = [];
-    const spy = vi.spyOn(console, 'info').mockImplementation((s: any) => {
-      try {
-        lines.push(String(s));
-      } catch {
-        /* noop */
-      }
-    });
-    const res = await fetch(`${serverUrl}/picks/${profile!.id}?exp={"ranker":"v1"}`);
-    expect(res.ok).toBe(true);
-    const events = parseAnalytics(lines, 'picks_served');
-    expect(events.length).toBeGreaterThan(0);
-    // exp parsed
-    const lastEvt = events[events.length - 1];
-    expect(lastEvt.exp?.ranker).toBe('v1');
-    lines.length = 0;
+  it.skipIf(!dbReady)(
+    'emits picks_served and respects private mode',
+    async () => {
+      const profile = await prisma.profile.findFirst();
+      expect(profile).toBeTruthy();
+      const lines: string[] = [];
+      const spy = vi.spyOn(console, 'info').mockImplementation((s: any) => {
+        try {
+          lines.push(String(s));
+        } catch {
+          /* noop */
+        }
+      });
+      const res = await fetch(`${serverUrl}/picks/${profile!.id}?exp={"ranker":"v1"}`);
+      expect(res.ok).toBe(true);
+      const events = parseAnalytics(lines, 'picks_served');
+      expect(events.length).toBeGreaterThan(0);
+      // exp parsed
+      const lastEvt = events[events.length - 1];
+      expect(lastEvt.exp?.ranker).toBe('v1');
+      lines.length = 0;
 
-    // private mode
-    const resPriv = await fetch(`${serverUrl}/picks/${profile!.id}?exp={"foo":"bar"}`, {
-      headers: { 'x-private-mode': 'true' },
-    });
-    expect(resPriv.ok).toBe(true);
-    const eventsPriv = parseAnalytics(lines, 'picks_served');
-    expect(eventsPriv.length).toBeGreaterThan(0);
-    const last = eventsPriv[eventsPriv.length - 1];
-    expect(last.items).toBeUndefined();
-    expect(typeof last.count === 'number').toBe(true);
-    // exp should still parse in private mode
-    expect(last.exp?.foo).toBe('bar');
-    spy.mockRestore();
-  }, 15000);
+      // private mode
+      const resPriv = await fetch(`${serverUrl}/picks/${profile!.id}?exp={"foo":"bar"}`, {
+        headers: { 'x-private-mode': 'true' },
+      });
+      expect(resPriv.ok).toBe(true);
+      const eventsPriv = parseAnalytics(lines, 'picks_served');
+      expect(eventsPriv.length).toBeGreaterThan(0);
+      const last = eventsPriv[eventsPriv.length - 1];
+      expect(last.items).toBeUndefined();
+      expect(typeof last.count === 'number').toBe(true);
+      // exp should still parse in private mode
+      expect(last.exp?.foo).toBe('bar');
+      spy.mockRestore();
+    },
+    15000,
+  );
 
-  it.skipIf(!dbReady)('popularity influences ranking and diversity/explore flags present', async () => {
-    const profile = await prisma.profile.findFirst();
-    expect(profile).toBeTruthy();
-    // Ensure subscriptions exist
-    await prisma.subscription
-      .upsert({
-        where: { id: `${profile!.id}:NETFLIX` },
-        update: { active: true, region: 'US' },
-        create: {
-          id: `${profile!.id}:NETFLIX`,
-          profileId: profile!.id,
-          service: 'NETFLIX',
-          region: 'US',
-          active: true,
-        },
-      })
-      .catch(async () => {
-        const existing = await prisma.subscription.findFirst({
-          where: { profileId: profile!.id, service: 'NETFLIX' },
+  it.skipIf(!dbReady)(
+    'popularity influences ranking and diversity/explore flags present',
+    async () => {
+      const profile = await prisma.profile.findFirst();
+      expect(profile).toBeTruthy();
+      // Ensure subscriptions exist
+      await prisma.subscription
+        .upsert({
+          where: { id: `${profile!.id}:NETFLIX` },
+          update: { active: true, region: 'US' },
+          create: {
+            id: `${profile!.id}:NETFLIX`,
+            profileId: profile!.id,
+            service: 'NETFLIX',
+            region: 'US',
+            active: true,
+          },
+        })
+        .catch(async () => {
+          const existing = await prisma.subscription.findFirst({
+            where: { profileId: profile!.id, service: 'NETFLIX' },
+          });
+          if (existing)
+            await prisma.subscription.update({
+              where: { id: existing.id },
+              data: { active: true, region: 'US' },
+            });
+          else
+            await prisma.subscription.create({
+              data: { profileId: profile!.id, service: 'NETFLIX', region: 'US', active: true },
+            });
         });
-        if (existing)
-          await prisma.subscription.update({
-            where: { id: existing.id },
-            data: { active: true, region: 'US' },
-          });
-        else
-          await prisma.subscription.create({
-            data: { profileId: profile!.id, service: 'NETFLIX', region: 'US', active: true },
-          });
+
+      // Create two titles with different popularity
+      const base = Date.now();
+      await prisma.title.create({
+        data: {
+          name: `PopHigh ${base}`,
+          type: 'MOVIE',
+          releaseYear: 2024,
+          voteAverage: 7.0,
+          // omit popularity if not in schema; use backdropUrl to differ score
+          backdropUrl: 'x',
+          availability: {
+            create: [{ service: 'NETFLIX', region: 'US', offerType: 'SUBSCRIPTION' }],
+          },
+        },
+      });
+      await prisma.title.create({
+        data: {
+          name: `PopLow ${base}`,
+          type: 'MOVIE',
+          releaseYear: 2024,
+          voteAverage: 7.0,
+          // no imagery
+          availability: {
+            create: [{ service: 'NETFLIX', region: 'US', offerType: 'SUBSCRIPTION' }],
+          },
+        },
       });
 
-    // Create two titles with different popularity
-    const base = Date.now();
-    await prisma.title.create({
-      data: {
-        name: `PopHigh ${base}`,
-        type: 'MOVIE',
-        releaseYear: 2024,
-        voteAverage: 7.0,
-        // omit popularity if not in schema; use backdropUrl to differ score
-        backdropUrl: 'x',
-        availability: { create: [{ service: 'NETFLIX', region: 'US', offerType: 'SUBSCRIPTION' }] },
-      },
-    });
-    await prisma.title.create({
-      data: {
-        name: `PopLow ${base}`,
-        type: 'MOVIE',
-        releaseYear: 2024,
-        voteAverage: 7.0,
-        // no imagery
-        availability: { create: [{ service: 'NETFLIX', region: 'US', offerType: 'SUBSCRIPTION' }] },
-      },
-    });
-
-    // plus a DISNEY_PLUS title to encourage explore slot
-    await prisma.title.create({
-      data: {
-        name: `Explore ${base}`,
-        type: 'MOVIE',
-        releaseYear: 2024,
-        voteAverage: 6.0,
-        availability: {
-          create: [{ service: 'DISNEY_PLUS', region: 'US', offerType: 'SUBSCRIPTION' }],
+      // plus a DISNEY_PLUS title to encourage explore slot
+      await prisma.title.create({
+        data: {
+          name: `Explore ${base}`,
+          type: 'MOVIE',
+          releaseYear: 2024,
+          voteAverage: 6.0,
+          availability: {
+            create: [{ service: 'DISNEY_PLUS', region: 'US', offerType: 'SUBSCRIPTION' }],
+          },
         },
-      },
-    });
+      });
 
-    const res = await fetch(`${serverUrl}/picks/${profile!.id}`);
-    expect(res.ok).toBe(true);
-    const json = await res.json();
-    expect(Array.isArray(json.items)).toBe(true);
-    const names = json.items.map((i: any) => i.name);
-    const hiIdx = names.indexOf(`PopHigh ${base}`);
-    const loIdx = names.indexOf(`PopLow ${base}`);
-    if (hiIdx !== -1 && loIdx !== -1) {
-      expect(hiIdx).toBeLessThan(loIdx);
-    } else {
-      // If either isn't present in top-6 due to dataset noise, consider this acceptable.
-      expect(true).toBe(true);
-    }
-    const anyExplore = json.items.some((i: any) => i.explore === true);
-    expect(anyExplore || true).toBe(true);
-  });
+      const res = await fetch(`${serverUrl}/picks/${profile!.id}`);
+      expect(res.ok).toBe(true);
+      const json = await res.json();
+      expect(Array.isArray(json.items)).toBe(true);
+      const names = json.items.map((i: any) => i.name);
+      const hiIdx = names.indexOf(`PopHigh ${base}`);
+      const loIdx = names.indexOf(`PopLow ${base}`);
+      if (hiIdx !== -1 && loIdx !== -1) {
+        expect(hiIdx).toBeLessThan(loIdx);
+      } else {
+        // If either isn't present in top-6 due to dataset noise, consider this acceptable.
+        expect(true).toBe(true);
+      }
+      const anyExplore = json.items.some((i: any) => i.explore === true);
+      expect(anyExplore || true).toBe(true);
+    },
+  );
 
-  it.skipIf(!dbReady)('forwards picks_served when webhook configured and parses x-exp header', async () => {
-    const profile = await prisma.profile.findFirst();
-    expect(profile).toBeTruthy();
-    const old = { ...process.env } as any;
-    process.env.ANALYTICS_WEBHOOK_URL = 'http://example.com/sink';
-    const spyFetch = vi.fn(async () => new Response('{}', { status: 200 }));
-    vi.stubGlobal('fetch', spyFetch as any);
-    const res = await app.inject({
-      method: 'GET',
-      url: `/picks/${profile!.id}`,
-      headers: { 'x-exp': JSON.stringify({ ab: 'test' }) },
-    });
-    expect(res.statusCode).toBe(200);
-    expect(spyFetch).toHaveBeenCalled();
-    const sinkUrl = process.env.ANALYTICS_WEBHOOK_URL;
-    const sinkCall = (spyFetch.mock.calls as any[]).find(([u]) => String(u) === sinkUrl);
-    expect(sinkCall).toBeTruthy();
-    const body = JSON.parse(String(sinkCall[1].body));
-    expect(body.event).toBe('picks_served');
-    // cleanup
-    process.env = old;
-    vi.unstubAllGlobals();
-  });
+  it.skipIf(!dbReady)(
+    'forwards picks_served when webhook configured and parses x-exp header',
+    async () => {
+      const profile = await prisma.profile.findFirst();
+      expect(profile).toBeTruthy();
+      const old = { ...process.env } as any;
+      process.env.ANALYTICS_WEBHOOK_URL = 'http://example.com/sink';
+      const spyFetch = vi.fn(async () => new Response('{}', { status: 200 }));
+      vi.stubGlobal('fetch', spyFetch as any);
+      const res = await app.inject({
+        method: 'GET',
+        url: `/picks/${profile!.id}`,
+        headers: { 'x-exp': JSON.stringify({ ab: 'test' }) },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(spyFetch).toHaveBeenCalled();
+      const sinkUrl = process.env.ANALYTICS_WEBHOOK_URL;
+      const sinkCall = (spyFetch.mock.calls as any[]).find(([u]) => String(u) === sinkUrl);
+      expect(sinkCall).toBeTruthy();
+      const body = JSON.parse(String(sinkCall[1].body));
+      expect(body.event).toBe('picks_served');
+      // cleanup
+      process.env = old;
+      vi.unstubAllGlobals();
+    },
+  );
 
   it.skipIf(!dbReady)('reason omits highly rated when score is low', async () => {
     const profile = await prisma.profile.findFirst();

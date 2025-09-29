@@ -1,4 +1,5 @@
-import { canonicalizeProvider } from './providerAlias';
+// Import via TS shim to satisfy typechecker while using CJS implementation
+import { canonicalizeProvider } from './provider-alias';
 
 export interface RawTitle {
   name: string;

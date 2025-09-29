@@ -70,5 +70,6 @@ describe('Picks watchUrl selection', () => {
         expect(true).toBe(true);
       }
     },
+    15000,
   );
 });

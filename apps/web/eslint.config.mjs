@@ -18,7 +18,10 @@ const eslintConfig = [
       'unicorn/filename-case': 'off',
       'unicorn/no-null': 'off',
       '@typescript-eslint/naming-convention': 'off',
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
       // Some rules are not present in flat config by default; guard if missing
       'react-hooks/exhaustive-deps': 'off',
     },

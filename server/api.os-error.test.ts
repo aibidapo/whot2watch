@@ -20,6 +20,18 @@ describe('API /search error path', () => {
     expect(Array.isArray(json.items)).toBe(true);
   });
 
+  it('returns 400 when search params are invalid (bad numbers)', async () => {
+    const res = await app.inject({ method: 'GET', url: '/search?yearMin=abc&size=1' });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('accepts service as arbitrary string (schema anyOf permits string)', async () => {
+    const res = await app.inject({ method: 'GET', url: '/search?service=%5B1%5D' });
+    expect(res.statusCode).toBe(200);
+    const json = res.json() as any;
+    expect(Array.isArray(json.items)).toBe(true);
+  });
+
   it('returns empty result when OpenSearch is unreachable', async () => {
     vi.stubGlobal(
       'fetch',

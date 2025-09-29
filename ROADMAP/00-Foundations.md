@@ -67,7 +67,7 @@ Dependency & Tooling Health
 - [ ] Renovate (weekly) with safe automerge for dev deps; manual for prod deps
 - [ ] `npm audit` (prod) or Snyk in CI; fail on criticals unless risk-accepted
 
- Monorepo Layout (prep)
+Monorepo Layout (prep)
 
 - [x] Establish `apps/`, `services/`, `packages/` structure before boundary rules
 

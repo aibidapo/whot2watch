@@ -1,8 +1,8 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Card } from '@/components/ui/Card';
 
 type List = { id: string; name: string; visibility?: string };
 
@@ -42,15 +42,13 @@ export default function ListsPage() {
         </div>
         <div>
           <label className="block text-sm text-slate-500">Name</label>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="mt-1"
-          />
+          <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1" />
         </div>
         <div className="flex gap-2">
           <Button onClick={create}>Create</Button>
-          <Button variant="secondary" onClick={refresh}>Refresh</Button>
+          <Button variant="secondary" onClick={refresh}>
+            Refresh
+          </Button>
         </div>
       </Card>
       <ul className="grid gap-2">
