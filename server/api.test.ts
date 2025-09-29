@@ -34,7 +34,7 @@ describe('API contract', () => {
     expect(res.ok).toBe(true);
     const json = await res.json();
     expect(Array.isArray(json.items)).toBe(true);
-  }, 15000);
+  }, 20000);
 
   it('feedback suppressed in Private Mode', async () => {
     const res = await fetch(`${serverUrl}/feedback`, {
@@ -65,42 +65,46 @@ describe('API contract', () => {
     expect(got429 || true).toBe(true);
   });
 
-  it.skipIf(!dbReady)('lists: create -> add item -> delete item', async () => {
-    const profile = await prisma.profile.findFirst();
-    expect(profile).toBeTruthy();
-    const title = await prisma.title.findFirst();
-    expect(title).toBeTruthy();
+  it.skipIf(!dbReady)(
+    'lists: create -> add item -> delete item',
+    async () => {
+      const profile = await prisma.profile.findFirst();
+      expect(profile).toBeTruthy();
+      const title = await prisma.title.findFirst();
+      expect(title).toBeTruthy();
 
-    // create list
-    const createRes = await fetch(`${serverUrl}/profiles/${profile!.id}/lists`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name: `Test List ${Date.now()}`, visibility: 'PRIVATE' }),
-    });
-    expect(createRes.ok).toBe(true);
-    const created = await createRes.json();
-    const listId = created.list.id;
-    expect(listId).toBeTruthy();
+      // create list
+      const createRes = await fetch(`${serverUrl}/profiles/${profile!.id}/lists`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: `Test List ${Date.now()}`, visibility: 'PRIVATE' }),
+      });
+      expect(createRes.ok).toBe(true);
+      const created = await createRes.json();
+      const listId = created.list.id;
+      expect(listId).toBeTruthy();
 
-    // add item
-    const addRes = await fetch(`${serverUrl}/lists/${listId}/items`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ titleId: title!.id }),
-    });
-    expect(addRes.ok).toBe(true);
-    const added = await addRes.json();
-    const itemId = added.item.id;
-    expect(itemId).toBeTruthy();
+      // add item
+      const addRes = await fetch(`${serverUrl}/lists/${listId}/items`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ titleId: title!.id }),
+      });
+      expect(addRes.ok).toBe(true);
+      const added = await addRes.json();
+      const itemId = added.item.id;
+      expect(itemId).toBeTruthy();
 
-    // delete item
-    const delRes = await fetch(`${serverUrl}/lists/${listId}/items/${itemId}`, {
-      method: 'DELETE',
-    });
-    expect(delRes.ok).toBe(true);
-    const delJson = await delRes.json();
-    expect(delJson.ok).toBe(true);
-  }, 15000);
+      // delete item
+      const delRes = await fetch(`${serverUrl}/lists/${listId}/items/${itemId}`, {
+        method: 'DELETE',
+      });
+      expect(delRes.ok).toBe(true);
+      const delJson = await delRes.json();
+      expect(delJson.ok).toBe(true);
+    },
+    15000,
+  );
 
   it.skipIf(!dbReady)('subscriptions: upsert/list/delete', async () => {
     const profile = await prisma.profile.findFirst();

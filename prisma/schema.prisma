@@ -54,6 +54,7 @@ model Subscription {
 model Title {
   id            String           @id @default(uuid()) @db.Uuid
   tmdbId        BigInt?          @unique
+  imdbId        String?          @unique
   type          String
   name          String
   releaseYear   Int?
@@ -71,9 +72,22 @@ model Title {
   feedback      Feedback[]
   recommendations Recommendation[]
   votes         Vote[]
+  externalRatings ExternalRating[]
   @@index([type])
   @@index([releaseYear])
   @@index([name])
+}
+
+model ExternalRating {
+  id        String   @id @default(uuid()) @db.Uuid
+  titleId   String   @db.Uuid
+  source    String   // IMDB | ROTTEN_TOMATOES | METACRITIC
+  valueText String
+  valueNum  Float?
+  updatedAt DateTime @default(now())
+  title     Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  @@unique([titleId, source])
+  @@index([titleId])
 }
 
 model Availability {

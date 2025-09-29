@@ -26,6 +26,11 @@ async function indexDoc(doc) {
 }
 
 function toIndexedDoc(title) {
+  // Map external ratings to flattened fields (0-100 scale)
+  const ratings = Array.isArray(title.externalRatings) ? title.externalRatings : [];
+  const ratingsBySrc = Object.fromEntries(
+    ratings.map((r) => [String(r.source || '').toUpperCase(), r.valueNum]).filter(Boolean),
+  );
   return {
     id: title.id,
     name: title.name,
@@ -38,6 +43,9 @@ function toIndexedDoc(title) {
     backdropUrl: title.backdropUrl || undefined,
     voteAverage: title.voteAverage ?? undefined,
     popularity: title.popularity ?? undefined,
+    ratingsImdb: ratingsBySrc.IMDB ?? undefined,
+    ratingsRottenTomatoes: ratingsBySrc.ROTTEN_TOMATOES ?? undefined,
+    ratingsMetacritic: ratingsBySrc.METACRITIC ?? undefined,
     availabilityServices: Array.from(
       new Set((title.availability || []).map((a) => a.service).filter(Boolean)),
     ),
@@ -60,7 +68,7 @@ async function main() {
     const titles = await prisma.title.findMany({
       take: 50,
       orderBy: { createdAt: 'desc' },
-      include: { availability: true },
+      include: { availability: true, externalRatings: true },
     });
     for (const t of titles) {
       const doc = toIndexedDoc(t);

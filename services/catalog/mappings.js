@@ -27,6 +27,9 @@ const titlesMapping = {
       availabilityServices: { type: 'keyword' },
       availabilityRegions: { type: 'keyword' },
       popularity: { type: 'float' },
+      ratingsImdb: { type: 'float' },
+      ratingsRottenTomatoes: { type: 'float' },
+      ratingsMetacritic: { type: 'float' },
       availability: {
         type: 'nested',
         properties: {
