@@ -817,6 +817,20 @@ app.get(
       orderBy: { createdAt: 'desc' },
       include: { availability: true },
     });
+    // fetch external ratings in one query and index by titleId
+    const titleIds = titles.map((t) => t.id);
+    const extRatings = await prisma.externalRating.findMany({
+      where: { titleId: { in: titleIds } },
+      select: { titleId: true, source: true, valueNum: true },
+    });
+    const ratingsByTitle: Record<string, Record<string, number>> = {};
+    for (const r of extRatings) {
+      const key = String(r.source || '').toUpperCase();
+      const val = typeof r.valueNum === 'number' ? (r.valueNum as number) : undefined;
+      if (val === undefined) continue;
+      const b = (ratingsByTitle[r.titleId] = ratingsByTitle[r.titleId] || {});
+      b[key] = val;
+    }
     const candidateGenMs = Date.now() - tCandidateStart;
 
     function score(t: any): number {
@@ -950,6 +964,7 @@ app.get(
       if (watchUrl && process.env.AFFILIATES_ENABLED === 'true') {
         watchUrl = appendAffiliateParams(watchUrl, match?.service);
       }
+      const ratingsBy = ratingsByTitle[t.id] || {};
       return {
         id: t.id,
         name: t.name,
@@ -958,6 +973,11 @@ app.get(
         posterUrl: t.posterUrl || undefined,
         voteAverage: typeof t.voteAverage === 'number' ? t.voteAverage : undefined,
         availabilityServices,
+        ratingsImdb: typeof ratingsBy.IMDB === 'number' ? (ratingsBy.IMDB as number) : undefined,
+        ratingsRottenTomatoes:
+          typeof ratingsBy.ROTTEN_TOMATOES === 'number' ? (ratingsBy.ROTTEN_TOMATOES as number) : undefined,
+        ratingsMetacritic:
+          typeof ratingsBy.METACRITIC === 'number' ? (ratingsBy.METACRITIC as number) : undefined,
         watchUrl,
         reason: buildReason(t, services, region, coldStart) + (broadened ? ' • broadened' : ''),
         qualityFallback: coldStart ? true : undefined,

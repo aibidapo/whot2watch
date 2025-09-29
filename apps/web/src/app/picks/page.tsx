@@ -16,6 +16,9 @@ type PickItem = {
   availabilityServices?: string[];
   watchUrl?: string;
   reason?: string;
+  ratingsImdb?: number;
+  ratingsRottenTomatoes?: number;
+  ratingsMetacritic?: number;
 };
 
 export default function PicksPage() {
@@ -102,6 +105,28 @@ export default function PicksPage() {
                   {typeof it.voteAverage === 'number' ? (
                     <span className="ml-2 text-amber-400">★ {it.voteAverage.toFixed(1)}</span>
                   ) : null}
+                  {(typeof it.ratingsImdb === 'number' ||
+                    typeof it.ratingsRottenTomatoes === 'number' ||
+                    typeof it.ratingsMetacritic === 'number') && (
+                    <span className="ml-2 text-slate-500">
+                      {typeof it.ratingsImdb === 'number' && <>IMDB {it.ratingsImdb}</>}
+                      {typeof it.ratingsRottenTomatoes === 'number' && (
+                        <>
+                          {typeof it.ratingsImdb === 'number' ? ' • ' : ''}RT{' '}
+                          {it.ratingsRottenTomatoes}
+                        </>
+                      )}
+                      {typeof it.ratingsMetacritic === 'number' && (
+                        <>
+                          {typeof it.ratingsImdb === 'number' ||
+                          typeof it.ratingsRottenTomatoes === 'number'
+                            ? ' • '
+                            : ''}
+                          MC {it.ratingsMetacritic}
+                        </>
+                      )}
+                    </span>
+                  )}
                 </div>
                 {Array.isArray(it.availabilityServices) && it.availabilityServices.length ? (
                   <div className="mt-2 flex gap-2 flex-wrap">
