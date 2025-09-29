@@ -691,11 +691,12 @@ app.post(
           data: { profileId, service, region: region ?? null, active: true },
         });
       });
-    // Invalidate picks cache for today (both legacy and current cache versions)
+    // Invalidate picks cache for today (legacy and current cache versions)
     try {
       const todayKey = new Date().toISOString().slice(0, 10);
       await app.redis?.del(`picks:${profileId}:${todayKey}`);
       await app.redis?.del(`picks:v2:${profileId}:${todayKey}`);
+      await app.redis?.del(`picks:v3:${profileId}:${todayKey}`);
     } catch {}
     return { subscription: sub };
   },
@@ -726,11 +727,12 @@ app.delete(
     });
     if (!existing) return { ok: true };
     await prisma.subscription.update({ where: { id: existing.id }, data: { active: false } });
-    // Invalidate picks cache for today (both legacy and current cache versions)
+    // Invalidate picks cache for today (legacy and current cache versions)
     try {
       const todayKey = new Date().toISOString().slice(0, 10);
       await app.redis?.del(`picks:${profileId}:${todayKey}`);
       await app.redis?.del(`picks:v2:${profileId}:${todayKey}`);
+      await app.redis?.del(`picks:v3:${profileId}:${todayKey}`);
     } catch {}
     return { ok: true };
   },
@@ -797,8 +799,8 @@ app.get(
     const startTotal = Date.now();
     const t0 = Date.now();
     const todayKey = new Date().toISOString().slice(0, 10);
-    // Bump cache key version to ensure new fields like watchUrl are present
-    const cacheKey = `picks:v2:${profileId}:${todayKey}`;
+    // Bump cache key version to ensure new fields (watchUrl, ratings*) are present
+    const cacheKey = `picks:v3:${profileId}:${todayKey}`;
     try {
       const cached = await app.redis?.get(cacheKey);
       if (cached) return JSON.parse(cached);
@@ -975,7 +977,9 @@ app.get(
         availabilityServices,
         ratingsImdb: typeof ratingsBy.IMDB === 'number' ? (ratingsBy.IMDB as number) : undefined,
         ratingsRottenTomatoes:
-          typeof ratingsBy.ROTTEN_TOMATOES === 'number' ? (ratingsBy.ROTTEN_TOMATOES as number) : undefined,
+          typeof ratingsBy.ROTTEN_TOMATOES === 'number'
+            ? (ratingsBy.ROTTEN_TOMATOES as number)
+            : undefined,
         ratingsMetacritic:
           typeof ratingsBy.METACRITIC === 'number' ? (ratingsBy.METACRITIC as number) : undefined,
         watchUrl,
