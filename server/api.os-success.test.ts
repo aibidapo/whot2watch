@@ -170,7 +170,10 @@ describe('API /search success path and cache', () => {
       return new Response(JSON.stringify(sampleOsResult), { status: 200 });
     });
     vi.stubGlobal('fetch', spy);
-    const res = await app.inject({ method: 'GET', url: '/search?size=1&minImdb=90&minRt=85&minMc=80' });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/search?size=1&minImdb=90&minRt=85&minMc=80',
+    });
     expect(res.statusCode).toBe(200);
     expect(spy).toHaveBeenCalled();
   });

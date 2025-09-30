@@ -937,7 +937,7 @@ app.get(
           w += 0.1;
         }
         if (w > 0) {
-          const normalized01 = (comp / w) / 100;
+          const normalized01 = comp / w / 100;
           const ratingsWeight = (coldStart ? 2 : 1) * (1 + ratingsBias);
           s += normalized01 * ratingsWeight;
         }

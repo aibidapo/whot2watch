@@ -370,7 +370,8 @@ export function HomePage() {
                         )}
                         {typeof it.ratingsRottenTomatoes === 'number' && (
                           <>
-                            {typeof it.ratingsImdb === 'number' ? ' • ' : ''}RT {it.ratingsRottenTomatoes}%
+                            {typeof it.ratingsImdb === 'number' ? ' • ' : ''}RT{' '}
+                            {it.ratingsRottenTomatoes}%
                           </>
                         )}
                         {typeof it.ratingsMetacritic === 'number' && (
