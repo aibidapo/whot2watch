@@ -163,19 +163,25 @@ app.addHook('onRequest', (req, reply, done) => {
 // Support versioned routes: rewrite /v1/* to existing handlers without breaking old paths
 app.addHook('onRequest', (req, _reply, done) => {
   try {
-    const rawUrl: string = String((req.raw as any)?.url || '');
-    // Do not rewrite admin endpoints which are explicitly mounted under /v1
-    if (rawUrl.startsWith('/v1/admin/')) {
-      return done();
-    }
-    if (rawUrl.startsWith('/v1/')) {
-      const rewritten = rawUrl.slice(3); // remove '/v1'
-      // Update both Fastify request and underlying Node request objects
+    const inUrl: string = String((req.raw as any)?.url || (req as any).url || '');
+    let pathWithQuery = inUrl;
+    if (!pathWithQuery.startsWith('/')) {
       try {
-        (req as any).url = rewritten;
-      } catch {}
+        const u = new URL(pathWithQuery);
+        pathWithQuery = (u.pathname || '/') + (u.search || '');
+      } catch {
+        // keep as-is
+      }
+    }
+    // Do not rewrite admin endpoints which are explicitly mounted under /v1
+    if (pathWithQuery.startsWith('/v1/admin/')) return done();
+    if (pathWithQuery.startsWith('/v1/')) {
+      const rewritten = pathWithQuery.slice(3); // remove '/v1'
       try {
         (req.raw as any).url = rewritten;
+      } catch {}
+      try {
+        (req as any).url = rewritten;
       } catch {}
     }
   } catch {}
@@ -240,33 +246,83 @@ app.post(
   '/v1/admin/refresh/tmdb/:tmdbId',
   { preHandler: adminPreHandler, config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
   async (request) => {
-    const tmdbId = String((request.params as any).tmdbId || '');
-    if (!tmdbId) return { error: 'invalid_input' };
-    const prismaLocal = prisma as PrismaClient;
-    const mediaType = 'movie';
-    const tmdbMod: any = await import('../services/catalog/tmdb');
-    const fetchExternalIdsFn =
-      (tmdbMod as any).fetchExternalIds || (tmdbMod as any).default?.fetchExternalIds;
-    const ext =
-      typeof fetchExternalIdsFn === 'function'
-        ? await fetchExternalIdsFn(mediaType, Number(tmdbId))
-        : undefined;
-    const imdbId: string | undefined = ext?.imdb_id || undefined;
-    const title = await prismaLocal.title.findFirst({ where: { tmdbId: Number(tmdbId) } });
-    if (!title) return { error: 'not_found' };
-    if (imdbId && !title.imdbId) {
-      await prismaLocal.title.update({ where: { id: title.id }, data: { imdbId } });
+    try {
+      const tmdbId = String((request.params as any).tmdbId || '');
+      if (!tmdbId) return { error: 'invalid_input' };
+      const prismaLocal = prisma as PrismaClient;
+      const mediaType = 'movie';
+      const tmdbMod: any = await import('../services/catalog/tmdb');
+      const fetchExternalIdsFn =
+        (tmdbMod as any).fetchExternalIds || (tmdbMod as any).default?.fetchExternalIds;
+      const ext =
+        typeof fetchExternalIdsFn === 'function'
+          ? await fetchExternalIdsFn(mediaType, Number(tmdbId))
+          : undefined;
+      const imdbId: string | undefined = ext?.imdb_id || undefined;
+      let tmdbIdBig: bigint | null = null;
+      try {
+        tmdbIdBig = BigInt(tmdbId);
+      } catch {
+        tmdbIdBig = null;
+      }
+      const title = await prismaLocal.title.findFirst({
+        where: tmdbIdBig !== null ? { tmdbId: tmdbIdBig } : { tmdbId: Number(tmdbId) as any },
+      });
+      if (!title) return { error: 'not_found' };
+      if (imdbId && !title.imdbId) {
+        await prismaLocal.title.update({ where: { id: title.id }, data: { imdbId } });
+      }
+      // fetch OMDb if we now have an imdbId
+      let ratingsUpserts = 0;
+      if (imdbId) {
+        const omdbMod: any = await import('../services/catalog/omdb');
+        const fetchOmdbByImdbFn =
+          (omdbMod as any).fetchOmdbByImdb || (omdbMod as any).default?.fetchOmdbByImdb;
+        const mapOmdbRatingsFn =
+          (omdbMod as any).mapOmdbRatings || (omdbMod as any).default?.mapOmdbRatings;
+        const omdb = typeof fetchOmdbByImdbFn === 'function' ? await fetchOmdbByImdbFn(imdbId) : {};
+        const ratings = typeof mapOmdbRatingsFn === 'function' ? mapOmdbRatingsFn(omdb) : [];
+        for (const r of ratings) {
+          await prismaLocal.externalRating.upsert({
+            where: { titleId_source: { titleId: title.id, source: r.source } },
+            update: { valueText: r.valueText, valueNum: r.valueNum, updatedAt: new Date() },
+            create: {
+              titleId: title.id,
+              source: r.source,
+              valueText: r.valueText,
+              valueNum: r.valueNum ?? null,
+            },
+          });
+          ratingsUpserts++;
+        }
+      }
+      const doc = await toIndexDocById(title.id);
+      const ok = await indexOne(doc);
+      return { ok, imdbId: imdbId || title.imdbId || null, ratingsUpserts };
+    } catch (err) {
+      return { ok: false, error: String(err) } as any;
     }
-    // fetch OMDb if we now have an imdbId
-    let ratingsUpserts = 0;
-    if (imdbId) {
-      const omdbMod: any = await import('../services/catalog/omdb');
-      const fetchOmdbByImdbFn =
-        (omdbMod as any).fetchOmdbByImdb || (omdbMod as any).default?.fetchOmdbByImdb;
-      const mapOmdbRatingsFn =
-        (omdbMod as any).mapOmdbRatings || (omdbMod as any).default?.mapOmdbRatings;
-      const omdb = typeof fetchOmdbByImdbFn === 'function' ? await fetchOmdbByImdbFn(imdbId) : {};
-      const ratings = typeof mapOmdbRatingsFn === 'function' ? mapOmdbRatingsFn(omdb) : [];
+  },
+);
+
+app.post(
+  '/v1/admin/refresh/imdb/:imdbId',
+  { preHandler: adminPreHandler, config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+  async (request) => {
+    try {
+      const imdbId = String((request.params as any).imdbId || '');
+      if (!imdbId) return { error: 'invalid_input' };
+      const prismaLocal = prisma as PrismaClient;
+      const title = await prismaLocal.title.findFirst({ where: { imdbId } });
+      if (!title) return { error: 'not_found' };
+      const omdbMod2: any = await import('../services/catalog/omdb');
+      const fetchOmdbByImdbFn2 =
+        (omdbMod2 as any).fetchOmdbByImdb || (omdbMod2 as any).default?.fetchOmdbByImdb;
+      const mapOmdbRatingsFn2 =
+        (omdbMod2 as any).mapOmdbRatings || (omdbMod2 as any).default?.mapOmdbRatings;
+      const omdb = typeof fetchOmdbByImdbFn2 === 'function' ? await fetchOmdbByImdbFn2(imdbId) : {};
+      const ratings = typeof mapOmdbRatingsFn2 === 'function' ? mapOmdbRatingsFn2(omdb) : [];
+      let ratingsUpserts = 0;
       for (const r of ratings) {
         await prismaLocal.externalRating.upsert({
           where: { titleId_source: { titleId: title.id, source: r.source } },
@@ -280,48 +336,59 @@ app.post(
         });
         ratingsUpserts++;
       }
+      const doc = await toIndexDocById(title.id);
+      const ok = await indexOne(doc);
+      return { ok, ratingsUpserts };
+    } catch (err) {
+      return { ok: false, error: String(err) } as any;
     }
-    const doc = await toIndexDocById(title.id);
-    const ok = await indexOne(doc);
-    return { ok, imdbId: imdbId || title.imdbId || null, ratingsUpserts };
   },
 );
 
-app.post(
-  '/v1/admin/refresh/imdb/:imdbId',
-  { preHandler: adminPreHandler, config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
-  async (request) => {
-    const imdbId = String((request.params as any).imdbId || '');
-    if (!imdbId) return { error: 'invalid_input' };
-    const prismaLocal = prisma as PrismaClient;
-    const title = await prismaLocal.title.findFirst({ where: { imdbId } });
-    if (!title) return { error: 'not_found' };
-    const omdbMod2: any = await import('../services/catalog/omdb');
-    const fetchOmdbByImdbFn2 =
-      (omdbMod2 as any).fetchOmdbByImdb || (omdbMod2 as any).default?.fetchOmdbByImdb;
-    const mapOmdbRatingsFn2 =
-      (omdbMod2 as any).mapOmdbRatings || (omdbMod2 as any).default?.mapOmdbRatings;
-    const omdb = typeof fetchOmdbByImdbFn2 === 'function' ? await fetchOmdbByImdbFn2(imdbId) : {};
-    const ratings = typeof mapOmdbRatingsFn2 === 'function' ? mapOmdbRatingsFn2(omdb) : [];
-    let ratingsUpserts = 0;
-    for (const r of ratings) {
-      await prismaLocal.externalRating.upsert({
-        where: { titleId_source: { titleId: title.id, source: r.source } },
-        update: { valueText: r.valueText, valueNum: r.valueNum, updatedAt: new Date() },
-        create: {
-          titleId: title.id,
-          source: r.source,
-          valueText: r.valueText,
-          valueNum: r.valueNum ?? null,
-        },
-      });
-      ratingsUpserts++;
+// --- v1 aliases / proxy (test/dev convenience) ---
+app.get('/v1/search', async (request, reply) => {
+  try {
+    const u = String((request.raw as any).url || '').replace(/^\/v1/, '');
+    const injected = await app.inject({ method: 'GET', url: u });
+    reply.code(injected.statusCode);
+    const ct = String(injected.headers['content-type'] || 'application/json');
+    reply.header('content-type', ct);
+    try {
+      return reply.send(injected.json());
+    } catch {
+      return reply.send(injected.body);
     }
-    const doc = await toIndexDocById(title.id);
-    const ok = await indexOne(doc);
-    return { ok, ratingsUpserts };
+  } catch {
+    reply.code(404).send({ error: 'not_found' });
+  }
+});
+
+app.route({
+  method: ['GET', 'POST', 'DELETE'] as any,
+  url: '/v1/*',
+  handler: async (request, reply) => {
+    try {
+      const original = String((request.raw as any).url || '/');
+      if (original.startsWith('/v1/admin/')) return reply.code(404).send({ error: 'not_found' });
+      const rebased = original.replace(/^\/v1\//, '/');
+      const injected = await app.inject({
+        method: request.method as any,
+        url: rebased,
+        payload: (request.body as any) ?? undefined,
+      });
+      reply.code(injected.statusCode);
+      const ct = String(injected.headers['content-type'] || 'application/json');
+      reply.header('content-type', ct);
+      try {
+        return reply.send(injected.json());
+      } catch {
+        return reply.send(injected.body);
+      }
+    } catch {
+      reply.code(404).send({ error: 'not_found' });
+    }
   },
-);
+});
 
 // Fallback proxy: route non-admin /v1/* to unversioned equivalents
 // (no explicit v1 proxy; the onRequest rewrite above handles /v1/*)

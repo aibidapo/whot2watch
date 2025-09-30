@@ -5,6 +5,49 @@ info:
 servers:
   - url: https://api.whot2watch.example.com/v1
 paths:
+  /admin/refresh/tmdb/{tmdbId}:
+    post:
+      summary: Admin refresh by TMDB ID (enrich imdbId and ratings; reindex)
+      parameters:
+        - in: path
+          name: tmdbId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  imdbId: { type: string, nullable: true }
+                  ratingsUpserts: { type: integer }
+        '401': { description: unauthorized }
+        '403': { description: forbidden }
+        '404': { description: not found }
+  /admin/refresh/imdb/{imdbId}:
+    post:
+      summary: Admin refresh by IMDB ID (ratings upsert; reindex)
+      parameters:
+        - in: path
+          name: imdbId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  ratingsUpserts: { type: integer }
+        '401': { description: unauthorized }
+        '403': { description: forbidden }
+        '404': { description: not found }
   /picks:
     get:
       summary: Get daily picks for a profile
