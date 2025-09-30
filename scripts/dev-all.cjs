@@ -45,13 +45,20 @@ sh('pnpm prisma:generate');
 sh('pnpm prisma:migrate:dev', { CI: '' });
 sh('pnpm db:seed');
 
-// 3) Ingest + Index
+// 3) Ingest + Index + Ratings enrichment
 if (!SKIP_INGEST) {
-  log(USE_SAMPLE ? 'Indexing sample docs into OpenSearch' : 'Running ingest + index pipeline');
   if (USE_SAMPLE) {
+    log('Indexing sample docs into OpenSearch');
     sh('pnpm index:sample');
   } else {
-    sh('pnpm pipeline:ingest-index');
+    log('Running TMDB ingest');
+    sh('pnpm ingest:tmdb');
+    log('Backfilling missing imdbId via TMDB external_ids');
+    sh('node -r ./scripts/load-env.cjs services/catalog/backfillImdbIds.js');
+    log('Ingesting OMDb ratings');
+    sh('node -r ./scripts/load-env.cjs services/catalog/ingestOmdbRatings.js');
+    log('Indexing from DB to OpenSearch');
+    sh('pnpm index:fromdb');
   }
 }
 
@@ -64,6 +71,8 @@ const web = spawn('pnpm', ['web:dev'], {
   env: {
     ...process.env,
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000',
+    // Ensure Next dev runs on 3000 even if PORT=4000 is set globally for API
+    PORT: process.env.WEB_PORT || '3000',
   },
 });
 

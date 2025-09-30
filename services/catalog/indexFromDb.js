@@ -6,7 +6,21 @@ const INDEX = process.env.TITLES_INDEX || 'titles';
 
 const { titlesMapping: mapping } = require('./mappings');
 
+async function waitForOpenSearch(timeoutMs = 60000) {
+  const t0 = Date.now();
+  // poll the root endpoint until it responds
+  while (Date.now() - t0 < timeoutMs) {
+    try {
+      const res = await fetch(`${OPENSEARCH_URL}`);
+      if (res.ok) return;
+    } catch {}
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  throw new Error('OpenSearch not ready after wait');
+}
+
 async function ensureIndex() {
+  await waitForOpenSearch().catch(() => {});
   const head = await fetch(`${OPENSEARCH_URL}/${encodeURIComponent(INDEX)}`, { method: 'HEAD' });
   if (head.status === 200) return;
   const res = await fetch(`${OPENSEARCH_URL}/${encodeURIComponent(INDEX)}`, {
@@ -65,16 +79,27 @@ async function main() {
   await ensureIndex();
   const prisma = new PrismaClient();
   try {
-    const titles = await prisma.title.findMany({
-      take: 50,
-      orderBy: { createdAt: 'desc' },
-      include: { availability: true, externalRatings: true },
-    });
-    for (const t of titles) {
-      const doc = toIndexedDoc(t);
-      await indexDoc(doc);
+    const batchSize = Number(process.env.INDEX_BATCH || 500);
+    let lastId = '';
+    let total = 0;
+    for (;;) {
+      const where = lastId ? { id: { gt: lastId } } : {};
+      const titles = await prisma.title.findMany({
+        where,
+        take: batchSize,
+        orderBy: { id: 'asc' },
+        include: { availability: true, externalRatings: true },
+      });
+      if (!titles.length) break;
+      for (const t of titles) {
+        const doc = toIndexedDoc(t);
+        await indexDoc(doc);
+      }
+      total += titles.length;
+      lastId = titles[titles.length - 1].id;
+      console.log(`Indexed ${total} so far...`);
     }
-    console.log(`Indexed ${titles.length} titles from DB into ${INDEX}`);
+    console.log(`Indexed ${total} titles from DB into ${INDEX}`);
   } finally {
     await prisma.$disconnect();
   }

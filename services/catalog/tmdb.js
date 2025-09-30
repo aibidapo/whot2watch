@@ -68,4 +68,10 @@ async function fetchTrending(mediaType = 'movie', pages = 1) {
   return items;
 }
 
-module.exports = { fetchTrending };
+// Fetch external IDs (e.g., IMDB) for a TMDB title
+async function fetchExternalIds(mediaType = 'movie', id) {
+  const path = `/${mediaType === 'tv' ? 'tv' : 'movie'}/${id}/external_ids`;
+  return tmdbGet(path);
+}
+
+module.exports = { fetchTrending, fetchExternalIds };

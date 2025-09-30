@@ -23,6 +23,41 @@ type SearchItem = {
   ratingsMetacritic?: number;
 };
 
+function buildSearchQuery(params: {
+  q: string;
+  service: string;
+  region: string;
+  size: number;
+  from: number;
+  hasRatings: boolean;
+  minRating: number | '';
+  minImdb: number | '';
+  minRt: number | '';
+  minMc: number | '';
+}): string {
+  const out = new URLSearchParams();
+  const add = (key: string, val: string | number | undefined) => {
+    if (val === undefined || val === '') return;
+    out.set(key, String(val));
+  };
+  add('size', params.size);
+  add('from', params.from);
+  if (params.q) add('q', params.q);
+  if (params.service) out.append('service', params.service);
+  if (params.region) out.append('region', params.region);
+  if (params.hasRatings) add('hasRatings', 'true');
+  const addNum = (key: string, value: number | '') => {
+    if (value === '') return;
+    const n = Number(value);
+    if (Number.isFinite(n)) add(key, Math.min(Math.max(n, 0), 100));
+  };
+  addNum('minRating', params.minRating);
+  addNum('minImdb', params.minImdb);
+  addNum('minRt', params.minRt);
+  addNum('minMc', params.minMc);
+  return out.toString();
+}
+
 export function HomePage() {
   const searchParams = useSearchParams();
   const [q, setQ] = useState('');
@@ -33,23 +68,34 @@ export function HomePage() {
   const size = 20;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasRatings, setHasRatings] = useState(false);
+  const [minRating, setMinRating] = useState<number | ''>('');
+  const [minImdb, setMinImdb] = useState<number | ''>('');
+  const [minRt, setMinRt] = useState<number | ''>('');
+  const [minMc, setMinMc] = useState<number | ''>('');
 
   const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', []);
 
   async function runSearch() {
     setLoading(true);
     setError(null);
-    const params = new URLSearchParams();
-    if (q) params.set('q', q);
-    if (service) params.append('service', service);
-    if (region) params.append('region', region);
-    params.set('size', String(size));
-    params.set('from', String(from));
+    const query = buildSearchQuery({
+      q,
+      service,
+      region,
+      size,
+      from,
+      hasRatings,
+      minRating,
+      minImdb,
+      minRt,
+      minMc,
+    });
     try {
-      const res = await fetch(`${apiBase}/search?${params.toString()}`);
+      const res = await fetch(`${apiBase}/search?${query}`);
       const json = await res.json();
       const page = Array.isArray(json.items) ? json.items : [];
-      setItems(from === 0 ? page : [...items, ...page]);
+      setItems((prev) => (from === 0 ? page : [...prev, ...page]));
     } catch (error_: unknown) {
       const message =
         typeof error_ === 'object' && error_ && 'message' in error_
@@ -73,7 +119,7 @@ export function HomePage() {
   useEffect(() => {
     runSearch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, service, region, from]);
+  }, [q, service, region, from, hasRatings, minRating, minImdb, minRt, minMc]);
 
   // Preload trending (no query) separately for hero section
   const [trending, setTrending] = useState<SearchItem[]>([]);
@@ -156,6 +202,132 @@ export function HomePage() {
               <option>GB</option>
             </Select>
           </div>
+          <div className="flex items-center gap-2 mt-2 md:mt-0">
+            <input
+              id="hasRatings"
+              type="checkbox"
+              checked={hasRatings}
+              onChange={(e) => {
+                setHasRatings(e.target.checked);
+                setFrom(0);
+              }}
+            />
+            <label htmlFor="hasRatings" className="text-sm text-slate-500">
+              Has ratings
+            </label>
+          </div>
+          <div className="flex items-center gap-2 mt-2 md:mt-0">
+            <label htmlFor="minRating" className="text-sm text-slate-500">
+              Min rating
+            </label>
+            <Input
+              id="minRating"
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={minRating}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === '') {
+                  setMinRating('');
+                  setFrom(0);
+                  return;
+                }
+                const n = Number(v);
+                if (Number.isFinite(n)) {
+                  const clamped = Math.min(Math.max(n, 0), 100);
+                  setMinRating(clamped);
+                  setFrom(0);
+                }
+              }}
+              className="w-24"
+            />
+          </div>
+          <div className="flex items-center gap-2 mt-2 md:mt-0">
+            <label htmlFor="minImdb" className="text-sm text-slate-500">
+              Min IMDB
+            </label>
+            <Input
+              id="minImdb"
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={minImdb}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === '') {
+                  setMinImdb('');
+                  setFrom(0);
+                  return;
+                }
+                const n = Number(v);
+                if (Number.isFinite(n)) {
+                  const clamped = Math.min(Math.max(n, 0), 100);
+                  setMinImdb(clamped);
+                  setFrom(0);
+                }
+              }}
+              className="w-24"
+            />
+          </div>
+          <div className="flex items-center gap-2 mt-2 md:mt-0">
+            <label htmlFor="minRt" className="text-sm text-slate-500">
+              Min RT
+            </label>
+            <Input
+              id="minRt"
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={minRt}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === '') {
+                  setMinRt('');
+                  setFrom(0);
+                  return;
+                }
+                const n = Number(v);
+                if (Number.isFinite(n)) {
+                  const clamped = Math.min(Math.max(n, 0), 100);
+                  setMinRt(clamped);
+                  setFrom(0);
+                }
+              }}
+              className="w-24"
+            />
+          </div>
+          <div className="flex items-center gap-2 mt-2 md:mt-0">
+            <label htmlFor="minMc" className="text-sm text-slate-500">
+              Min MC
+            </label>
+            <Input
+              id="minMc"
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={minMc}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === '') {
+                  setMinMc('');
+                  setFrom(0);
+                  return;
+                }
+                const n = Number(v);
+                if (Number.isFinite(n)) {
+                  const clamped = Math.min(Math.max(n, 0), 100);
+                  setMinMc(clamped);
+                  setFrom(0);
+                }
+              }}
+              className="w-24"
+            />
+          </div>
         </div>
         <div className="mt-3 flex gap-3">
           <Button
@@ -193,11 +365,12 @@ export function HomePage() {
                       typeof it.ratingsRottenTomatoes === 'number' ||
                       typeof it.ratingsMetacritic === 'number') && (
                       <span className="ml-2 text-slate-500">
-                        {typeof it.ratingsImdb === 'number' && <>IMDB {it.ratingsImdb}</>}
+                        {typeof it.ratingsImdb === 'number' && (
+                          <>IMDB {(it.ratingsImdb / 10).toFixed(1)}</>
+                        )}
                         {typeof it.ratingsRottenTomatoes === 'number' && (
                           <>
-                            {typeof it.ratingsImdb === 'number' ? ' • ' : ''}RT{' '}
-                            {it.ratingsRottenTomatoes}
+                            {typeof it.ratingsImdb === 'number' ? ' • ' : ''}RT {it.ratingsRottenTomatoes}%
                           </>
                         )}
                         {typeof it.ratingsMetacritic === 'number' && (

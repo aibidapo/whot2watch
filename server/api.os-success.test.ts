@@ -112,6 +112,69 @@ describe('API /search success path and cache', () => {
     expect(spy).toHaveBeenCalled();
   });
 
+  it('adds hasRatings boolean filter with OR exists on rating fields', async () => {
+    const spy = vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init!.body));
+      const filters = body.query?.bool?.filter || [];
+      const has = filters.find((f: any) => f.bool?.should);
+      expect(Array.isArray(has.bool.should)).toBe(true);
+      const fields = has.bool.should.map((x: any) => Object.keys(x.exists)[0] || x.exists.field);
+      expect(fields).toBeTruthy();
+      // presence of rating exists checks
+      const shoulds = has.bool.should.map((x: any) => x.exists.field);
+      expect(shoulds).toContain('ratingsImdb');
+      expect(shoulds).toContain('ratingsRottenTomatoes');
+      expect(shoulds).toContain('ratingsMetacritic');
+      return new Response(JSON.stringify(sampleOsResult), { status: 200 });
+    });
+    vi.stubGlobal('fetch', spy);
+    const res = await app.inject({ method: 'GET', url: '/search?size=1&hasRatings=true' });
+    expect(res.statusCode).toBe(200);
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it('adds minRating range filter across rating fields (OR)', async () => {
+    const spy = vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init!.body));
+      const filters = body.query?.bool?.filter || [];
+      const boolOr = filters.find((f: any) => f.bool?.should);
+      expect(boolOr).toBeTruthy();
+      const shoulds = boolOr.bool.should;
+      // should be range filters with gte: 80
+      const r1 = shoulds.find((x: any) => x.range?.ratingsImdb);
+      const r2 = shoulds.find((x: any) => x.range?.ratingsRottenTomatoes);
+      const r3 = shoulds.find((x: any) => x.range?.ratingsMetacritic);
+      expect(r1.range.ratingsImdb.gte).toBe(80);
+      expect(r2.range.ratingsRottenTomatoes.gte).toBe(80);
+      expect(r3.range.ratingsMetacritic.gte).toBe(80);
+      return new Response(JSON.stringify(sampleOsResult), { status: 200 });
+    });
+    vi.stubGlobal('fetch', spy);
+    const res = await app.inject({ method: 'GET', url: '/search?size=1&minRating=80' });
+    expect(res.statusCode).toBe(200);
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it('adds per-source min filters (minImdb/minRt/minMc)', async () => {
+    const spy = vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init!.body));
+      const filters = body.query?.bool?.filter || [];
+      const boolOr = filters.find((f: any) => f.bool?.should);
+      const shoulds = boolOr.bool.should;
+      const imdb = shoulds.find((x: any) => x.range?.ratingsImdb);
+      const rt = shoulds.find((x: any) => x.range?.ratingsRottenTomatoes);
+      const mc = shoulds.find((x: any) => x.range?.ratingsMetacritic);
+      expect(imdb.range.ratingsImdb.gte).toBe(90);
+      expect(rt.range.ratingsRottenTomatoes.gte).toBe(85);
+      expect(mc.range.ratingsMetacritic.gte).toBe(80);
+      return new Response(JSON.stringify(sampleOsResult), { status: 200 });
+    });
+    vi.stubGlobal('fetch', spy);
+    const res = await app.inject({ method: 'GET', url: '/search?size=1&minImdb=90&minRt=85&minMc=80' });
+    expect(res.statusCode).toBe(200);
+    expect(spy).toHaveBeenCalled();
+  });
+
   it('adds yearMin only range filter', async () => {
     const spy = vi.fn(async (_url: string, init?: RequestInit) => {
       const body = JSON.parse(String(init!.body));

@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 const { PrismaClient } = require('@prisma/client');
-const { fetchTrending } = require('./tmdb');
+const { fetchTrending, fetchExternalIds } = require('./tmdb');
 
 async function main() {
   const prisma = new PrismaClient();
@@ -14,12 +14,18 @@ async function main() {
         .findFirst({ where: { tmdbId: BigInt(it.tmdbId) } })
         .catch(() => null);
       if (exists) continue;
+      let imdbId = null;
+      try {
+        const ids = await fetchExternalIds(it.type === 'SHOW' ? 'tv' : 'movie', it.tmdbId);
+        imdbId = ids?.imdb_id || null;
+      } catch {}
       await prisma.title.create({
         data: {
           tmdbId: BigInt(it.tmdbId),
           type: it.type,
           name: it.name,
           releaseYear: it.releaseYear || null,
+          imdbId: imdbId || null,
         },
       });
       created++;

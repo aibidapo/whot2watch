@@ -251,6 +251,11 @@ app.get(
           yearMax: { type: 'integer' },
           runtimeMin: { type: 'integer' },
           runtimeMax: { type: 'integer' },
+          hasRatings: { type: 'boolean' },
+          minRating: { type: 'integer' },
+          minImdb: { type: 'integer' },
+          minRt: { type: 'integer' },
+          minMc: { type: 'integer' },
         },
       },
       response: {
@@ -284,6 +289,33 @@ app.get(
       parsed.query.runtimeMin !== undefined ? Number(parsed.query.runtimeMin) : undefined;
     const runtimeMax =
       parsed.query.runtimeMax !== undefined ? Number(parsed.query.runtimeMax) : undefined;
+    const hasRatings: boolean = (() => {
+      const v = (parsed.query as any).hasRatings;
+      if (v === undefined) return false;
+      if (typeof v === 'boolean') return v;
+      const s = String(v).toLowerCase();
+      return s === 'true' || s === '1' || s === 'yes' || s === 'y';
+    })();
+    const minRatingRaw = (parsed.query as any).minRating;
+    const minRating =
+      minRatingRaw !== undefined && Number.isFinite(Number(minRatingRaw))
+        ? Math.min(Math.max(Number(minRatingRaw), 0), 100)
+        : undefined;
+    const minImdbRaw = (parsed.query as any).minImdb;
+    const minImdb =
+      minImdbRaw !== undefined && Number.isFinite(Number(minImdbRaw))
+        ? Math.min(Math.max(Number(minImdbRaw), 0), 100)
+        : undefined;
+    const minRtRaw = (parsed.query as any).minRt;
+    const minRt =
+      minRtRaw !== undefined && Number.isFinite(Number(minRtRaw))
+        ? Math.min(Math.max(Number(minRtRaw), 0), 100)
+        : undefined;
+    const minMcRaw = (parsed.query as any).minMc;
+    const minMc =
+      minMcRaw !== undefined && Number.isFinite(Number(minMcRaw))
+        ? Math.min(Math.max(Number(minMcRaw), 0), 100)
+        : undefined;
     /* c8 ignore start - Fastify schema rejects invalid numeric types before handler */
     if (
       [yearMin, yearMax, runtimeMin, runtimeMax].some(
@@ -303,6 +335,37 @@ app.get(
       filter.push({ range: { releaseYear: { gte: yearMin, lte: yearMax } } });
     if (runtimeMin !== undefined || runtimeMax !== undefined)
       filter.push({ range: { runtimeMin: { gte: runtimeMin, lte: runtimeMax } } });
+    if (
+      hasRatings ||
+      minRating !== undefined ||
+      minImdb !== undefined ||
+      minRt !== undefined ||
+      minMc !== undefined
+    ) {
+      const ratingShoulds: any[] = [];
+      const pushRatingCond = (
+        field: 'ratingsImdb' | 'ratingsRottenTomatoes' | 'ratingsMetacritic',
+        specificMin: number | undefined,
+        fallbackMin: number | undefined,
+        needsExists: boolean,
+      ) => {
+        if (specificMin !== undefined) {
+          ratingShoulds.push({ range: { [field]: { gte: specificMin } } });
+          return;
+        }
+        if (fallbackMin !== undefined) {
+          ratingShoulds.push({ range: { [field]: { gte: fallbackMin } } });
+          return;
+        }
+        if (needsExists) ratingShoulds.push({ exists: { field } });
+      };
+      pushRatingCond('ratingsImdb', minImdb, minRating, hasRatings);
+      pushRatingCond('ratingsRottenTomatoes', minRt, minRating, hasRatings);
+      pushRatingCond('ratingsMetacritic', minMc, minRating, hasRatings);
+      if (ratingShoulds.length) {
+        filter.push({ bool: { should: ratingShoulds, minimum_should_match: 1 } });
+      }
+    }
     /* c8 ignore stop */
     const query = {
       track_total_hits: true,
@@ -319,7 +382,7 @@ app.get(
       sort: q ? undefined : [{ _score: { order: 'desc' } }, { releaseYear: { order: 'desc' } }],
     } as any;
     // try cache first
-    const cacheKey = `search:${JSON.stringify({ q, size, from, services, regions, types, yearMin, yearMax, runtimeMin, runtimeMax })}`;
+    const cacheKey = `search:${JSON.stringify({ q, size, from, services, regions, types, yearMin, yearMax, runtimeMin, runtimeMax, hasRatings, minRating, minImdb, minRt, minMc })}`;
     try {
       const cached = await app.redis?.get(cacheKey);
       if (cached) return JSON.parse(cached);
@@ -697,6 +760,7 @@ app.post(
       await app.redis?.del(`picks:${profileId}:${todayKey}`);
       await app.redis?.del(`picks:v2:${profileId}:${todayKey}`);
       await app.redis?.del(`picks:v3:${profileId}:${todayKey}`);
+      await app.redis?.del(`picks:v4:${profileId}:${todayKey}`);
     } catch {}
     return { subscription: sub };
   },
@@ -733,6 +797,7 @@ app.delete(
       await app.redis?.del(`picks:${profileId}:${todayKey}`);
       await app.redis?.del(`picks:v2:${profileId}:${todayKey}`);
       await app.redis?.del(`picks:v3:${profileId}:${todayKey}`);
+      await app.redis?.del(`picks:v4:${profileId}:${todayKey}`);
     } catch {}
     return { ok: true };
   },
@@ -798,13 +863,22 @@ app.get(
     const reqId = (request as any).requestId || '';
     const startTotal = Date.now();
     const t0 = Date.now();
+    const parsedPicks = url.parse(request.raw.url || '', true);
+    const ratingsBiasRaw = (parsedPicks.query as any).ratingsBias;
+    const ratingsBias =
+      ratingsBiasRaw !== undefined && Number.isFinite(Number(ratingsBiasRaw))
+        ? Math.min(Math.max(Number(ratingsBiasRaw), 0), 3)
+        : 0;
     const todayKey = new Date().toISOString().slice(0, 10);
-    // Bump cache key version to ensure new fields (watchUrl, ratings*) are present
-    const cacheKey = `picks:v3:${profileId}:${todayKey}`;
-    try {
-      const cached = await app.redis?.get(cacheKey);
-      if (cached) return JSON.parse(cached);
-    } catch {}
+    // Bump cache key version due to ranking changes
+    const cacheKey = `picks:v4:${profileId}:${todayKey}`;
+    const useCache = ratingsBias === 0;
+    if (useCache) {
+      try {
+        const cached = await app.redis?.get(cacheKey);
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
 
     const subs = await prisma.subscription.findMany({ where: { profileId, active: true } });
     const services = subs.map((s) => s.service);
@@ -845,11 +919,43 @@ app.get(
       // ratings (normalized ~0..1)
       if (typeof t.voteAverage === 'number')
         s += (Math.min(Math.max(t.voteAverage, 0), 10) / 10) * (coldStart ? 1.5 : 1);
+      // external ratings composite boost (IMDB/RT/MC stored 0..100)
+      try {
+        const r = ratingsByTitle[t.id] || {};
+        let comp = 0;
+        let w = 0;
+        if (typeof (r as any).IMDB === 'number') {
+          comp += ((r as any).IMDB as number) * 0.6;
+          w += 0.6;
+        }
+        if (typeof (r as any).ROTTEN_TOMATOES === 'number') {
+          comp += ((r as any).ROTTEN_TOMATOES as number) * 0.3;
+          w += 0.3;
+        }
+        if (typeof (r as any).METACRITIC === 'number') {
+          comp += ((r as any).METACRITIC as number) * 0.1;
+          w += 0.1;
+        }
+        if (w > 0) {
+          const normalized01 = (comp / w) / 100;
+          const ratingsWeight = (coldStart ? 2 : 1) * (1 + ratingsBias);
+          s += normalized01 * ratingsWeight;
+        }
+      } catch {}
       // popularity soft boost
       if (typeof t.popularity === 'number')
         s += (Math.min(Math.max(t.popularity, 0), 1000) / 10000) * (coldStart ? 2 : 1); // slightly higher in cold-start
       // light recency bias
       if (t.releaseYear) s += Math.max(0, t.releaseYear - 2000) / 200;
+      // freshness boost for newly ingested titles
+      try {
+        const createdAtTs = t.createdAt ? new Date(t.createdAt as any).getTime() : 0;
+        if (createdAtTs) {
+          const ageHours = Math.max(0, (Date.now() - createdAtTs) / 3600000);
+          if (ageHours <= 24) s += 0.5;
+          else if (ageHours <= 72) s += 0.2;
+        }
+      } catch {}
       // presence of imagery
       if (t.posterUrl || t.backdropUrl) s += 0.2;
       return s;
@@ -865,6 +971,17 @@ app.get(
         bits.push(`on ${svc}`);
       }
       if (typeof t.voteAverage === 'number' && t.voteAverage >= 8.5) bits.push('highly rated');
+      // external ratings summary
+      try {
+        const r = ratingsByTitle[t.id] || {};
+        const best = Math.max(
+          Number((r as any).IMDB || 0),
+          Number((r as any).ROTTEN_TOMATOES || 0),
+          Number((r as any).METACRITIC || 0),
+        );
+        if (best >= 85) bits.push('critically rated');
+        else if (best >= 75) bits.push('well reviewed');
+      } catch {}
       /* c8 ignore next 3 */
       if (typeof t.popularity === 'number' && t.popularity >= 300) bits.push('popular now');
       if (t.releaseYear && t.releaseYear >= new Date().getFullYear() - 1) bits.push('new');
@@ -887,8 +1004,10 @@ app.get(
     const limit = 6;
     const maxPerBucket = 3;
     function bucketOf(t: any): string {
-      const svc = (t.availability || []).map((a: any) => a.service).find(Boolean);
-      return svc || 'unknown';
+      const seriesKey = String((t.name || '').toLowerCase())
+        .replace(/\s+(part|season|volume|vol\.?|chapter)\s*\d+.*/i, '')
+        .trim();
+      return seriesKey || 'unknown';
     }
     /* c8 ignore start */
     function diversityPick(list: any[], n: number): any[] {
@@ -993,9 +1112,11 @@ app.get(
     const rankMs = Date.now() - tRankStart;
 
     const response = { items: filtered };
-    try {
-      await app.redis?.setEx(cacheKey, 60 * 60 * 12, JSON.stringify(response));
-    } catch {}
+    if (useCache) {
+      try {
+        await app.redis?.setEx(cacheKey, 60 * 60 * 12, JSON.stringify(response));
+      } catch {}
+    }
 
     // analytics: picks_served (server-side)
     try {
@@ -1035,12 +1156,13 @@ app.get(
         requestId: reqId,
         region,
         servicesFilter: services,
-        rankerVersion: 'picks@1.0.0',
+        rankerVersion: 'picks@1.2.0',
         candidateSource: 'db_recent+availability',
         items,
         latency: { candidateGenMs, rankMs, totalMs },
         exp,
         broadened,
+        ratingsBias,
       } as any;
       const safeEvt = isPrivateEvt
         ? {
@@ -1055,6 +1177,7 @@ app.get(
             latency: evt.latency,
             exp: evt.exp,
             broadened: evt.broadened,
+            ratingsBias: evt.ratingsBias,
           }
         : evt;
       // forward via webhook if configured

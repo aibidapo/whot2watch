@@ -30,13 +30,18 @@ export default function PicksPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', []);
+  const [ratingsBias, setRatingsBias] = useState<number>(0);
 
   async function loadPicks() {
     if (!profileId) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBase}/picks/${profileId}`);
+      const url = new URL(`${apiBase}/picks/${profileId}`);
+      if (Number.isFinite(ratingsBias) && ratingsBias > 0) {
+        url.searchParams.set('ratingsBias', String(ratingsBias));
+      }
+      const res = await fetch(url.toString());
       const json = await res.json();
       setItems(Array.isArray(json.items) ? json.items : []);
     } catch (error_: unknown) {
@@ -85,6 +90,25 @@ export default function PicksPage() {
             Use my profile
           </Button>
         </div>
+        <div className="flex items-center gap-3">
+          <label htmlFor="ratingsBias" className="text-sm text-slate-500">
+            Ratings bias
+          </label>
+          <input
+            id="ratingsBias"
+            type="range"
+            min={0}
+            max={3}
+            step={0.5}
+            value={ratingsBias}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              if (Number.isFinite(n)) setRatingsBias(Math.min(Math.max(n, 0), 3));
+            }}
+            className="w-48"
+          />
+          <span className="text-sm text-slate-500">{ratingsBias.toFixed(1)}</span>
+        </div>
       </Card>
 
       {loading && <div className="text-slate-500">Loading…</div>}
@@ -109,11 +133,12 @@ export default function PicksPage() {
                     typeof it.ratingsRottenTomatoes === 'number' ||
                     typeof it.ratingsMetacritic === 'number') && (
                     <span className="ml-2 text-slate-500">
-                      {typeof it.ratingsImdb === 'number' && <>IMDB {it.ratingsImdb}</>}
+                      {typeof it.ratingsImdb === 'number' && (
+                        <>IMDB {(it.ratingsImdb / 10).toFixed(1)}</>
+                      )}
                       {typeof it.ratingsRottenTomatoes === 'number' && (
                         <>
-                          {typeof it.ratingsImdb === 'number' ? ' • ' : ''}RT{' '}
-                          {it.ratingsRottenTomatoes}
+                          {typeof it.ratingsImdb === 'number' ? ' • ' : ''}RT {it.ratingsRottenTomatoes}%
                         </>
                       )}
                       {typeof it.ratingsMetacritic === 'number' && (
