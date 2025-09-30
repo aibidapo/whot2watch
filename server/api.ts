@@ -163,8 +163,21 @@ app.addHook('onRequest', (req, reply, done) => {
 // Support versioned routes: rewrite /v1/* to existing handlers without breaking old paths
 app.addHook('onRequest', (req, _reply, done) => {
   try {
-    const u = String((req.raw as any)?.url || '');
-    if (u.startsWith('/v1/')) (req.raw as any).url = u.slice(3);
+    const rawUrl: string = String((req.raw as any)?.url || '');
+    // Do not rewrite admin endpoints which are explicitly mounted under /v1
+    if (rawUrl.startsWith('/v1/admin/')) {
+      return done();
+    }
+    if (rawUrl.startsWith('/v1/')) {
+      const rewritten = rawUrl.slice(3); // remove '/v1'
+      // Update both Fastify request and underlying Node request objects
+      try {
+        (req as any).url = rewritten;
+      } catch {}
+      try {
+        (req.raw as any).url = rewritten;
+      } catch {}
+    }
   } catch {}
   done();
 });
@@ -231,8 +244,13 @@ app.post(
     if (!tmdbId) return { error: 'invalid_input' };
     const prismaLocal = prisma as PrismaClient;
     const mediaType = 'movie';
-    const { fetchExternalIds } = await import('../services/catalog/tmdb');
-    const ext = await fetchExternalIds(mediaType, Number(tmdbId));
+    const tmdbMod: any = await import('../services/catalog/tmdb');
+    const fetchExternalIdsFn =
+      (tmdbMod as any).fetchExternalIds || (tmdbMod as any).default?.fetchExternalIds;
+    const ext =
+      typeof fetchExternalIdsFn === 'function'
+        ? await fetchExternalIdsFn(mediaType, Number(tmdbId))
+        : undefined;
     const imdbId: string | undefined = ext?.imdb_id || undefined;
     const title = await prismaLocal.title.findFirst({ where: { tmdbId: Number(tmdbId) } });
     if (!title) return { error: 'not_found' };
@@ -242,9 +260,13 @@ app.post(
     // fetch OMDb if we now have an imdbId
     let ratingsUpserts = 0;
     if (imdbId) {
-      const { fetchOmdbByImdb, mapOmdbRatings } = await import('../services/catalog/omdb');
-      const omdb = await fetchOmdbByImdb(imdbId);
-      const ratings = mapOmdbRatings(omdb);
+      const omdbMod: any = await import('../services/catalog/omdb');
+      const fetchOmdbByImdbFn =
+        (omdbMod as any).fetchOmdbByImdb || (omdbMod as any).default?.fetchOmdbByImdb;
+      const mapOmdbRatingsFn =
+        (omdbMod as any).mapOmdbRatings || (omdbMod as any).default?.mapOmdbRatings;
+      const omdb = typeof fetchOmdbByImdbFn === 'function' ? await fetchOmdbByImdbFn(imdbId) : {};
+      const ratings = typeof mapOmdbRatingsFn === 'function' ? mapOmdbRatingsFn(omdb) : [];
       for (const r of ratings) {
         await prismaLocal.externalRating.upsert({
           where: { titleId_source: { titleId: title.id, source: r.source } },
@@ -274,9 +296,13 @@ app.post(
     const prismaLocal = prisma as PrismaClient;
     const title = await prismaLocal.title.findFirst({ where: { imdbId } });
     if (!title) return { error: 'not_found' };
-    const { fetchOmdbByImdb, mapOmdbRatings } = await import('../services/catalog/omdb');
-    const omdb = await fetchOmdbByImdb(imdbId);
-    const ratings = mapOmdbRatings(omdb);
+    const omdbMod2: any = await import('../services/catalog/omdb');
+    const fetchOmdbByImdbFn2 =
+      (omdbMod2 as any).fetchOmdbByImdb || (omdbMod2 as any).default?.fetchOmdbByImdb;
+    const mapOmdbRatingsFn2 =
+      (omdbMod2 as any).mapOmdbRatings || (omdbMod2 as any).default?.mapOmdbRatings;
+    const omdb = typeof fetchOmdbByImdbFn2 === 'function' ? await fetchOmdbByImdbFn2(imdbId) : {};
+    const ratings = typeof mapOmdbRatingsFn2 === 'function' ? mapOmdbRatingsFn2(omdb) : [];
     let ratingsUpserts = 0;
     for (const r of ratings) {
       await prismaLocal.externalRating.upsert({
@@ -296,6 +322,9 @@ app.post(
     return { ok, ratingsUpserts };
   },
 );
+
+// Fallback proxy: route non-admin /v1/* to unversioned equivalents
+// (no explicit v1 proxy; the onRequest rewrite above handles /v1/*)
 
 app.get(
   '/profiles',
@@ -1053,7 +1082,16 @@ app.get(
     const services = subs.map((s) => s.service);
     const coldStart = services.length === 0;
     const profile = await prisma.profile.findUnique({ where: { id: profileId } });
-    const region = profile?.locale?.split('-')[1] || 'US';
+    const locale: string | undefined = profile?.locale || undefined;
+    const region = (() => {
+      try {
+        if (!locale) return 'US';
+        const parts = String(locale).split('-');
+        return parts.length > 1 && parts[1] ? parts[1] : 'US';
+      } catch {
+        return 'US';
+      }
+    })();
 
     const tCandidateStart = Date.now();
     // candidates: titles with availability in user's services/region
