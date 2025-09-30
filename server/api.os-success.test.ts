@@ -51,7 +51,7 @@ describe('API /search success path and cache', () => {
   });
 
   it('returns results and caches when q is absent (sort branch)', async () => {
-    const res = await app.inject({ method: 'GET', url: '/search?size=1' });
+    const res = await app.inject({ method: 'GET', url: '/v1/search?size=1' });
     expect(res.statusCode).toBe(200);
     const json = res.json() as any;
     expect(Array.isArray(json.items)).toBe(true);
@@ -67,7 +67,7 @@ describe('API /search success path and cache', () => {
     stubClient.get.mockResolvedValueOnce(
       JSON.stringify({ items: [{ id: '1', name: 'cached' }], total: 1, from: 0, size: 1 }),
     );
-    const res = await app.inject({ method: 'GET', url: '/search?size=1' });
+    const res = await app.inject({ method: 'GET', url: '/v1/search?size=1' });
     expect(res.statusCode).toBe(200);
     const json = res.json() as any;
     expect(json.items[0].name).toBe('cached');
@@ -85,7 +85,7 @@ describe('API /search success path and cache', () => {
     vi.stubGlobal('fetch', spy);
     const res = await app.inject({
       method: 'GET',
-      url: '/search?service=NETFLIX,DISNEY_PLUS&size=1',
+      url: '/v1/search?service=NETFLIX,DISNEY_PLUS&size=1',
     });
     expect(res.statusCode).toBe(200);
     expect(spy).toHaveBeenCalled();
@@ -106,7 +106,7 @@ describe('API /search success path and cache', () => {
     vi.stubGlobal('fetch', spy);
     const res = await app.inject({
       method: 'GET',
-      url: '/search?service=NETFLIX&service=DISNEY_PLUS&region=US&region=CA&type=MOVIE&type=SHOW&size=1',
+      url: '/v1/search?service=NETFLIX&service=DISNEY_PLUS&region=US&region=CA&type=MOVIE&type=SHOW&size=1',
     });
     expect(res.statusCode).toBe(200);
     expect(spy).toHaveBeenCalled();
@@ -128,7 +128,7 @@ describe('API /search success path and cache', () => {
       return new Response(JSON.stringify(sampleOsResult), { status: 200 });
     });
     vi.stubGlobal('fetch', spy);
-    const res = await app.inject({ method: 'GET', url: '/search?size=1&hasRatings=true' });
+    const res = await app.inject({ method: 'GET', url: '/v1/search?size=1&hasRatings=true' });
     expect(res.statusCode).toBe(200);
     expect(spy).toHaveBeenCalled();
   });
@@ -150,7 +150,7 @@ describe('API /search success path and cache', () => {
       return new Response(JSON.stringify(sampleOsResult), { status: 200 });
     });
     vi.stubGlobal('fetch', spy);
-    const res = await app.inject({ method: 'GET', url: '/search?size=1&minRating=80' });
+    const res = await app.inject({ method: 'GET', url: '/v1/search?size=1&minRating=80' });
     expect(res.statusCode).toBe(200);
     expect(spy).toHaveBeenCalled();
   });
@@ -172,7 +172,7 @@ describe('API /search success path and cache', () => {
     vi.stubGlobal('fetch', spy);
     const res = await app.inject({
       method: 'GET',
-      url: '/search?size=1&minImdb=90&minRt=85&minMc=80',
+      url: '/v1/search?size=1&minImdb=90&minRt=85&minMc=80',
     });
     expect(res.statusCode).toBe(200);
     expect(spy).toHaveBeenCalled();
@@ -187,7 +187,7 @@ describe('API /search success path and cache', () => {
       return new Response(JSON.stringify(sampleOsResult), { status: 200 });
     });
     vi.stubGlobal('fetch', spy);
-    const res = await app.inject({ method: 'GET', url: '/search?yearMin=2005&size=1' });
+    const res = await app.inject({ method: 'GET', url: '/v1/search?yearMin=2005&size=1' });
     expect(res.statusCode).toBe(200);
   });
 
@@ -200,7 +200,7 @@ describe('API /search success path and cache', () => {
       return new Response(JSON.stringify(sampleOsResult), { status: 200 });
     });
     vi.stubGlobal('fetch', spy);
-    const res = await app.inject({ method: 'GET', url: '/search?yearMax=2010&size=1' });
+    const res = await app.inject({ method: 'GET', url: '/v1/search?yearMax=2010&size=1' });
     expect(res.statusCode).toBe(200);
   });
 
@@ -213,7 +213,7 @@ describe('API /search success path and cache', () => {
       return new Response(JSON.stringify(sampleOsResult), { status: 200 });
     });
     vi.stubGlobal('fetch', spy);
-    const res = await app.inject({ method: 'GET', url: '/search?runtimeMax=120&size=1' });
+    const res = await app.inject({ method: 'GET', url: '/v1/search?runtimeMax=120&size=1' });
     expect(res.statusCode).toBe(200);
   });
 
@@ -226,7 +226,7 @@ describe('API /search success path and cache', () => {
       return new Response(JSON.stringify(sampleOsResult), { status: 200 });
     });
     vi.stubGlobal('fetch', spy);
-    const res = await app.inject({ method: 'GET', url: '/search?runtimeMin=90&size=1' });
+    const res = await app.inject({ method: 'GET', url: '/v1/search?runtimeMin=90&size=1' });
     expect(res.statusCode).toBe(200);
   });
 
@@ -241,7 +241,7 @@ describe('API /search success path and cache', () => {
       return new Response(JSON.stringify(sampleOsResult), { status: 200 });
     });
     vi.stubGlobal('fetch', spy);
-    const res = await app.inject({ method: 'GET', url: '/search?type=MOVIE&region=US&size=1' });
+    const res = await app.inject({ method: 'GET', url: '/v1/search?type=MOVIE&region=US&size=1' });
     expect(res.statusCode).toBe(200);
   });
 
@@ -278,7 +278,7 @@ describe('API /search success path and cache', () => {
   });
 
   it('returns empty array when invalid numeric filters provided (early return branch)', async () => {
-    const res = await app.inject({ method: 'GET', url: '/search?yearMin=foo&size=1' });
+    const res = await app.inject({ method: 'GET', url: '/v1/search?yearMin=foo&size=1' });
     // Fastify validation returns 400; exercise early return path by hitting handler with invalid runtime
     expect([200, 400]).toContain(res.statusCode);
   });
@@ -286,7 +286,7 @@ describe('API /search success path and cache', () => {
   it('handles numeric range filters and clamps size/from', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/search?yearMin=2000&yearMax=2020&runtimeMin=60&runtimeMax=180&size=150&from=-5',
+      url: '/v1/search?yearMin=2000&yearMax=2020&runtimeMin=60&runtimeMax=180&size=150&from=-5',
     });
     expect(res.statusCode).toBe(200);
     const json = res.json() as any;

@@ -53,7 +53,7 @@ describe('API branch coverage', () => {
     async () => {
       const res = await app.inject({
         method: 'DELETE',
-        url: `/profiles/${profileId}/subscriptions`,
+        url: `/v1/profiles/${profileId}/subscriptions`,
         payload: { service: 'DISNEY_PLUS' },
       });
       expect(res.statusCode).toBe(200);
@@ -65,7 +65,7 @@ describe('API branch coverage', () => {
   it.skipIf(!process.env.DATABASE_URL)('alerts create with only services', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: `/profiles/${profileId}/alerts`,
+      url: `/v1/profiles/${profileId}/alerts`,
       payload: { services: ['NETFLIX'], region: 'US' },
     });
     expect(res.statusCode).toBe(200);
@@ -76,7 +76,7 @@ describe('API branch coverage', () => {
   it.skipIf(!process.env.DATABASE_URL)('feedback persists when not private', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/feedback',
+      url: '/v1/feedback',
       payload: { profileId, titleId, action: 'LIKE' },
     });
     expect(res.statusCode).toBe(200);
@@ -87,7 +87,7 @@ describe('API branch coverage', () => {
   it.skipIf(!process.env.DATABASE_URL)('feedback suppressed via private query', async () => {
     const res = await app.inject({
       method: 'POST',
-      url: '/feedback?private=true',
+      url: '/v1/feedback?private=true',
       payload: { profileId, titleId, action: 'LIKE' },
     });
     expect(res.statusCode).toBe(200);
@@ -159,7 +159,7 @@ describe('API branch coverage', () => {
     async () => {
       const res = await app.inject({
         method: 'POST',
-        url: `/profiles/${profileId}/subscriptions`,
+        url: `/v1/profiles/${profileId}/subscriptions`,
         payload: { service: 'HULU' },
       });
       expect(res.statusCode).toBe(200);
@@ -193,7 +193,7 @@ describe('API branch coverage', () => {
     // trigger upsert
     const up = await app.inject({
       method: 'POST',
-      url: `/profiles/${profile!.id}/subscriptions`,
+      url: `/v1/profiles/${profile!.id}/subscriptions`,
       payload: { service: 'NETFLIX', region: 'US' },
     });
     expect(up.statusCode).toBe(200);
@@ -204,7 +204,7 @@ describe('API branch coverage', () => {
     spyDel.mockClear();
     const del = await app.inject({
       method: 'DELETE',
-      url: `/profiles/${profile!.id}/subscriptions`,
+      url: `/v1/profiles/${profile!.id}/subscriptions`,
       payload: { service: 'NETFLIX' },
     });
     expect(del.statusCode).toBe(200);

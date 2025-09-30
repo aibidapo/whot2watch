@@ -160,6 +160,15 @@ app.addHook('onRequest', (req, reply, done) => {
   done();
 });
 
+// Support versioned routes: rewrite /v1/* to existing handlers without breaking old paths
+app.addHook('onRequest', (req, _reply, done) => {
+  try {
+    const u = String((req.raw as any)?.url || '');
+    if (u.startsWith('/v1/')) (req.raw as any).url = u.slice(3);
+  } catch {}
+  done();
+});
+
 // Ensure Retry-After header is present on 429 responses
 app.addHook('onSend', (request, reply, payload, done) => {
   try {
@@ -213,6 +222,81 @@ app.get('/', async (_request, reply) => {
   reply.type('text/html').send(html);
 });
 
+// ---- Admin refresh endpoints (simple, non-queued) ----
+app.post(
+  '/v1/admin/refresh/tmdb/:tmdbId',
+  { preHandler: adminPreHandler, config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+  async (request) => {
+    const tmdbId = String((request.params as any).tmdbId || '');
+    if (!tmdbId) return { error: 'invalid_input' };
+    const prismaLocal = prisma as PrismaClient;
+    const mediaType = 'movie';
+    const { fetchExternalIds } = await import('../services/catalog/tmdb');
+    const ext = await fetchExternalIds(mediaType, Number(tmdbId));
+    const imdbId: string | undefined = ext?.imdb_id || undefined;
+    const title = await prismaLocal.title.findFirst({ where: { tmdbId: Number(tmdbId) } });
+    if (!title) return { error: 'not_found' };
+    if (imdbId && !title.imdbId) {
+      await prismaLocal.title.update({ where: { id: title.id }, data: { imdbId } });
+    }
+    // fetch OMDb if we now have an imdbId
+    let ratingsUpserts = 0;
+    if (imdbId) {
+      const { fetchOmdbByImdb, mapOmdbRatings } = await import('../services/catalog/omdb');
+      const omdb = await fetchOmdbByImdb(imdbId);
+      const ratings = mapOmdbRatings(omdb);
+      for (const r of ratings) {
+        await prismaLocal.externalRating.upsert({
+          where: { titleId_source: { titleId: title.id, source: r.source } },
+          update: { valueText: r.valueText, valueNum: r.valueNum, updatedAt: new Date() },
+          create: {
+            titleId: title.id,
+            source: r.source,
+            valueText: r.valueText,
+            valueNum: r.valueNum ?? null,
+          },
+        });
+        ratingsUpserts++;
+      }
+    }
+    const doc = await toIndexDocById(title.id);
+    const ok = await indexOne(doc);
+    return { ok, imdbId: imdbId || title.imdbId || null, ratingsUpserts };
+  },
+);
+
+app.post(
+  '/v1/admin/refresh/imdb/:imdbId',
+  { preHandler: adminPreHandler, config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+  async (request) => {
+    const imdbId = String((request.params as any).imdbId || '');
+    if (!imdbId) return { error: 'invalid_input' };
+    const prismaLocal = prisma as PrismaClient;
+    const title = await prismaLocal.title.findFirst({ where: { imdbId } });
+    if (!title) return { error: 'not_found' };
+    const { fetchOmdbByImdb, mapOmdbRatings } = await import('../services/catalog/omdb');
+    const omdb = await fetchOmdbByImdb(imdbId);
+    const ratings = mapOmdbRatings(omdb);
+    let ratingsUpserts = 0;
+    for (const r of ratings) {
+      await prismaLocal.externalRating.upsert({
+        where: { titleId_source: { titleId: title.id, source: r.source } },
+        update: { valueText: r.valueText, valueNum: r.valueNum, updatedAt: new Date() },
+        create: {
+          titleId: title.id,
+          source: r.source,
+          valueText: r.valueText,
+          valueNum: r.valueNum ?? null,
+        },
+      });
+      ratingsUpserts++;
+    }
+    const doc = await toIndexDocById(title.id);
+    const ok = await indexOne(doc);
+    return { ok, ratingsUpserts };
+  },
+);
+
 app.get(
   '/profiles',
   {
@@ -233,6 +317,91 @@ app.get(
     return { items: rows };
   },
 );
+
+// ---- Admin helpers ----
+async function adminPreHandler(request: any, reply: any) {
+  if (!isAuthRequired()) return; // allow in dev when auth disabled
+  try {
+    const { verifyJwt } = await import('./security/jwt');
+    const h = String(request.headers?.authorization || '');
+    if (!h.toLowerCase().startsWith('bearer ')) {
+      reply.code(401).send({ error: 'unauthorized' });
+      return;
+    }
+    const token = h.slice(7).trim();
+    const decoded: any = await verifyJwt(token, {
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
+      jwksUri: JWKS_URI,
+    });
+    const roles: string[] = Array.isArray(decoded?.roles)
+      ? decoded.roles
+      : String(decoded?.scope || '')
+          .split(/[\s,]+/)
+          .filter(Boolean);
+    if (!roles.map((r) => String(r).toLowerCase()).includes('admin')) {
+      reply.code(403).send({ error: 'forbidden' });
+    }
+  } catch {
+    reply.code(401).send({ error: 'unauthorized' });
+  }
+}
+
+async function toIndexDocById(titleId: string) {
+  const row = await prisma.title.findUnique({
+    where: { id: titleId },
+    include: { availability: true, externalRatings: true },
+  });
+  if (!row) return null;
+  const ratings = Array.isArray((row as any).externalRatings) ? (row as any).externalRatings : [];
+  const ratingsBySrc: Record<string, number | undefined> = {};
+  for (const r of ratings) {
+    const k = String(r.source || '').toUpperCase();
+    if (typeof r.valueNum === 'number') ratingsBySrc[k] = r.valueNum as number;
+  }
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    releaseYear: (row as any).releaseYear ?? undefined,
+    runtimeMin: (row as any).runtimeMin ?? undefined,
+    genres: (row as any).genres || [],
+    moods: (row as any).moods || [],
+    posterUrl: (row as any).posterUrl || undefined,
+    backdropUrl: (row as any).backdropUrl || undefined,
+    voteAverage: (row as any).voteAverage ?? undefined,
+    popularity: (row as any).popularity ?? undefined,
+    ratingsImdb: ratingsBySrc.IMDB ?? undefined,
+    ratingsRottenTomatoes: ratingsBySrc.ROTTEN_TOMATOES ?? undefined,
+    ratingsMetacritic: ratingsBySrc.METACRITIC ?? undefined,
+    availabilityServices: Array.from(
+      new Set(((row as any).availability || []).map((a: any) => a.service).filter(Boolean)),
+    ),
+    availabilityRegions: Array.from(
+      new Set(((row as any).availability || []).map((a: any) => a.region).filter(Boolean)),
+    ),
+    availability: ((row as any).availability || []).map((a: any) => ({
+      service: a.service,
+      region: a.region,
+      offerType: a.offerType,
+      deepLink: a.deepLink || undefined,
+    })),
+  } as any;
+}
+
+async function indexOne(doc: any) {
+  if (!doc) return false;
+  const idx = process.env.TITLES_INDEX || 'titles';
+  const res = await fetch(
+    `${OPENSEARCH_URL}/${encodeURIComponent(idx)}/_doc/${encodeURIComponent(doc.id)}` as any,
+    {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(doc),
+    },
+  );
+  return res.ok;
+}
 
 app.get(
   '/search',
