@@ -62,6 +62,8 @@ if (!SKIP_INGEST) {
     sh('node -r ./scripts/load-env.cjs services/catalog/backfillImdbIds.js');
     log('Ingesting OMDb ratings');
     sh('node -r ./scripts/load-env.cjs services/catalog/ingestOmdbRatings.js');
+    log('Ingesting TMDB watch providers');
+    sh('pnpm ingest:providers');
     log('Indexing from DB to OpenSearch');
     sh('pnpm index:fromdb');
   }

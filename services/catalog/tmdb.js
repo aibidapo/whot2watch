@@ -74,4 +74,11 @@ async function fetchExternalIds(mediaType = 'movie', id) {
   return tmdbGet(path);
 }
 
-module.exports = { fetchTrending, fetchExternalIds };
+// Fetch watch providers (by region) for a TMDB title
+// Response shape: { results: { US: { link, flatrate: [], buy: [], rent: [], free: [], ads: [] }, ... } }
+async function fetchWatchProviders(mediaType = 'movie', id) {
+  const path = `/${mediaType === 'tv' ? 'tv' : 'movie'}/${id}/watch/providers`;
+  return tmdbGet(path);
+}
+
+module.exports = { fetchTrending, fetchExternalIds, fetchWatchProviders };

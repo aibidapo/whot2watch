@@ -22,6 +22,8 @@ Planned Enhancements (TMDB + OMDb + Trakt)
 - [x] External ratings table (IMDB, RottenTomatoes, Metacritic)
 - [ ] Trending signals table (TMDB, Trakt; day/week)
 - [ ] TMDB external_ids + watch providers ingestion (normalize availability)
+  - [x] external_ids (imdbId) — implemented
+  - [x] watch providers ingestion — normalizes to Availability by region/service/offerType
 - [x] OMDb ratings enrichment by `imdbId`
 - [ ] Trakt trending enrichment and optional fused popularity
 - [x] OpenSearch mapping updates for `ratings` and `popularity`
