@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import createClient from '../../../../clients/rest/client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
@@ -31,19 +32,19 @@ export default function PicksPage() {
   const [error, setError] = useState<string | null>(null);
   const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', []);
   const [ratingsBias, setRatingsBias] = useState<number>(0);
+  const api = useMemo(() => createClient({ baseUrl: `${apiBase}/v1` }), [apiBase]);
 
   async function loadPicks() {
     if (!profileId) return;
     setLoading(true);
     setError(null);
     try {
-      const url = new URL(`${apiBase}/picks/${profileId}`);
+      const url = new URL(`/picks/${profileId}`, `${apiBase}/v1`);
       if (Number.isFinite(ratingsBias) && ratingsBias > 0) {
         url.searchParams.set('ratingsBias', String(ratingsBias));
       }
-      const res = await fetch(url.toString());
-      const json = await res.json();
-      setItems(Array.isArray(json.items) ? json.items : []);
+      const json = await api.get<{ items: PickItem[] }>(url.pathname + url.search);
+      setItems(Array.isArray((json as any).items) ? (json as any).items : []);
     } catch (error_: unknown) {
       const message =
         typeof error_ === 'object' && error_ && 'message' in error_
@@ -58,8 +59,7 @@ export default function PicksPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`${apiBase}/profiles`);
-        const json = await res.json();
+        const json = await api.get<{ items: { id: string; name?: string }[] }>(`/profiles`);
         if (Array.isArray(json.items)) setProfiles(json.items);
       } catch {}
     })();

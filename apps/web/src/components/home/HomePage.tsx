@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import createClient from '../../../../clients/rest/client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -75,6 +76,7 @@ export function HomePage() {
   const [minMc, setMinMc] = useState<number | ''>('');
 
   const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', []);
+  const api = useMemo(() => createClient({ baseUrl: `${apiBase}/v1` }), [apiBase]);
 
   async function runSearch() {
     setLoading(true);
@@ -92,8 +94,7 @@ export function HomePage() {
       minMc,
     });
     try {
-      const res = await fetch(`${apiBase}/search?${query}`);
-      const json = await res.json();
+      const json = await api.get<{ items: SearchItem[] }>(`/search?${query}`);
       const page = Array.isArray(json.items) ? json.items : [];
       setItems((prev) => (from === 0 ? page : [...prev, ...page]));
     } catch (error_: unknown) {
@@ -126,9 +127,8 @@ export function HomePage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`${apiBase}/search?size=4`);
-        const json = await res.json();
-        setTrending(Array.isArray(json.items) ? json.items : []);
+        const json = await api.get<{ items: SearchItem[] }>(`/search?size=4`);
+        setTrending(Array.isArray((json as any).items) ? (json as any).items : []);
       } catch {}
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
