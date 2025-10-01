@@ -20,7 +20,7 @@ Checklist
 - [x] API versioning strategy (v1 prefix; backward compatibility policy)
 - [x] Granular rate limits (per-user/endpoint/feature)
 - [x] API caching strategy (Redis keys, TTLs, invalidation)
-- [ ] Docs portal: interactive OpenAPI, SDK generation guidance
+- [x] Docs portal: interactive OpenAPI (non-prod gated); SDK generation guidance (TBD)
 - [ ] API performance monitoring (APM routes, latency/error dashboards)
 
 Acceptance Criteria

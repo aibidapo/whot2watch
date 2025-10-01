@@ -241,6 +241,67 @@ app.get('/', async (_request, reply) => {
   reply.type('text/html').send(html);
 });
 
+// ---- Docs: OpenAPI spec and interactive UI (Redoc) ----
+app.get('/openapi.yaml', async (_request, reply) => {
+  try {
+    const specPath = path.resolve(
+      process.cwd(),
+      'whot2watch-docs-full',
+      'docs',
+      'rest',
+      'openapi.yaml',
+    );
+    const yaml = fs.readFileSync(specPath, 'utf8');
+    reply.type('application/yaml').send(yaml);
+  } catch {
+    reply.code(404).send({ error: 'not_found' });
+  }
+});
+
+app.get('/docs', async (_request, reply) => {
+  // Guard docs in prod unless explicitly enabled
+  const enabled = process.env.API_DOCS_ENABLED === 'true' || process.env.NODE_ENV !== 'production';
+  if (!enabled) {
+    reply.code(404).send({ error: 'not_found' });
+    return;
+  }
+  const primary = '#0f172a';
+  const accent = '#22c55e';
+  const redocHtml = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Whot2Watch API Docs</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      :root { --brand: ${primary}; --accent: ${accent}; }
+      body { margin: 0; padding: 0; background:#fff; }
+      header { position: sticky; top:0; z-index: 10; background:#fff; border-bottom:1px solid #eee; }
+      .nav { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; }
+      .brand { display:flex; align-items:center; gap:10px; color: var(--brand); font-weight:600; }
+      .brand .dot { width:10px; height:10px; border-radius:999px; background: var(--accent); display:inline-block; }
+      .links a { color: var(--brand); text-decoration:none; margin-left:12px; font-size:14px; }
+      .links a:hover { text-decoration:underline; }
+      redoc { height: calc(100vh - 54px); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="nav">
+        <div class="brand"><span class="dot"></span>Whot2Watch API</div>
+        <div class="links">
+          <a href="/" title="Home">Home</a>
+          <a href="/v1/openapi.yaml">OpenAPI</a>
+        </div>
+      </div>
+    </header>
+    <redoc spec-url="/v1/openapi.yaml"></redoc>
+    <script src="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"></script>
+  </body>
+  </html>`;
+  reply.type('text/html').send(redocHtml);
+});
+
 // ---- Admin refresh endpoints (simple, non-queued) ----
 app.post(
   '/v1/admin/refresh/tmdb/:tmdbId',
