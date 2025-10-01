@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import createClient from '../../../../clients/rest/client';
+import createClient from 'clients/rest/client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -23,6 +23,24 @@ type SearchItem = {
   ratingsRottenTomatoes?: number;
   ratingsMetacritic?: number;
 };
+
+function escapeHtml(s: string) {
+  return s.replaceAll(
+    /["&'<>]/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
+  );
+}
+
+function highlight(text: string, term: string) {
+  if (!term) return escapeHtml(text);
+  try {
+    const safe = term.replaceAll(/[$()*+./?[\\\]^{|}-]/g, String.raw`\$&`);
+    const re = new RegExp(`(${safe})`, 'ig');
+    return escapeHtml(text).replaceAll(re as unknown as string, '<mark>$1</mark>');
+  } catch {
+    return escapeHtml(text);
+  }
+}
 
 function buildSearchQuery(params: {
   q: string;
@@ -94,8 +112,8 @@ export function HomePage() {
       minMc,
     });
     try {
-      const json = await api.get<{ items: SearchItem[] }>(`/search?${query}`);
-      const page = Array.isArray(json.items) ? json.items : [];
+      const json: any = await api.get(`/search?${query}`);
+      const page: SearchItem[] = Array.isArray(json.items) ? json.items : [];
       setItems((prev) => (from === 0 ? page : [...prev, ...page]));
     } catch (error_: unknown) {
       const message =
@@ -118,7 +136,10 @@ export function HomePage() {
   }, [searchParams]);
 
   useEffect(() => {
-    runSearch();
+    const t = setTimeout(() => {
+      runSearch();
+    }, 250);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, service, region, from, hasRatings, minRating, minImdb, minRt, minMc]);
 
@@ -127,7 +148,7 @@ export function HomePage() {
   useEffect(() => {
     (async () => {
       try {
-        const json = await api.get<{ items: SearchItem[] }>(`/search?size=4`);
+        const json = await api.get(`/search?size=4`);
         setTrending(Array.isArray((json as any).items) ? (json as any).items : []);
       } catch {}
     })();
@@ -355,7 +376,10 @@ export function HomePage() {
                   className="w-16 h-24 rounded-md overflow-hidden flex-shrink-0"
                 />
                 <div>
-                  <div className="text-base font-semibold">{it.name}</div>
+                  <div
+                    className="text-base font-semibold"
+                    dangerouslySetInnerHTML={{ __html: highlight(it.name, q) }}
+                  />
                   <div className="text-sm text-slate-500">
                     {it.type || 'Unknown'} {it.releaseYear ? `• ${it.releaseYear}` : ''}
                     {typeof it.voteAverage === 'number' ? (

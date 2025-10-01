@@ -38,6 +38,11 @@ if (!trySh('docker compose up -d postgres redis opensearch dashboards')) {
   sh('docker-compose up -d postgres redis opensearch dashboards');
 }
 
+// Proactively free commonly used dev ports to avoid file locks (Prisma engine DLL) and EADDRINUSE
+try {
+  trySh('npx --yes kill-port 4000 3000 3001 3002');
+} catch {}
+
 // 2) DB
 log('Prisma generate/migrate/seed');
 sh('pnpm prisma:generate');
@@ -71,8 +76,7 @@ const web = spawn('pnpm', ['web:dev'], {
   env: {
     ...process.env,
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000',
-    // Ensure Next dev runs on 3000 even if PORT=4000 is set globally for API
-    PORT: process.env.WEB_PORT || '3000',
+    // Do not force PORT so Next can auto-select a free port
   },
 });
 

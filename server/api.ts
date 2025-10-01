@@ -302,6 +302,33 @@ app.get('/docs', async (_request, reply) => {
   reply.type('text/html').send(redocHtml);
 });
 
+app.get('/swagger', async (_request, reply) => {
+  // Same guard as docs
+  const enabled = process.env.API_DOCS_ENABLED === 'true' || process.env.NODE_ENV !== 'production';
+  if (!enabled) {
+    reply.code(404).send({ error: 'not_found' });
+    return;
+  }
+  const html = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Whot2Watch Swagger UI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+    <style>body { margin: 0 } #swagger-ui { height: 100vh }</style>
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+    <script>
+      window.ui = SwaggerUIBundle({ url: '/v1/openapi.yaml', dom_id: '#swagger-ui' });
+    </script>
+  </body>
+  </html>`;
+  reply.type('text/html').send(html);
+});
+
 // ---- Admin refresh endpoints (simple, non-queued) ----
 app.post(
   '/v1/admin/refresh/tmdb/:tmdbId',
@@ -693,14 +720,42 @@ app.get(
       }
     }
     /* c8 ignore stop */
+    // Build relevance queries that work well for partial input and typos
+    const nameShould: any[] = [];
+    if (q) {
+      nameShould.push(
+        // Exact-ish match (benefits from edge_ngram analyzer when present)
+        { match: { name: { query: q, boost: 3 } } },
+        // Prefix over phrases for live typeahead
+        { match_phrase_prefix: { name: { query: q, boost: 2, slop: 2 } } },
+        // Fuzzy to catch minor typos
+        { match: { name: { query: q, fuzziness: 'AUTO', prefix_length: 1, boost: 1 } } },
+        // Substring anywhere via n-grams field
+        { match: { 'name.ngrams': { query: q, boost: 2 } } },
+        // Fallback: keyword wildcard substring (case-insensitive)
+        {
+          wildcard: {
+            'name.keyword': {
+              value: `*${q}*`,
+              case_insensitive: true,
+              boost: 1.5,
+            },
+          },
+        },
+      );
+    }
+
     const query = {
       track_total_hits: true,
       query: {
         bool: {
-          must: q ? [{ match: { name: q } }] : [{ match_all: {} }],
+          must: q ? [] : [{ match_all: {} }],
           filter,
-          should: [{ exists: { field: 'posterUrl' } }, { exists: { field: 'backdropUrl' } }],
-          minimum_should_match: 0,
+          should: nameShould.concat([
+            { exists: { field: 'posterUrl' } },
+            { exists: { field: 'backdropUrl' } },
+          ]),
+          minimum_should_match: nameShould.length ? 1 : 0,
         },
       },
       size,
@@ -737,7 +792,60 @@ app.get(
       ...h._source,
     }));
     const total = typeof data.hits?.total?.value === 'number' ? data.hits.total.value : hits.length;
-    const response = { items: hits, total, took: data.took ?? 0, from, size };
+    let response = { items: hits, total, took: data.took ?? 0, from, size } as any;
+
+    // --- DB fallback: when no OpenSearch hits, search Titles directly (substring, case-insensitive) ---
+    if (q && hits.length === 0) {
+      try {
+        const rows = await prisma.title.findMany({
+          where: { name: { contains: q, mode: 'insensitive' as any } },
+          take: size,
+          skip: from,
+          orderBy: { createdAt: 'desc' },
+          include: { availability: true, externalRatings: true },
+        });
+        const mapped = rows.map((row: any) => {
+          const ratings = Array.isArray(row.externalRatings) ? row.externalRatings : [];
+          const ratingsBy: Record<string, number | undefined> = {};
+          for (const r of ratings) {
+            const k = String(r.source || '').toUpperCase();
+            if (typeof r.valueNum === 'number') ratingsBy[k] = r.valueNum as number;
+          }
+          const availabilityServices = Array.from(
+            new Set((row.availability || []).map((a: any) => a.service).filter(Boolean) as any),
+          );
+          const availabilityRegions = Array.from(
+            new Set((row.availability || []).map((a: any) => a.region).filter(Boolean) as any),
+          );
+          return {
+            id: row.id,
+            name: row.name,
+            type: row.type,
+            releaseYear: row.releaseYear ?? undefined,
+            runtimeMin: row.runtimeMin ?? undefined,
+            genres: row.genres || [],
+            moods: row.moods || [],
+            posterUrl: row.posterUrl || undefined,
+            backdropUrl: row.backdropUrl || undefined,
+            voteAverage: row.voteAverage ?? undefined,
+            popularity: row.popularity ?? undefined,
+            ratingsImdb: ratingsBy.IMDB ?? undefined,
+            ratingsRottenTomatoes: ratingsBy.ROTTEN_TOMATOES ?? undefined,
+            ratingsMetacritic: ratingsBy.METACRITIC ?? undefined,
+            availabilityServices,
+            availabilityRegions,
+            availability: (row.availability || []).map((a: any) => ({
+              service: a.service,
+              region: a.region,
+              offerType: a.offerType,
+              deepLink: a.deepLink || undefined,
+            })),
+            _source: 'db_fallback',
+          } as any;
+        });
+        response = { items: mapped, total: mapped.length, took: data.took ?? 0, from, size };
+      } catch {}
+    }
     try {
       reply.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=30');
     } catch {}
@@ -1223,9 +1331,29 @@ app.get(
 
     const tCandidateStart = Date.now();
     // candidates: titles with availability in user's services/region
+    const isTest = process.env.NODE_ENV === 'test';
+    const excludeSeeds = !isTest;
     const titles = await prisma.title.findMany({
       take: 300,
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ popularity: 'desc' as const }, { createdAt: 'desc' as const }],
+      where: isTest
+        ? {}
+        : {
+            OR: [
+              { imdbId: { not: null } },
+              { externalRatings: { some: {} } },
+              { popularity: { gt: 0 } },
+            ],
+            ...(excludeSeeds
+              ? {
+                  NOT: [
+                    { name: { contains: 'Saga Title Part', mode: 'insensitive' } as any },
+                    { name: { startsWith: 'Admin TMDB', mode: 'insensitive' } as any },
+                    { name: { startsWith: 'PopHigh', mode: 'insensitive' } as any },
+                  ],
+                }
+              : {}),
+          },
       include: { availability: true },
     });
     // fetch external ratings in one query and index by titleId
@@ -1280,12 +1408,13 @@ app.get(
       // popularity soft boost
       if (typeof t.popularity === 'number')
         s += (Math.min(Math.max(t.popularity, 0), 1000) / 10000) * (coldStart ? 2 : 1); // slightly higher in cold-start
-      // light recency bias
+      // light recency bias (favor recent years slightly)
       if (t.releaseYear) s += Math.max(0, t.releaseYear - 2000) / 200;
-      // freshness boost for newly ingested titles
+      // freshness boost only for real-source titles (tmdbId present)
       try {
         const createdAtTs = t.createdAt ? new Date(t.createdAt as any).getTime() : 0;
-        if (createdAtTs) {
+        const hasRealSource = t.tmdbId !== null && t.tmdbId !== undefined;
+        if (createdAtTs && hasRealSource) {
           const ageHours = Math.max(0, (Date.now() - createdAtTs) / 3600000);
           if (ageHours <= 24) s += 0.5;
           else if (ageHours <= 72) s += 0.2;

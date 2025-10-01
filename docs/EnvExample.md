@@ -16,6 +16,10 @@ External APIs
 - OMDB_API_KEY=
 - JUSTWATCH_PARTNER=
 
+Testing
+
+- TEST_WITH_CONTAINERS=false # Set true to force Testcontainers for DB/Redis/OS in tests
+
 Database
 
 - DATABASE_URL=

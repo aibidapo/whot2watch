@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import createClient from '../../../../clients/rest/client';
+import createClient from 'clients/rest/client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
@@ -214,19 +214,12 @@ export default function PicksPage() {
                       className="text-xs text-slate-400 hover:text-slate-200"
                       onClick={async () => {
                         try {
-                          const res = await fetch(`${apiBase}/profiles/${profileId}/lists`, {
-                            method: 'POST',
-                            headers: { 'content-type': 'application/json' },
-                            body: JSON.stringify({ name: 'My List' }),
+                          const json = await api.post(`/profiles/${profileId}/lists`, {
+                            name: 'My List',
                           });
-                          const json = await res.json();
                           const listId = json?.list?.id;
                           if (listId) {
-                            await fetch(`${apiBase}/lists/${listId}/items`, {
-                              method: 'POST',
-                              headers: { 'content-type': 'application/json' },
-                              body: JSON.stringify({ titleId: it.id }),
-                            });
+                            await api.post(`/lists/${listId}/items`, { titleId: it.id });
                             navigator.sendBeacon?.(
                               `${apiBase}/analytics`,
                               new Blob(
@@ -250,10 +243,10 @@ export default function PicksPage() {
                       className="text-xs text-slate-400 hover:text-slate-200"
                       onClick={async () => {
                         try {
-                          await fetch(`${apiBase}/feedback`, {
-                            method: 'POST',
-                            headers: { 'content-type': 'application/json' },
-                            body: JSON.stringify({ profileId, titleId: it.id, action: 'DISLIKE' }),
+                          await api.post(`/feedback`, {
+                            profileId,
+                            titleId: it.id,
+                            action: 'DISLIKE',
                           });
                           navigator.sendBeacon?.(
                             `${apiBase}/analytics`,

@@ -1,4 +1,4 @@
-import { HTMLAttributes } from 'react';
+import { HTMLAttributes, useState } from 'react';
 
 type ThumbProps = HTMLAttributes<HTMLDivElement> & {
   posterUrl?: string;
@@ -13,11 +13,19 @@ export function Thumb({
   className = '',
   ...rest
 }: ThumbProps) {
-  // Poster first
-  if (posterUrl) {
+  const [imgError, setImgError] = useState(false);
+
+  // Prefer poster; if it errors, fall back to backdrop or skeleton
+  if (posterUrl && !imgError) {
     return (
       <div className={`relative ${className}`} {...rest}>
-        <img src={posterUrl} alt="" className="w-full h-full object-cover" />
+        <img
+          src={posterUrl}
+          alt=""
+          className="w-full h-full object-cover"
+          loading="lazy"
+          onError={() => setImgError(true)}
+        />
         {typeof voteAverage === 'number' ? (
           <span className="thumb-badge">
             <span className="star">★</span>
@@ -27,6 +35,7 @@ export function Thumb({
       </div>
     );
   }
+
   // Backdrop second, dimmed with overlay
   if (backdropUrl) {
     return (
@@ -45,6 +54,7 @@ export function Thumb({
       </div>
     );
   }
+
   // Skeleton fallback
   return <div className={`skeleton ${className}`} {...rest} />;
 }

@@ -4,14 +4,34 @@ const OMDB_API_KEY = process.env.OMDB_API_KEY;
 /* c8 ignore start */
 async function fetchOmdbByImdb(imdbId) {
   if (!OMDB_API_KEY) throw new Error('OMDB_API_KEY is not set');
-  const url = `https://www.omdbapi.com/?i=${encodeURIComponent(imdbId)}&apikey=${encodeURIComponent(
-    OMDB_API_KEY,
-  )}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`omdb ${res.status} ${await res.text()}`);
-  const json = await res.json();
-  if (json.Response === 'False') throw new Error(`omdb error: ${json.Error || 'unknown'}`);
-  return json;
+  const baseUrl = 'https://www.omdbapi.com/';
+  const qs = (extra = '') =>
+    `?i=${encodeURIComponent(imdbId)}&apikey=${encodeURIComponent(OMDB_API_KEY)}${extra}`;
+
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(baseUrl + qs());
+      if (!res.ok) throw new Error(`omdb ${res.status} ${await res.text()}`);
+      const json = await res.json();
+      if (json.Response === 'False') {
+        const msg = String(json.Error || 'unknown');
+        // OMDb sometimes returns transient "Error getting data."; retry a couple times
+        if (/error getting data/i.test(msg) || /limit/i.test(msg)) {
+          lastErr = new Error(`omdb error: ${msg}`);
+        } else {
+          throw new Error(`omdb error: ${msg}`);
+        }
+      } else {
+        return json;
+      }
+    } catch (err) {
+      lastErr = err;
+    }
+    // backoff 250ms, 500ms
+    await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
+  }
+  throw lastErr || new Error('omdb error');
 }
 /* c8 ignore stop */
 

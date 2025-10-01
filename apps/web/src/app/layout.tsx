@@ -60,7 +60,12 @@ export default function RootLayout({
           <footer className="mt-10 border-t border-slate-200 pt-6 text-xs text-slate-500">
             © {new Date().getFullYear()} Whot2Watch
             <span className="mx-2">•</span>
-            <a href={`${process.env.NEXT_PUBLIC_API_URL || ''}/v1/docs`} target="_blank" rel="noreferrer" className="hover:text-slate-700">
+            <a
+              href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/v1/docs`}
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-slate-700"
+            >
               API Docs
             </a>
           </footer>

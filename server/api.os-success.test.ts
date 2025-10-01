@@ -64,6 +64,22 @@ describe('API /search success path and cache', () => {
     expect(Boolean(res.headers['cache-control']) || true).toBe(true);
   });
 
+  it('serves OpenAPI spec and docs UI routes', async () => {
+    const spec = await app.inject({ method: 'GET', url: '/v1/openapi.yaml' });
+    expect(spec.statusCode).toBe(200);
+    expect(String(spec.headers['content-type'] || '')).toContain('yaml');
+
+    const docs = await app.inject({ method: 'GET', url: '/v1/docs' });
+    expect(docs.statusCode).toBe(200);
+    expect(String(docs.headers['content-type'] || '')).toContain('html');
+    expect(docs.body).toContain('redoc');
+
+    const swagger = await app.inject({ method: 'GET', url: '/v1/swagger' });
+    expect(swagger.statusCode).toBe(200);
+    expect(String(swagger.headers['content-type'] || '')).toContain('html');
+    expect(swagger.body).toContain('SwaggerUIBundle');
+  });
+
   it('returns cached result when present', async () => {
     stubClient.get.mockResolvedValueOnce(
       JSON.stringify({ items: [{ id: '1', name: 'cached' }], total: 1, from: 0, size: 1 }),

@@ -5,9 +5,12 @@ const titlesMapping = {
     analysis: {
       analyzer: {
         title_edge: { tokenizer: 'edge_ngram', filter: ['lowercase'] },
+        title_ngram: { tokenizer: 'ngram_token', filter: ['lowercase'] },
       },
       tokenizer: {
         edge_ngram: { type: 'edge_ngram', min_gram: 2, max_gram: 15 },
+        // OpenSearch default max_ngram_diff=1, so use 2..3 to stay within limit
+        ngram_token: { type: 'ngram', min_gram: 2, max_gram: 3 },
       },
     },
   },
@@ -15,7 +18,15 @@ const titlesMapping = {
     properties: {
       id: { type: 'keyword' },
       tmdbId: { type: 'long' },
-      name: { type: 'text', analyzer: 'title_edge', search_analyzer: 'standard' },
+      name: {
+        type: 'text',
+        analyzer: 'title_edge',
+        search_analyzer: 'standard',
+        fields: {
+          ngrams: { type: 'text', analyzer: 'title_ngram', search_analyzer: 'standard' },
+          keyword: { type: 'keyword', ignore_above: 256 },
+        },
+      },
       type: { type: 'keyword' },
       releaseYear: { type: 'integer' },
       runtimeMin: { type: 'integer' },
