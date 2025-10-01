@@ -1370,6 +1370,18 @@ app.get(
       const b = (ratingsByTitle[r.titleId] = ratingsByTitle[r.titleId] || {});
       b[key] = val;
     }
+    // fetch trending signals and index by titleId
+    const trendingSignals = await (prisma as any).trendingSignal.findMany({
+      where: { titleId: { in: titleIds } },
+      select: { titleId: true, source: true, value: true },
+    });
+    const trendingByTitle: Record<string, { day?: number; week?: number }> = {};
+    for (const s of trendingSignals) {
+      const src = String(s.source || '').toUpperCase();
+      const b = (trendingByTitle[s.titleId] = trendingByTitle[s.titleId] || {});
+      if (src === 'TMDB_DAY' && typeof s.value === 'number') b.day = s.value as number;
+      else if (src === 'TMDB_WEEK' && typeof s.value === 'number') b.week = s.value as number;
+    }
     const candidateGenMs = Date.now() - tCandidateStart;
 
     function score(t: any): number {
@@ -1408,6 +1420,17 @@ app.get(
       // popularity soft boost
       if (typeof t.popularity === 'number')
         s += (Math.min(Math.max(t.popularity, 0), 1000) / 10000) * (coldStart ? 2 : 1); // slightly higher in cold-start
+      // trending boost (values are 0..1)
+      try {
+        const tr = trendingByTitle[t.id] || {};
+        const day = typeof tr.day === 'number' ? (tr.day as number) : 0;
+        const week = typeof tr.week === 'number' ? (tr.week as number) : 0;
+        const composite = day * 0.7 + week * 0.3;
+        if (composite > 0) {
+          const trendingWeight = coldStart ? 1.5 : 0.8;
+          s += composite * trendingWeight;
+        }
+      } catch {}
       // light recency bias (favor recent years slightly)
       if (t.releaseYear) s += Math.max(0, t.releaseYear - 2000) / 200;
       // freshness boost only for real-source titles (tmdbId present)
@@ -1448,6 +1471,11 @@ app.get(
       } catch {}
       /* c8 ignore next 3 */
       if (typeof t.popularity === 'number' && t.popularity >= 300) bits.push('popular now');
+      try {
+        const tr = trendingByTitle[t.id] || {};
+        if (typeof tr.day === 'number' && tr.day >= 0.6) bits.push('trending today');
+        else if (typeof tr.week === 'number' && tr.week >= 0.6) bits.push('trending');
+      } catch {}
       if (t.releaseYear && t.releaseYear >= new Date().getFullYear() - 1) bits.push('new');
       if (cold) {
         const r = bits.length ? bits.join(' • ') : 'is a quality pick';

@@ -68,6 +68,18 @@ async function fetchTrending(mediaType = 'movie', pages = 1) {
   return items;
 }
 
+// Fetch trending for a specific time window: 'day' or 'week'
+// Returns array of minimal title objects consistent with toTitle
+async function fetchTrendingWindow(mediaType = 'movie', window = 'week', pages = 1) {
+  const items = [];
+  const win = window === 'day' ? 'day' : 'week';
+  for (let p = 1; p <= pages; p++) {
+    const data = await tmdbGet(`/trending/${mediaType}/${win}`, { page: String(p) });
+    for (const r of data.results || []) items.push(toTitle(r, mediaType));
+  }
+  return items;
+}
+
 // Fetch external IDs (e.g., IMDB) for a TMDB title
 async function fetchExternalIds(mediaType = 'movie', id) {
   const path = `/${mediaType === 'tv' ? 'tv' : 'movie'}/${id}/external_ids`;
@@ -81,4 +93,4 @@ async function fetchWatchProviders(mediaType = 'movie', id) {
   return tmdbGet(path);
 }
 
-module.exports = { fetchTrending, fetchExternalIds, fetchWatchProviders };
+module.exports = { fetchTrending, fetchTrendingWindow, fetchExternalIds, fetchWatchProviders };
