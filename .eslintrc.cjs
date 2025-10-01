@@ -46,6 +46,14 @@ module.exports = {
   },
   overrides: [
     {
+      files: ['clients/rest/**/*.{ts,tsx,d.ts}'],
+      rules: {
+        '@typescript-eslint/naming-convention': 'off',
+        'unicorn/no-null': 'off',
+        'unicorn/no-useless-fallback-in-spread': 'off',
+      },
+    },
+    {
       files: ['apps/web/**/*.{ts,tsx,d.ts}'],
       parserOptions: { ecmaFeatures: { jsx: true } },
       rules: {

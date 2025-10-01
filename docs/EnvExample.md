@@ -7,6 +7,7 @@ API
 - NODE_ENV=development
 - PORT=4000
 - NEXT_PUBLIC_API_URL=http://localhost:4000
+- API_DOCS_ENABLED=true # serve /v1/docs in production when true
 
 External APIs
 

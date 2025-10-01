@@ -45,7 +45,9 @@
     "pipeline:enrich-index": "pnpm ingest:tmdb && node -r ./scripts/load-env.cjs services/catalog/backfillImdbIds.js && node -r ./scripts/load-env.cjs services/catalog/ingestOmdbRatings.js && pnpm index:fromdb",
     "api:dev": "tsx -r ./scripts/load-env.cjs server/api.ts",
     "web:dev": "node -r ./scripts/load-env.cjs scripts/require-venv.cjs && pnpm --filter web dev",
-    "dev:all": "node -r ./scripts/load-env.cjs scripts/dev-all.cjs"
+    "dev:all": "node -r ./scripts/load-env.cjs scripts/dev-all.cjs",
+    "gen:sdk": "openapi-typescript whot2watch-docs-full/docs/rest/openapi.yaml -o clients/rest/schema.d.ts",
+    "gen:sdk:client": "openapi-fetch-cli -i whot2watch-docs-full/docs/rest/openapi.yaml -o clients/rest/client.ts"
   },
   "devDependencies": {
     "@graphql-inspector/cli": "^4.0.1",
