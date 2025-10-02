@@ -91,6 +91,8 @@ if (!SKIP_INGEST) {
     sh('pnpm ingest:providers');
     log('Ingesting TMDB trending (day/week)');
     sh('pnpm ingest:trending');
+    log('Ingesting Trakt trending (week)');
+    trySh('pnpm ingest:trakt');
     log('Indexing from DB to OpenSearch');
     sh('pnpm index:fromdb');
   }

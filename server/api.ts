@@ -1375,12 +1375,13 @@ app.get(
       where: { titleId: { in: titleIds } },
       select: { titleId: true, source: true, value: true },
     });
-    const trendingByTitle: Record<string, { day?: number; week?: number }> = {};
+    const trendingByTitle: Record<string, { day?: number; week?: number; trakt?: number }> = {};
     for (const s of trendingSignals) {
       const src = String(s.source || '').toUpperCase();
       const b = (trendingByTitle[s.titleId] = trendingByTitle[s.titleId] || {});
       if (src === 'TMDB_DAY' && typeof s.value === 'number') b.day = s.value as number;
       else if (src === 'TMDB_WEEK' && typeof s.value === 'number') b.week = s.value as number;
+      else if (src === 'TRAKT_WEEK' && typeof s.value === 'number') b.trakt = s.value as number;
     }
     const candidateGenMs = Date.now() - tCandidateStart;
 
@@ -1425,7 +1426,8 @@ app.get(
         const tr = trendingByTitle[t.id] || {};
         const day = typeof tr.day === 'number' ? (tr.day as number) : 0;
         const week = typeof tr.week === 'number' ? (tr.week as number) : 0;
-        const composite = day * 0.7 + week * 0.3;
+        const trakt = typeof tr.trakt === 'number' ? (tr.trakt as number) : 0;
+        const composite = day * 0.5 + week * 0.3 + trakt * 0.2;
         if (composite > 0) {
           const trendingWeight = coldStart ? 1.5 : 0.8;
           s += composite * trendingWeight;
@@ -1475,6 +1477,7 @@ app.get(
         const tr = trendingByTitle[t.id] || {};
         if (typeof tr.day === 'number' && tr.day >= 0.6) bits.push('trending today');
         else if (typeof tr.week === 'number' && tr.week >= 0.6) bits.push('trending');
+        else if (typeof tr.trakt === 'number' && tr.trakt >= 0.6) bits.push('trending');
       } catch {}
       if (t.releaseYear && t.releaseYear >= new Date().getFullYear() - 1) bits.push('new');
       if (cold) {

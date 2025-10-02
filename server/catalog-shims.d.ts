@@ -28,6 +28,10 @@ declare module '../services/catalog/omdb' {
   ): Array<{ source: string; valueText: string; valueNum?: number | null }>;
 }
 
+declare module '../services/catalog/trakt' {
+  export function fetchTraktTrending(mediaType: string, pages?: number): Promise<any[]>;
+}
+
 // Fallback wildcard for any other helpers in services/catalog
 declare module '../services/catalog/*' {
   const mod: any;
