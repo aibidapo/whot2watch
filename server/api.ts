@@ -302,6 +302,61 @@ app.get('/docs', async (_request, reply) => {
   reply.type('text/html').send(redocHtml);
 });
 
+// ---- Aggregated trending endpoint ----
+app.get('/trending', async (_request, _reply) => {
+  try {
+    const sigs = await (prisma as any).trendingSignal.findMany({
+      select: { titleId: true, source: true, value: true },
+    });
+    const byTitle: Record<string, { day?: number; week?: number; trakt?: number }> = {};
+    for (const s of sigs || []) {
+      const src = String(s.source || '').toUpperCase();
+      const b = (byTitle[s.titleId] = byTitle[s.titleId] || {});
+      if (src === 'TMDB_DAY' && typeof s.value === 'number') b.day = s.value as number;
+      else if (src === 'TMDB_WEEK' && typeof s.value === 'number') b.week = s.value as number;
+      else if (src === 'TRAKT_WEEK' && typeof s.value === 'number') b.trakt = s.value as number;
+    }
+    const scored = Object.entries(byTitle).map(([titleId, v]) => ({
+      titleId,
+      score: (v.day || 0) * 0.5 + (v.week || 0) * 0.3 + (v.trakt || 0) * 0.2,
+    }));
+    scored.sort((a, b) => b.score - a.score);
+    const topIds = scored.slice(0, 20).map((x) => x.titleId);
+    const rows = await prisma.title.findMany({
+      where: { id: { in: topIds } },
+      include: { availability: true, externalRatings: true },
+    });
+    const order: Record<string, number> = Object.fromEntries(topIds.map((id, i) => [id, i]));
+    rows.sort((a: any, b: any) => (order[a.id] ?? 999) - (order[b.id] ?? 999));
+    const items = rows.map((t: any) => {
+      const ratings = Array.isArray(t.externalRatings) ? t.externalRatings : [];
+      const ratingsBySrc: Record<string, number | undefined> = {};
+      for (const r of ratings) {
+        const k = String(r.source || '').toUpperCase();
+        if (typeof r.valueNum === 'number') ratingsBySrc[k] = r.valueNum as number;
+      }
+      return {
+        id: t.id,
+        name: t.name,
+        type: t.type,
+        releaseYear: t.releaseYear ?? undefined,
+        posterUrl: t.posterUrl || undefined,
+        backdropUrl: t.backdropUrl || undefined,
+        voteAverage: t.voteAverage ?? undefined,
+        availabilityServices: Array.from(
+          new Set((t.availability || []).map((a: any) => a.service).filter(Boolean)),
+        ),
+        ratingsImdb: ratingsBySrc.IMDB ?? undefined,
+        ratingsRottenTomatoes: ratingsBySrc.ROTTEN_TOMATOES ?? undefined,
+        ratingsMetacritic: ratingsBySrc.METACRITIC ?? undefined,
+      };
+    });
+    return { items };
+  } catch {
+    return { items: [] };
+  }
+});
+
 app.get('/swagger', async (_request, reply) => {
   // Same guard as docs
   const enabled = process.env.API_DOCS_ENABLED === 'true' || process.env.NODE_ENV !== 'production';

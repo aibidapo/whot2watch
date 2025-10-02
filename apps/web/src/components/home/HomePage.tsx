@@ -148,8 +148,9 @@ export function HomePage() {
   useEffect(() => {
     (async () => {
       try {
-        const json = await api.get(`/search?size=4`);
-        setTrending(Array.isArray((json as any).items) ? (json as any).items : []);
+        const json = await api.get(`/trending`);
+        const items = Array.isArray((json as any).items) ? (json as any).items : [];
+        setTrending(items.slice(0, 4));
       } catch {}
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
