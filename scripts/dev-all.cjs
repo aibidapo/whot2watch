@@ -110,6 +110,8 @@ const web = spawn('pnpm', ['web:dev'], {
     PORT: process.env.WEB_PORT || '3000',
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000',
     NEXT_PUBLIC_DEFAULT_PROFILE_ID: process.env.NEXT_PUBLIC_DEFAULT_PROFILE_ID || '',
+    NEXT_PUBLIC_DEFAULT_REGIONS:
+      process.env.NEXT_PUBLIC_DEFAULT_REGIONS || process.env.DEFAULT_REGIONS || 'US',
     // Do not force PORT so Next can auto-select a free port
   },
 });

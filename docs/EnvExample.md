@@ -7,6 +7,7 @@ API
 - NODE_ENV=development
 - PORT=4000
 - NEXT_PUBLIC_API_URL=http://localhost:4000
+- NEXT_PUBLIC_DEFAULT_REGIONS=US # Comma-separated, e.g. US,CA
 - API_DOCS_ENABLED=true # serve /v1/docs in production when true
 
 External APIs
@@ -16,6 +17,10 @@ External APIs
 - OMDB_API_KEY=
 - JUSTWATCH_PARTNER=
 - TRAKT_CLIENT_ID=
+
+Defaults (optional)
+
+- DEFAULT_REGIONS=US # Server default regions for trending/search when not provided
 
 Testing
 

@@ -72,8 +72,8 @@ model Title {
   feedback      Feedback[]
   recommendations Recommendation[]
   votes         Vote[]
-  trending      TrendingSignal[]
   externalRatings ExternalRating[]
+  trending      TrendingSignal[]
   @@index([type])
   @@index([releaseYear])
   @@index([name])
@@ -91,17 +91,6 @@ model ExternalRating {
   @@index([titleId])
 }
 
-model TrendingSignal {
-  id        String   @id @default(uuid()) @db.Uuid
-  titleId   String   @db.Uuid
-  source    String   // TMDB_DAY | TMDB_WEEK | TRAKT_DAY | TRAKT_WEEK
-  value     Float
-  ts        DateTime @default(now())
-  title     Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
-  @@index([titleId])
-  @@unique([titleId, source])
-}
-
 model Availability {
   id         String   @id @default(uuid()) @db.Uuid
   titleId    String   @db.Uuid
@@ -114,6 +103,17 @@ model Availability {
   @@index([titleId])
   @@index([region, service])
   @@index([service])
+}
+
+model TrendingSignal {
+  id       String   @id @default(uuid()) @db.Uuid
+  titleId  String   @db.Uuid
+  source   String   // TMDB_DAY | TMDB_WEEK | TRAKT_WEEK
+  value    Float
+  ts       DateTime @default(now())
+  title    Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  @@unique([titleId, source])
+  @@index([titleId])
 }
 
 model Recommendation {

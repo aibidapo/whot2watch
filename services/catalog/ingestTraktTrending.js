@@ -3,6 +3,12 @@ const { PrismaClient } = require('@prisma/client');
 const { fetchTraktTrending } = require('./trakt');
 const { fetchExternalIds } = require('./tmdb');
 
+// Gracefully skip when credentials are not configured
+if (!process.env.TRAKT_CLIENT_ID && !process.env.TRAKT_API_KEY) {
+  console.warn('[trakt-trending] TRAKT_CLIENT_ID is not set; skipping Trakt trending ingest.');
+  process.exit(0);
+}
+
 async function upsertTitle(prisma, item) {
   // Prefer TMDB id to anchor to our Title; fallback to imdbId only if present
   let tmdbIdBig = null;
@@ -79,3 +85,7 @@ main().catch((e) => {
   console.error(e);
   process.exit(1);
 });
+
+
+
+

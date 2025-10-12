@@ -303,8 +303,21 @@ app.get('/docs', async (_request, reply) => {
 });
 
 // ---- Aggregated trending endpoint ----
-app.get('/trending', async (_request, _reply) => {
+app.get('/trending', async (request, _reply) => {
+  const parsed = url.parse(request.raw.url || '', true);
+  const rawRegion = String((parsed.query as any)?.region || '').trim();
+  const defaultRegionsEnv = process.env.DEFAULT_REGIONS || 'US';
+  const regionParam = (rawRegion || defaultRegionsEnv.split(',')[0] || 'US').toUpperCase();
+  const sizeRaw = Number((parsed.query as any)?.size ?? 4);
+  const size = Number.isFinite(sizeRaw) ? Math.min(Math.max(sizeRaw, 1), 20) : 4;
+  const cacheKey = `trending:v1:${regionParam}:${size}`;
   try {
+    // Try cache first
+    try {
+      const cached = await app.redis?.get(cacheKey);
+      if (cached) return JSON.parse(cached);
+    } catch {}
+
     const sigs = await (prisma as any).trendingSignal.findMany({
       select: { titleId: true, source: true, value: true },
     });
@@ -335,6 +348,9 @@ app.get('/trending', async (_request, _reply) => {
         const k = String(r.source || '').toUpperCase();
         if (typeof r.valueNum === 'number') ratingsBySrc[k] = r.valueNum as number;
       }
+      const availInRegion = (t.availability || []).filter(
+        (a: any) => a.region === regionParam && a.offerType === 'SUBSCRIPTION',
+      );
       return {
         id: t.id,
         name: t.name,
@@ -344,14 +360,19 @@ app.get('/trending', async (_request, _reply) => {
         backdropUrl: t.backdropUrl || undefined,
         voteAverage: t.voteAverage ?? undefined,
         availabilityServices: Array.from(
-          new Set((t.availability || []).map((a: any) => a.service).filter(Boolean)),
+          new Set(availInRegion.map((a: any) => a.service).filter(Boolean)),
         ),
+        availabilityRegions: [regionParam],
         ratingsImdb: ratingsBySrc.IMDB ?? undefined,
         ratingsRottenTomatoes: ratingsBySrc.ROTTEN_TOMATOES ?? undefined,
         ratingsMetacritic: ratingsBySrc.METACRITIC ?? undefined,
       };
-    });
-    return { items };
+    }).slice(0, size);
+    const payload = { items };
+    try {
+      if (app.redis) await app.redis.setEx(cacheKey, 300, JSON.stringify(payload));
+    } catch {}
+    return payload;
   } catch {
     return { items: [] };
   }
@@ -586,7 +607,7 @@ async function adminPreHandler(request: any, reply: any) {
   }
 }
 
-async function toIndexDocById(titleId: string) {
+async function toIndexDocById(titleId: string, regionsParam?: string[]) {
   const row = await prisma.title.findUnique({
     where: { id: titleId },
     include: { availability: true, externalRatings: true },
@@ -613,13 +634,35 @@ async function toIndexDocById(titleId: string) {
     ratingsImdb: ratingsBySrc.IMDB ?? undefined,
     ratingsRottenTomatoes: ratingsBySrc.ROTTEN_TOMATOES ?? undefined,
     ratingsMetacritic: ratingsBySrc.METACRITIC ?? undefined,
+    // Use region filter if provided
     availabilityServices: Array.from(
-      new Set(((row as any).availability || []).map((a: any) => a.service).filter(Boolean)),
+      new Set(
+        (((row as any).availability || []) as any[])
+          .filter(
+            (a: any) =>
+              (!regionsParam || regionsParam.length === 0
+                ? true
+                : regionsParam.includes(a.region)) && a.offerType === 'SUBSCRIPTION',
+          )
+          .map((a: any) => a.service)
+          .filter(Boolean),
+      ),
     ),
     availabilityRegions: Array.from(
-      new Set(((row as any).availability || []).map((a: any) => a.region).filter(Boolean)),
+      new Set(
+        (((row as any).availability || []) as any[])
+          .filter((a: any) =>
+            !regionsParam || regionsParam.length === 0 ? true : regionsParam.includes(a.region),
+          )
+          .map((a: any) => a.region)
+          .filter(Boolean),
+      ),
     ),
-    availability: ((row as any).availability || []).map((a: any) => ({
+    availability: ((row as any).availability || [])
+      .filter((a: any) =>
+        !regionsParam || regionsParam.length === 0 ? true : regionsParam.includes(a.region),
+      )
+      .map((a: any) => ({
       service: a.service,
       region: a.region,
       offerType: a.offerType,
@@ -846,8 +889,36 @@ app.get(
       score: h._score,
       ...h._source,
     }));
-    const total = typeof data.hits?.total?.value === 'number' ? data.hits.total.value : hits.length;
-    let response = { items: hits, total, took: data.took ?? 0, from, size } as any;
+    // Post-filter OpenSearch documents' availability by requested regions to
+    // ensure UI only shows services actually available in selected regions
+    const regionFilteredHits = hits.map((doc: any) => {
+      try {
+        if (!regions || regions.length === 0) return doc;
+        const avail: any[] = Array.isArray(doc.availability) ? doc.availability : [];
+        const filteredAvail = avail.filter((a: any) => regions.includes(a.region));
+        const availabilityServices = Array.from(
+          new Set(
+            filteredAvail
+              .filter((a: any) => a.offerType === 'SUBSCRIPTION')
+              .map((a: any) => a.service)
+              .filter(Boolean),
+          ),
+        );
+        const availabilityRegions = Array.from(
+          new Set(filteredAvail.map((a: any) => a.region).filter(Boolean)),
+        );
+        return {
+          ...doc,
+          availability: filteredAvail,
+          availabilityServices,
+          availabilityRegions,
+        };
+      } catch {
+        return doc;
+      }
+    });
+    const total = typeof data.hits?.total?.value === 'number' ? data.hits.total.value : regionFilteredHits.length;
+    let response = { items: regionFilteredHits, total, took: data.took ?? 0, from, size } as any;
 
     // --- DB fallback: when no OpenSearch hits, search Titles directly (substring, case-insensitive) ---
     if (q && hits.length === 0) {
@@ -859,7 +930,7 @@ app.get(
           orderBy: { createdAt: 'desc' },
           include: { availability: true, externalRatings: true },
         });
-        const mapped = rows.map((row: any) => {
+    const mapped = rows.map((row: any) => {
           const ratings = Array.isArray(row.externalRatings) ? row.externalRatings : [];
           const ratingsBy: Record<string, number | undefined> = {};
           for (const r of ratings) {
@@ -867,10 +938,24 @@ app.get(
             if (typeof r.valueNum === 'number') ratingsBy[k] = r.valueNum as number;
           }
           const availabilityServices = Array.from(
-            new Set((row.availability || []).map((a: any) => a.service).filter(Boolean) as any),
+            new Set(
+              (row.availability || [])
+                .filter(
+                  (a: any) =>
+                    ((!regions || regions.length === 0) || regions.includes(a.region)) &&
+                    a.offerType === 'SUBSCRIPTION',
+                )
+                .map((a: any) => a.service)
+                .filter(Boolean) as any,
+            ),
           );
           const availabilityRegions = Array.from(
-            new Set((row.availability || []).map((a: any) => a.region).filter(Boolean) as any),
+            new Set(
+              (row.availability || [])
+                .filter((a: any) => (!regions || regions.length === 0) || regions.includes(a.region))
+                .map((a: any) => a.region)
+                .filter(Boolean) as any,
+            ),
           );
           return {
             id: row.id,
@@ -1619,7 +1704,12 @@ app.get(
         (a: any) => services.includes(a.service) && a.region === region,
       );
       const availabilityServices = Array.from(
-        new Set((t.availability || []).map((a: any) => a.service).filter(Boolean)),
+        new Set(
+          (t.availability || [])
+            .filter((a: any) => a.offerType === 'SUBSCRIPTION' && a.region === region)
+            .map((a: any) => a.service)
+            .filter(Boolean),
+        ),
       );
       let watchUrl = match?.deepLink;
       if (!watchUrl && match?.service) {

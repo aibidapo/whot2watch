@@ -59,25 +59,18 @@ function toTitle(result, mediaType) {
   };
 }
 
-async function fetchTrending(mediaType = 'movie', pages = 1) {
-  const items = [];
-  for (let p = 1; p <= pages; p++) {
-    const data = await tmdbGet(`/trending/${mediaType}/week`, { page: String(p) });
-    for (const r of data.results || []) items.push(toTitle(r, mediaType));
-  }
-  return items;
-}
-
-// Fetch trending for a specific time window: 'day' or 'week'
-// Returns array of minimal title objects consistent with toTitle
 async function fetchTrendingWindow(mediaType = 'movie', window = 'week', pages = 1) {
+  const win = String(window).toLowerCase() === 'day' ? 'day' : 'week';
   const items = [];
-  const win = window === 'day' ? 'day' : 'week';
   for (let p = 1; p <= pages; p++) {
     const data = await tmdbGet(`/trending/${mediaType}/${win}`, { page: String(p) });
     for (const r of data.results || []) items.push(toTitle(r, mediaType));
   }
   return items;
+}
+
+async function fetchTrending(mediaType = 'movie', pages = 1) {
+  return fetchTrendingWindow(mediaType, 'week', pages);
 }
 
 // Fetch external IDs (e.g., IMDB) for a TMDB title

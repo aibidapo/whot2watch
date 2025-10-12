@@ -18,6 +18,7 @@ type SearchItem = {
   posterUrl?: string;
   backdropUrl?: string;
   availabilityServices?: string[];
+  availabilityRegions?: string[];
   voteAverage?: number;
   ratingsImdb?: number;
   ratingsRottenTomatoes?: number;
@@ -45,7 +46,7 @@ function highlight(text: string, term: string) {
 function buildSearchQuery(params: {
   q: string;
   service: string;
-  region: string;
+  regions: string[];
   size: number;
   from: number;
   hasRatings: boolean;
@@ -63,7 +64,9 @@ function buildSearchQuery(params: {
   add('from', params.from);
   if (params.q) add('q', params.q);
   if (params.service) out.append('service', params.service);
-  if (params.region) out.append('region', params.region);
+  for (const r of params.regions || []) {
+    if (r) out.append('region', r);
+  }
   if (params.hasRatings) add('hasRatings', 'true');
   const addNum = (key: string, value: number | '') => {
     if (value === '') return;
@@ -81,7 +84,16 @@ export function HomePage() {
   const searchParams = useSearchParams();
   const [q, setQ] = useState('');
   const [service, setService] = useState<string>('');
-  const [region, setRegion] = useState<string>('');
+  const defaultRegionOptions = useMemo(
+    () =>
+      (process.env.NEXT_PUBLIC_DEFAULT_REGIONS || 'US')
+        .split(',')
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean),
+    [],
+  );
+  const [regions, setRegions] = useState<string[]>(defaultRegionOptions);
+  const [region, setRegion] = useState<string>((defaultRegionOptions[0] || 'US').toUpperCase());
   const [items, setItems] = useState<SearchItem[]>([]);
   const [from, setFrom] = useState(0);
   const size = 20;
@@ -102,7 +114,7 @@ export function HomePage() {
     const query = buildSearchQuery({
       q,
       service,
-      region,
+      regions,
       size,
       from,
       hasRatings,
@@ -132,8 +144,33 @@ export function HomePage() {
       setQ(qp);
       setFrom(0);
     }
+    // Derive region(s) from URL if present
+    const urlRegion = searchParams.get('region');
+    if (urlRegion) {
+      const list = urlRegion
+        .split(',')
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean);
+      if (list.length) {
+        setRegions(list);
+        if (!list.includes(region)) setRegion(list[0]);
+        setFrom(0);
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
+  // Sync region(s) to URL for shareable state
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (regions.length) params.set('region', regions.join(','));
+      else params.delete('region');
+      const next = `${window.location.pathname}?${params.toString()}`;
+      window.history.replaceState({}, '', next);
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [regions]);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -141,20 +178,21 @@ export function HomePage() {
     }, 250);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, service, region, from, hasRatings, minRating, minImdb, minRt, minMc]);
+  }, [q, service, regions, from, hasRatings, minRating, minImdb, minRt, minMc]);
 
   // Preload trending (no query) separately for hero section
   const [trending, setTrending] = useState<SearchItem[]>([]);
   useEffect(() => {
     (async () => {
       try {
-        const json = await api.get(`/trending`);
+        const regionParam = region || defaultRegionOptions[0] || 'US';
+        const json = await api.get(`/trending?region=${encodeURIComponent(regionParam)}`);
         const items = Array.isArray((json as any).items) ? (json as any).items : [];
         setTrending(items.slice(0, 4));
       } catch {}
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [region, defaultRegionOptions]);
 
   return (
     <div className="grid gap-6">
@@ -213,16 +251,37 @@ export function HomePage() {
             <Select
               value={region}
               onChange={(e) => {
-                setRegion(e.target.value);
+                const r = e.target.value;
+                setRegion(r);
+                setRegions(r ? [r] : []);
                 setFrom(0);
               }}
               className="mt-1"
             >
               <option value="">Any</option>
-              <option>US</option>
-              <option>CA</option>
-              <option>GB</option>
+              {defaultRegionOptions.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
             </Select>
+          </div>
+          <div>
+            <label className="block text-sm text-slate-500">Regions (multi)</label>
+            <Input
+              className="mt-1"
+              placeholder="US,CA,GB"
+              value={regions.join(',')}
+              onChange={(e) => {
+                const list = e.target.value
+                  .split(',')
+                  .map((s) => s.trim().toUpperCase())
+                  .filter(Boolean);
+                setRegions(list.length ? list : ['US']);
+                if (!list.includes(region)) setRegion((list[0] || 'US').toUpperCase());
+                setFrom(0);
+              }}
+            />
           </div>
           <div className="flex items-center gap-2 mt-2 md:mt-0">
             <input
@@ -414,7 +473,12 @@ export function HomePage() {
                   {Array.isArray(it.availabilityServices) && it.availabilityServices.length ? (
                     <div className="mt-2 flex gap-2 flex-wrap">
                       {it.availabilityServices.slice(0, 3).map((svc) => (
-                        <Chip key={svc}>{svc.replace('_', ' ')}</Chip>
+                        <Chip key={svc}>
+                          {svc.replace('_', ' ')}
+                          {Array.isArray(it.availabilityRegions) && it.availabilityRegions.length
+                            ? ` • ${it.availabilityRegions[0]}`
+                            : ''}
+                        </Chip>
                       ))}
                     </div>
                   ) : null}
@@ -454,7 +518,7 @@ export function HomePage() {
               {Array.isArray(it.availabilityServices) && it.availabilityServices.length ? (
                 <div className="mt-2 flex gap-2 flex-wrap">
                   {it.availabilityServices.slice(0, 3).map((svc) => (
-                    <Chip key={svc}>{svc.replace('_', ' ')}</Chip>
+                    <Chip key={svc}>{svc.replace('_', ' ')}{region ? ` • ${region}` : ''}</Chip>
                   ))}
                 </div>
               ) : null}
