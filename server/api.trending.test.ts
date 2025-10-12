@@ -72,5 +72,3 @@ describe('GET /v1/trending', () => {
     expect(names[1]).toBe('Beta');
   });
 });
-
-

@@ -56,18 +56,3 @@ async function fetchTraktTrending(mediaType = 'movie', pages = 1) {
 }
 
 module.exports = { fetchTraktTrending };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

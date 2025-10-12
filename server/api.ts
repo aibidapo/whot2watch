@@ -341,33 +341,35 @@ app.get('/trending', async (request, _reply) => {
     });
     const order: Record<string, number> = Object.fromEntries(topIds.map((id, i) => [id, i]));
     rows.sort((a: any, b: any) => (order[a.id] ?? 999) - (order[b.id] ?? 999));
-    const items = rows.map((t: any) => {
-      const ratings = Array.isArray(t.externalRatings) ? t.externalRatings : [];
-      const ratingsBySrc: Record<string, number | undefined> = {};
-      for (const r of ratings) {
-        const k = String(r.source || '').toUpperCase();
-        if (typeof r.valueNum === 'number') ratingsBySrc[k] = r.valueNum as number;
-      }
-      const availInRegion = (t.availability || []).filter(
-        (a: any) => a.region === regionParam && a.offerType === 'SUBSCRIPTION',
-      );
-      return {
-        id: t.id,
-        name: t.name,
-        type: t.type,
-        releaseYear: t.releaseYear ?? undefined,
-        posterUrl: t.posterUrl || undefined,
-        backdropUrl: t.backdropUrl || undefined,
-        voteAverage: t.voteAverage ?? undefined,
-        availabilityServices: Array.from(
-          new Set(availInRegion.map((a: any) => a.service).filter(Boolean)),
-        ),
-        availabilityRegions: [regionParam],
-        ratingsImdb: ratingsBySrc.IMDB ?? undefined,
-        ratingsRottenTomatoes: ratingsBySrc.ROTTEN_TOMATOES ?? undefined,
-        ratingsMetacritic: ratingsBySrc.METACRITIC ?? undefined,
-      };
-    }).slice(0, size);
+    const items = rows
+      .map((t: any) => {
+        const ratings = Array.isArray(t.externalRatings) ? t.externalRatings : [];
+        const ratingsBySrc: Record<string, number | undefined> = {};
+        for (const r of ratings) {
+          const k = String(r.source || '').toUpperCase();
+          if (typeof r.valueNum === 'number') ratingsBySrc[k] = r.valueNum as number;
+        }
+        const availInRegion = (t.availability || []).filter(
+          (a: any) => a.region === regionParam && a.offerType === 'SUBSCRIPTION',
+        );
+        return {
+          id: t.id,
+          name: t.name,
+          type: t.type,
+          releaseYear: t.releaseYear ?? undefined,
+          posterUrl: t.posterUrl || undefined,
+          backdropUrl: t.backdropUrl || undefined,
+          voteAverage: t.voteAverage ?? undefined,
+          availabilityServices: Array.from(
+            new Set(availInRegion.map((a: any) => a.service).filter(Boolean)),
+          ),
+          availabilityRegions: [regionParam],
+          ratingsImdb: ratingsBySrc.IMDB ?? undefined,
+          ratingsRottenTomatoes: ratingsBySrc.ROTTEN_TOMATOES ?? undefined,
+          ratingsMetacritic: ratingsBySrc.METACRITIC ?? undefined,
+        };
+      })
+      .slice(0, size);
     const payload = { items };
     try {
       if (app.redis) await app.redis.setEx(cacheKey, 300, JSON.stringify(payload));
@@ -663,11 +665,11 @@ async function toIndexDocById(titleId: string, regionsParam?: string[]) {
         !regionsParam || regionsParam.length === 0 ? true : regionsParam.includes(a.region),
       )
       .map((a: any) => ({
-      service: a.service,
-      region: a.region,
-      offerType: a.offerType,
-      deepLink: a.deepLink || undefined,
-    })),
+        service: a.service,
+        region: a.region,
+        offerType: a.offerType,
+        deepLink: a.deepLink || undefined,
+      })),
   } as any;
 }
 
@@ -917,7 +919,10 @@ app.get(
         return doc;
       }
     });
-    const total = typeof data.hits?.total?.value === 'number' ? data.hits.total.value : regionFilteredHits.length;
+    const total =
+      typeof data.hits?.total?.value === 'number'
+        ? data.hits.total.value
+        : regionFilteredHits.length;
     let response = { items: regionFilteredHits, total, took: data.took ?? 0, from, size } as any;
 
     // --- DB fallback: when no OpenSearch hits, search Titles directly (substring, case-insensitive) ---
@@ -930,7 +935,7 @@ app.get(
           orderBy: { createdAt: 'desc' },
           include: { availability: true, externalRatings: true },
         });
-    const mapped = rows.map((row: any) => {
+        const mapped = rows.map((row: any) => {
           const ratings = Array.isArray(row.externalRatings) ? row.externalRatings : [];
           const ratingsBy: Record<string, number | undefined> = {};
           for (const r of ratings) {
@@ -942,7 +947,7 @@ app.get(
               (row.availability || [])
                 .filter(
                   (a: any) =>
-                    ((!regions || regions.length === 0) || regions.includes(a.region)) &&
+                    (!regions || regions.length === 0 || regions.includes(a.region)) &&
                     a.offerType === 'SUBSCRIPTION',
                 )
                 .map((a: any) => a.service)
@@ -952,7 +957,7 @@ app.get(
           const availabilityRegions = Array.from(
             new Set(
               (row.availability || [])
-                .filter((a: any) => (!regions || regions.length === 0) || regions.includes(a.region))
+                .filter((a: any) => !regions || regions.length === 0 || regions.includes(a.region))
                 .map((a: any) => a.region)
                 .filter(Boolean) as any,
             ),

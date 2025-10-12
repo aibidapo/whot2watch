@@ -518,7 +518,10 @@ export function HomePage() {
               {Array.isArray(it.availabilityServices) && it.availabilityServices.length ? (
                 <div className="mt-2 flex gap-2 flex-wrap">
                   {it.availabilityServices.slice(0, 3).map((svc) => (
-                    <Chip key={svc}>{svc.replace('_', ' ')}{region ? ` • ${region}` : ''}</Chip>
+                    <Chip key={svc}>
+                      {svc.replace('_', ' ')}
+                      {region ? ` • ${region}` : ''}
+                    </Chip>
                   ))}
                 </div>
               ) : null}
