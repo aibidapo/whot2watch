@@ -41,3 +41,18 @@ Testing Strategy
 - Unit: feedback payload validation; flag parsing; event taxonomy validation
 - Integration: feedback stored and surfaced in admin console; experiment toggles variant paths
 - E2E: enable variant → measure CTR change; ensure opt-out of feedback in Private Mode
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
