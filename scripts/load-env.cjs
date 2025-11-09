@@ -35,7 +35,10 @@ function loadEnv(filePath) {
   }
 }
 
+// Load precedence: .env.local (highest) then .env (fallback)
+const envLocalPath = resolve(process.cwd(), '.env.local');
 const envPath = resolve(process.cwd(), '.env');
+loadEnv(envLocalPath);
 loadEnv(envPath);
 
 // No-op export for -r preload usage
