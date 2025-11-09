@@ -2,8 +2,32 @@
 const { execSync } = require('child_process');
 
 function changedFiles(baseRef) {
-  const out = execSync(`git diff --name-only ${baseRef}...HEAD`, { encoding: 'utf8' });
-  return out.split('\n').filter(Boolean);
+  try {
+    const out = execSync(`git diff --name-only ${baseRef}...HEAD`, {
+      encoding: 'utf8',
+    });
+    return out.split('\n').filter(Boolean);
+  } catch (err) {
+    // Handle initial push or unrelated histories where a merge-base does not exist.
+    // Fall back to a standard two-dot diff, and if that still fails, diff from the root commit.
+    try {
+      const out = execSync(`git diff --name-only ${baseRef}..HEAD`, {
+        encoding: 'utf8',
+      });
+      return out.split('\n').filter(Boolean);
+    } catch {
+      const root = execSync('git rev-list --max-parents=0 HEAD', {
+        encoding: 'utf8',
+      })
+        .split('\n')
+        .filter(Boolean)
+        .pop();
+      const out = execSync(`git diff --name-only ${root}..HEAD`, {
+        encoding: 'utf8',
+      });
+      return out.split('\n').filter(Boolean);
+    }
+  }
 }
 
 function requiresRoadmapUpdate(paths) {
