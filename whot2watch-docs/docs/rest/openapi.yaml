@@ -533,6 +533,10 @@ components:
       properties:
         id: { type: string, format: uuid }
         hostProfileId: { type: string, format: uuid }
+        name: { type: string }
+        constraints: { type: object }
+        status: { type: string, enum: [open, locked, closed] }
+        createdAt: { type: string, format: date-time }
     Alert:
       type: object
       properties:
@@ -558,8 +562,4 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-        name: { type: string }
-        constraints: { type: object }
-        status: { type: string, enum: [open, locked, closed] }
-        createdAt: { type: string, format: date-time }
 
