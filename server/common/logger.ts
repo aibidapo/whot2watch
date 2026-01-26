@@ -76,3 +76,31 @@ export class Logger {
 }
 
 export const logger = new Logger({ level: (process.env.LOG_LEVEL as any) || 'info' });
+
+/**
+ * Create a named logger instance that prefixes log messages with a module name.
+ * Usage: const log = createLogger('mcp-client');
+ */
+export function createLogger(module: string): Logger & { module: string } {
+  const base = new Logger({ level: (process.env.LOG_LEVEL as any) || 'info' });
+  const wrapped = {
+    module,
+    debug(metaOrMsg: unknown, meta?: unknown) {
+      if (typeof metaOrMsg === 'string') base.debug(`[${module}] ${metaOrMsg}`, meta);
+      else base.debug(`[${module}]`, metaOrMsg);
+    },
+    info(metaOrMsg: unknown, meta?: unknown) {
+      if (typeof metaOrMsg === 'string') base.info(`[${module}] ${metaOrMsg}`, meta);
+      else base.info(`[${module}]`, metaOrMsg);
+    },
+    warn(metaOrMsg: unknown, meta?: unknown) {
+      if (typeof metaOrMsg === 'string') base.warn(`[${module}] ${metaOrMsg}`, meta);
+      else base.warn(`[${module}]`, metaOrMsg);
+    },
+    error(metaOrMsg: unknown, meta?: unknown) {
+      if (typeof metaOrMsg === 'string') base.error(`[${module}] ${metaOrMsg}`, meta);
+      else base.error(`[${module}]`, metaOrMsg);
+    },
+  };
+  return wrapped as Logger & { module: string };
+}

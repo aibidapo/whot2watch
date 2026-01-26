@@ -67,25 +67,25 @@ Step-by-Step Implementation Plan
 
 Reference: `docs/adr/0002-mcp-agentic-architecture.md`
 
-- [ ] ADR: MCP-based agentic architecture (`docs/adr/0002-mcp-agentic-architecture.md`)
-- [ ] MCP infrastructure
-  - [ ] `.mcp.json` configuration
-  - [ ] MCP client with caching/backoff (`server/mcp/client.ts`)
-  - [ ] Tool registry with progressive discovery (`server/mcp/registry.ts`)
-- [ ] MCP Adapters
-  - [ ] TMDB adapter (`server/mcp/adapters/tmdb.adapter.ts`)
-  - [ ] JustWatch adapter (`server/mcp/adapters/justwatch.adapter.ts`)
-- [ ] Agent Infrastructure
-  - [ ] Type definitions (`server/agents/types.ts`)
-  - [ ] Conversation context (`server/agents/context.ts`)
-  - [ ] Feature flag config (`server/agents/config.ts`)
+- [x] ADR: MCP-based agentic architecture (`docs/adr/0002-mcp-agentic-architecture.md`)
+- [x] MCP infrastructure
+  - [x] `.mcp.json` configuration
+  - [x] MCP client with caching/backoff (`server/mcp/client.ts`)
+  - [x] Tool registry with progressive discovery (`server/mcp/registry.ts`)
+- [x] MCP Adapters
+  - [x] TMDB adapter (`server/mcp/adapters/tmdb.adapter.ts`)
+  - [x] JustWatch adapter (`server/mcp/adapters/justwatch.adapter.ts`)
+- [x] Agent Infrastructure (partial)
+  - [x] Type definitions (`server/agents/types.ts`)
+  - [x] Conversation context (`server/agents/context.ts`)
+  - [x] Feature flag config (`server/agents/config.ts`)
   - [ ] Safety filters (`server/agents/safety.ts`)
   - [ ] Telemetry (`server/agents/telemetry.ts`)
-- [ ] Worker Agents
-  - [ ] Search worker (`server/agents/workers/search.worker.ts`)
-  - [ ] Availability worker (`server/agents/workers/availability.worker.ts`)
-  - [ ] Preferences worker (`server/agents/workers/preferences.worker.ts`)
-  - [ ] Recommendations worker (`server/agents/workers/recommendations.worker.ts`)
+- [x] Worker Agents
+  - [x] Search worker (`server/agents/workers/search.worker.ts`)
+  - [x] Availability worker (`server/agents/workers/availability.worker.ts`)
+  - [x] Preferences worker (`server/agents/workers/preferences.worker.ts`)
+  - [x] Recommendations worker (`server/agents/workers/recommendations.worker.ts`)
 - [ ] Orchestrator (`server/agents/orchestrator.ts`)
   - [ ] Intent classification
   - [ ] Worker routing
