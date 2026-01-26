@@ -33,4 +33,24 @@
 - deep_link_opened, deep_link_failed
 - private_mode_toggled
 
+## AI Concierge Events (Epic 8)
+
+- chat_message_sent: User sends message to AI Concierge
+- chat_response_received: AI returns recommendations
+- chat_fallback_triggered: Fallback to NLU/local DB
+
+### Privacy Notes for AI Events
+
+- `chat_message_sent`: Only captures message_length, detected_intent, entity_types. No raw message text.
+- `chat_response_received`: Captures token counts and costs for monitoring, no response content.
+- `chat_fallback_triggered`: Captures hashed error messages, no PII.
+
+### Cost Monitoring Metrics (Epic 12)
+
+AI events track LLM usage for cost monitoring:
+- `input_tokens`, `output_tokens`: Token counts per request
+- `estimated_cost_usd`: Estimated cost per response
+- `llm_provider`: Provider used (anthropic/openai/none)
+- `daily_usage_count`, `daily_limit`: Rate limit tracking
+
 See JSON Schemas in this folder for payload structure.

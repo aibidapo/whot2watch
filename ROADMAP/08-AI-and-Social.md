@@ -63,19 +63,68 @@ Step-by-Step Implementation Plan
 - Public links for lists and My Picks; OG cards (title, image, badges)
 - Route to prefilled view; allow opt-out via Private Mode
 
+## MCP Architecture
+
+Reference: `docs/adr/0002-mcp-agentic-architecture.md`
+
+- [ ] ADR: MCP-based agentic architecture (`docs/adr/0002-mcp-agentic-architecture.md`)
+- [ ] MCP infrastructure
+  - [ ] `.mcp.json` configuration
+  - [ ] MCP client with caching/backoff (`server/mcp/client.ts`)
+  - [ ] Tool registry with progressive discovery (`server/mcp/registry.ts`)
+- [ ] MCP Adapters
+  - [ ] TMDB adapter (`server/mcp/adapters/tmdb.adapter.ts`)
+  - [ ] JustWatch adapter (`server/mcp/adapters/justwatch.adapter.ts`)
+- [ ] Agent Infrastructure
+  - [ ] Type definitions (`server/agents/types.ts`)
+  - [ ] Conversation context (`server/agents/context.ts`)
+  - [ ] Feature flag config (`server/agents/config.ts`)
+  - [ ] Safety filters (`server/agents/safety.ts`)
+  - [ ] Telemetry (`server/agents/telemetry.ts`)
+- [ ] Worker Agents
+  - [ ] Search worker (`server/agents/workers/search.worker.ts`)
+  - [ ] Availability worker (`server/agents/workers/availability.worker.ts`)
+  - [ ] Preferences worker (`server/agents/workers/preferences.worker.ts`)
+  - [ ] Recommendations worker (`server/agents/workers/recommendations.worker.ts`)
+- [ ] Orchestrator (`server/agents/orchestrator.ts`)
+  - [ ] Intent classification
+  - [ ] Worker routing
+  - [ ] Response aggregation
+- [ ] Chat API
+  - [ ] POST /v1/chat endpoint (`server/chat/router.ts`)
+  - [ ] SSE streaming (`server/chat/streaming.ts`)
+  - [ ] Session management (`server/chat/session.ts`)
+- [ ] Frontend
+  - [ ] ChatPanel component (`apps/web/src/components/chat/ChatPanel.tsx`)
+  - [ ] useChat hook (`apps/web/src/components/chat/hooks/useChat.ts`)
+  - [ ] Search bar NLU augment (optional)
+- [ ] Production
+  - [ ] Rate limiting (per-user/day)
+  - [ ] Freemium gating
+  - [ ] LLM cost monitoring
+  - [ ] Safety filters enabled
+  - [ ] Load testing (k6)
+  - [ ] Security testing (ZAP)
+
 Testing Strategy
 
 - Unit
   - NLU intent parser → filter mapping; boost functions combining popularity/subscriptions
   - Feature-flag gates and fallbacks; prompt templating units
+  - Agent workers (search, availability, preferences, recommendations)
+  - MCP adapters mocking external servers
 - Integration
   - Cold-start → boosted picks with reasons; conversational query → filtered results
   - Social feed returns friend actions; share link renders OG meta
   - LLM request caps and safety filters block as expected; NLU fallback engaged
+  - MCP fallback to local DB when external servers unavailable
+  - Chat endpoint with Redis session persistence
 - E2E
   - New user completes onboarding → receives relevant picks with reasons
   - Friend likes titles → appears in feed; Friends' Picks tab updates
   - LLM quota exhausted → fallback path retains functionality
+  - Chat conversation maintains context across turns
+  - Feature flag `AI_CONCIERGE_ENABLED=false` disables chat gracefully
 
 Metrics & Telemetry
 

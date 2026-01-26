@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/chat_response_received.schema.json",
+  "title": "chat_response_received properties",
+  "description": "Fired when the AI Concierge returns a response to the user",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Chat session identifier"
+    },
+    "turn_number": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Conversation turn number"
+    },
+    "recommendations_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of titles recommended"
+    },
+    "alternatives_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of alternative titles suggested"
+    },
+    "follow_up_questions_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of follow-up questions provided"
+    },
+    "response_time_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total response time in milliseconds"
+    },
+    "llm_provider": {
+      "type": "string",
+      "enum": ["anthropic", "openai", "none"],
+      "description": "LLM provider used for this response"
+    },
+    "input_tokens": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of input tokens used"
+    },
+    "output_tokens": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of output tokens generated"
+    },
+    "estimated_cost_usd": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Estimated cost in USD for this response"
+    },
+    "workers_invoked": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["search", "availability", "preferences", "recommendations"]
+      },
+      "description": "Worker agents that were invoked"
+    },
+    "mcp_servers_used": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "MCP servers that were called (e.g., tmdb, justwatch)"
+    },
+    "cache_hit": {
+      "type": "boolean",
+      "description": "Whether the response was served from cache"
+    }
+  },
+  "required": ["session_id", "turn_number", "recommendations_count", "response_time_ms"]
+}

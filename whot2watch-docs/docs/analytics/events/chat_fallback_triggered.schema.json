@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/chat_fallback_triggered.schema.json",
+  "title": "chat_fallback_triggered properties",
+  "description": "Fired when the AI Concierge falls back to NLU rules or local database",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Chat session identifier"
+    },
+    "turn_number": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Conversation turn number"
+    },
+    "fallback_reason": {
+      "type": "string",
+      "enum": [
+        "llm_disabled",
+        "llm_error",
+        "llm_timeout",
+        "rate_limit_exceeded",
+        "budget_exceeded",
+        "mcp_unavailable",
+        "safety_filter_blocked"
+      ],
+      "description": "Reason for triggering fallback"
+    },
+    "fallback_type": {
+      "type": "string",
+      "enum": ["nlu_rules", "local_db", "cached_response", "error_response"],
+      "description": "Type of fallback used"
+    },
+    "original_provider": {
+      "type": "string",
+      "enum": ["anthropic", "openai"],
+      "description": "Provider that was originally attempted"
+    },
+    "error_message_hash": {
+      "type": "string",
+      "description": "Hashed error message (no PII)"
+    },
+    "user_tier": {
+      "type": "string",
+      "enum": ["free", "premium"],
+      "description": "User's subscription tier"
+    },
+    "daily_usage_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of chat messages sent today"
+    },
+    "daily_limit": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "User's daily message limit"
+    }
+  },
+  "required": ["session_id", "fallback_reason", "fallback_type"]
+}

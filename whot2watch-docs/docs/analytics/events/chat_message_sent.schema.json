@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/chat_message_sent.schema.json",
+  "title": "chat_message_sent properties",
+  "description": "Fired when a user sends a message to the AI Concierge",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "Chat session identifier"
+    },
+    "turn_number": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Conversation turn number"
+    },
+    "message_length": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Character count of user message (not the actual message for privacy)"
+    },
+    "detected_intent": {
+      "type": "string",
+      "enum": ["search", "availability", "recommendations", "preferences", "social", "unknown"],
+      "description": "Classified intent of the message"
+    },
+    "intent_confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Confidence score of intent classification"
+    },
+    "has_entities": {
+      "type": "boolean",
+      "description": "Whether entities were extracted from the message"
+    },
+    "entity_types": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["title", "genre", "mood", "service", "duration", "year", "cast", "region"]
+      },
+      "description": "Types of entities extracted"
+    }
+  },
+  "required": ["session_id", "turn_number", "message_length", "detected_intent"]
+}
