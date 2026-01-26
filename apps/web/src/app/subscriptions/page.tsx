@@ -61,7 +61,7 @@ export default function SubsPage() {
     <div className="grid gap-4">
       <Card className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
         <div className="md:col-span-2">
-          <label className="block text-sm text-slate-500">Profile ID</label>
+          <label className="block text-sm text-muted">Profile ID</label>
           <Input
             value={profileId}
             onChange={(e) => setProfileId(e.target.value)}
@@ -69,7 +69,7 @@ export default function SubsPage() {
           />
         </div>
         <div>
-          <label className="block text-sm text-slate-500">Service</label>
+          <label className="block text-sm text-muted">Service</label>
           <Select value={service} onChange={(e) => setService(e.target.value)} className="mt-1">
             <option value="">Select</option>
             <option>NETFLIX</option>
@@ -79,7 +79,7 @@ export default function SubsPage() {
           </Select>
         </div>
         <div>
-          <label className="block text-sm text-slate-500">Region</label>
+          <label className="block text-sm text-muted">Region</label>
           <Input
             value={region}
             onChange={(e) => setRegion(e.target.value)}
@@ -94,20 +94,20 @@ export default function SubsPage() {
           </Button>
         </div>
       </Card>
-      {loading && <div className="text-slate-500">Saving…</div>}
-      {error && <div className="text-red-600">{error}</div>}
+      {loading && <div className="text-muted">Saving…</div>}
+      {error && <div className="text-error-text">{error}</div>}
       <Card>
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-slate-500">
-              <th className="p-3">Service</th>
-              <th className="p-3">Region</th>
+            <tr className="text-left">
+              <th className="p-3 text-xs font-medium text-muted uppercase tracking-wide">Service</th>
+              <th className="p-3 text-xs font-medium text-muted uppercase tracking-wide">Region</th>
               <th className="p-3"></th>
             </tr>
           </thead>
           <tbody>
-            {items.map((it) => (
-              <tr key={it.id} className="border-t border-slate-100">
+            {items.map((it, i) => (
+              <tr key={it.id} className={`border-t border-border hover:bg-table-hover transition-colors ${i % 2 === 1 ? 'bg-table-stripe' : ''}`}>
                 <td className="p-3">{it.service}</td>
                 <td className="p-3">{it.region || '-'}</td>
                 <td className="p-3 text-right">
@@ -119,7 +119,7 @@ export default function SubsPage() {
             ))}
             {items.length === 0 && (
               <tr>
-                <td className="p-3 text-slate-500" colSpan={3}>
+                <td className="p-3 text-muted" colSpan={3}>
                   No subscriptions
                 </td>
               </tr>

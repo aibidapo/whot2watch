@@ -43,7 +43,7 @@ export function ChatRecommendationCard({
             {availability.map((a) => (
               <span
                 key={`${a.service}-${a.region}`}
-                className="inline-block rounded-full bg-sky-900/40 px-2 py-0.5 text-[10px] text-sky-300"
+                className="inline-block rounded-full border border-chip-border bg-chip-bg px-2 py-0.5 text-[10px] text-chip-text"
               >
                 {a.service}
               </span>

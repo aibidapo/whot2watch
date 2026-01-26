@@ -38,7 +38,7 @@ export function ChatPanel({
     <div
       role="dialog"
       aria-label="AI Concierge chat"
-      className="fixed inset-0 z-50 flex flex-col bg-card sm:inset-auto sm:bottom-20 sm:right-4 sm:h-[600px] sm:w-[400px] sm:rounded-xl sm:border sm:border-border sm:shadow-2xl"
+      className="fixed inset-0 z-50 flex flex-col bg-card sm:inset-auto sm:bottom-20 sm:right-4 sm:h-[600px] sm:w-[400px] sm:rounded-2xl sm:border sm:border-border sm:shadow-lg sm:glass"
     >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">

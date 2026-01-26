@@ -104,6 +104,7 @@ export function HomePage() {
   const [minImdb, setMinImdb] = useState<number | ''>('');
   const [minRt, setMinRt] = useState<number | ''>('');
   const [minMc, setMinMc] = useState<number | ''>('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', []);
   const api = useMemo(() => createClient({ baseUrl: `${apiBase}/v1` }), [apiBase]);
@@ -198,14 +199,19 @@ export function HomePage() {
     <div className="grid gap-6">
       {/* Hero */}
       <section
-        className="rounded-xl border border-slate-200 p-6"
+        className="relative rounded-2xl border border-border p-8 md:p-12 overflow-hidden"
         style={{
           background: 'linear-gradient(120deg, rgba(106,227,255,0.10), rgba(167,139,250,0.10))',
         }}
       >
-        <div className="max-w-3xl">
-          <h1 className="text-3xl font-semibold mb-2">Discover what to watch</h1>
-          <p className="text-slate-500 mb-4">Personalized picks from all your services.</p>
+        {/* Decorative gradient orbs */}
+        <div className="absolute -top-20 -right-20 w-60 h-60 rounded-full bg-brand-cyan/10 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-20 -left-20 w-60 h-60 rounded-full bg-brand-purple/10 blur-3xl pointer-events-none" />
+        <div className="relative max-w-3xl">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-3">
+            Discover what to <span className="brand-text">watch</span>
+          </h1>
+          <p className="text-muted text-lg mb-6">Personalized picks from all your services.</p>
           <div className="flex gap-3">
             <a href="#search">
               <Button>Start Exploring</Button>
@@ -221,7 +227,7 @@ export function HomePage() {
       <Card id="search">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
           <div className="col-span-2">
-            <label className="block text-sm text-slate-500">Query</label>
+            <label className="block text-xs font-medium text-muted uppercase tracking-wide">Query</label>
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -230,7 +236,7 @@ export function HomePage() {
             />
           </div>
           <div>
-            <label className="block text-sm text-slate-500">Service</label>
+            <label className="block text-xs font-medium text-muted uppercase tracking-wide">Service</label>
             <Select
               value={service}
               onChange={(e) => {
@@ -247,7 +253,7 @@ export function HomePage() {
             </Select>
           </div>
           <div>
-            <label className="block text-sm text-slate-500">Region</label>
+            <label className="block text-xs font-medium text-muted uppercase tracking-wide">Region</label>
             <Select
               value={region}
               onChange={(e) => {
@@ -266,151 +272,166 @@ export function HomePage() {
               ))}
             </Select>
           </div>
-          <div>
-            <label className="block text-sm text-slate-500">Regions (multi)</label>
-            <Input
-              className="mt-1"
-              placeholder="US,CA,GB"
-              value={regions.join(',')}
-              onChange={(e) => {
-                const list = e.target.value
-                  .split(',')
-                  .map((s) => s.trim().toUpperCase())
-                  .filter(Boolean);
-                setRegions(list.length ? list : ['US']);
-                if (!list.includes(region)) setRegion((list[0] || 'US').toUpperCase());
-                setFrom(0);
-              }}
-            />
-          </div>
-          <div className="flex items-center gap-2 mt-2 md:mt-0">
-            <input
-              id="hasRatings"
-              type="checkbox"
-              checked={hasRatings}
-              onChange={(e) => {
-                setHasRatings(e.target.checked);
-                setFrom(0);
-              }}
-            />
-            <label htmlFor="hasRatings" className="text-sm text-slate-500">
-              Has ratings
-            </label>
-          </div>
-          <div className="flex items-center gap-2 mt-2 md:mt-0">
-            <label htmlFor="minRating" className="text-sm text-slate-500">
-              Min rating
-            </label>
-            <Input
-              id="minRating"
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              value={minRating}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === '') {
-                  setMinRating('');
-                  setFrom(0);
-                  return;
-                }
-                const n = Number(v);
-                if (Number.isFinite(n)) {
-                  const clamped = Math.min(Math.max(n, 0), 100);
-                  setMinRating(clamped);
-                  setFrom(0);
-                }
-              }}
-              className="w-24"
-            />
-          </div>
-          <div className="flex items-center gap-2 mt-2 md:mt-0">
-            <label htmlFor="minImdb" className="text-sm text-slate-500">
-              Min IMDB
-            </label>
-            <Input
-              id="minImdb"
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              value={minImdb}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === '') {
-                  setMinImdb('');
-                  setFrom(0);
-                  return;
-                }
-                const n = Number(v);
-                if (Number.isFinite(n)) {
-                  const clamped = Math.min(Math.max(n, 0), 100);
-                  setMinImdb(clamped);
-                  setFrom(0);
-                }
-              }}
-              className="w-24"
-            />
-          </div>
-          <div className="flex items-center gap-2 mt-2 md:mt-0">
-            <label htmlFor="minRt" className="text-sm text-slate-500">
-              Min RT
-            </label>
-            <Input
-              id="minRt"
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              value={minRt}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === '') {
-                  setMinRt('');
-                  setFrom(0);
-                  return;
-                }
-                const n = Number(v);
-                if (Number.isFinite(n)) {
-                  const clamped = Math.min(Math.max(n, 0), 100);
-                  setMinRt(clamped);
-                  setFrom(0);
-                }
-              }}
-              className="w-24"
-            />
-          </div>
-          <div className="flex items-center gap-2 mt-2 md:mt-0">
-            <label htmlFor="minMc" className="text-sm text-slate-500">
-              Min MC
-            </label>
-            <Input
-              id="minMc"
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              value={minMc}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === '') {
-                  setMinMc('');
-                  setFrom(0);
-                  return;
-                }
-                const n = Number(v);
-                if (Number.isFinite(n)) {
-                  const clamped = Math.min(Math.max(n, 0), 100);
-                  setMinMc(clamped);
-                  setFrom(0);
-                }
-              }}
-              className="w-24"
-            />
-          </div>
         </div>
-        <div className="mt-3 flex gap-3">
+
+        {/* Advanced filters toggle */}
+        <button
+          type="button"
+          className="mt-3 text-xs font-medium text-muted hover:text-foreground transition-colors"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+        >
+          {showAdvanced ? 'Hide' : 'Show'} advanced filters
+        </button>
+
+        {showAdvanced && (
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-4 gap-3 items-end animate-fade-in-up">
+            <div>
+              <label className="block text-xs font-medium text-muted uppercase tracking-wide">Regions (multi)</label>
+              <Input
+                className="mt-1"
+                placeholder="US,CA,GB"
+                value={regions.join(',')}
+                onChange={(e) => {
+                  const list = e.target.value
+                    .split(',')
+                    .map((s) => s.trim().toUpperCase())
+                    .filter(Boolean);
+                  setRegions(list.length ? list : ['US']);
+                  if (!list.includes(region)) setRegion((list[0] || 'US').toUpperCase());
+                  setFrom(0);
+                }}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="hasRatings"
+                type="checkbox"
+                checked={hasRatings}
+                onChange={(e) => {
+                  setHasRatings(e.target.checked);
+                  setFrom(0);
+                }}
+              />
+              <label htmlFor="hasRatings" className="text-xs font-medium text-muted uppercase tracking-wide">
+                Has ratings
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <label htmlFor="minRating" className="text-xs font-medium text-muted uppercase tracking-wide whitespace-nowrap">
+                Min rating
+              </label>
+              <Input
+                id="minRating"
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                value={minRating}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === '') {
+                    setMinRating('');
+                    setFrom(0);
+                    return;
+                  }
+                  const n = Number(v);
+                  if (Number.isFinite(n)) {
+                    const clamped = Math.min(Math.max(n, 0), 100);
+                    setMinRating(clamped);
+                    setFrom(0);
+                  }
+                }}
+                className="w-24"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label htmlFor="minImdb" className="text-xs font-medium text-muted uppercase tracking-wide whitespace-nowrap">
+                Min IMDB
+              </label>
+              <Input
+                id="minImdb"
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                value={minImdb}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === '') {
+                    setMinImdb('');
+                    setFrom(0);
+                    return;
+                  }
+                  const n = Number(v);
+                  if (Number.isFinite(n)) {
+                    const clamped = Math.min(Math.max(n, 0), 100);
+                    setMinImdb(clamped);
+                    setFrom(0);
+                  }
+                }}
+                className="w-24"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label htmlFor="minRt" className="text-xs font-medium text-muted uppercase tracking-wide whitespace-nowrap">
+                Min RT
+              </label>
+              <Input
+                id="minRt"
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                value={minRt}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === '') {
+                    setMinRt('');
+                    setFrom(0);
+                    return;
+                  }
+                  const n = Number(v);
+                  if (Number.isFinite(n)) {
+                    const clamped = Math.min(Math.max(n, 0), 100);
+                    setMinRt(clamped);
+                    setFrom(0);
+                  }
+                }}
+                className="w-24"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label htmlFor="minMc" className="text-xs font-medium text-muted uppercase tracking-wide whitespace-nowrap">
+                Min MC
+              </label>
+              <Input
+                id="minMc"
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                value={minMc}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === '') {
+                    setMinMc('');
+                    setFrom(0);
+                    return;
+                  }
+                  const n = Number(v);
+                  if (Number.isFinite(n)) {
+                    const clamped = Math.min(Math.max(n, 0), 100);
+                    setMinMc(clamped);
+                    setFrom(0);
+                  }
+                }}
+                className="w-24"
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="mt-3 flex gap-3 items-center">
           <Button
             onClick={() => {
               setFrom(0);
@@ -419,28 +440,28 @@ export function HomePage() {
           >
             Search
           </Button>
-          {loading && <span className="text-slate-500">Loading…</span>}
-          {error && <span className="text-red-600">{error}</span>}
+          {loading && <span className="text-muted text-sm">Loading…</span>}
+          {error && <span className="text-error-text text-sm">{error}</span>}
         </div>
       </Card>
 
       <section className="grid gap-3">
-        <h2 className="text-lg font-medium">Results</h2>
+        <h2 className="text-xl font-semibold tracking-tight">Results</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {items.map((it) => (
-            <Card key={it.id} className="hover:shadow-sm">
+            <Card key={it.id} interactive>
               <div className="flex gap-3">
                 <Thumb
                   posterUrl={it.posterUrl}
                   backdropUrl={it.backdropUrl}
-                  className="w-16 h-24 rounded-md overflow-hidden flex-shrink-0"
+                  className="w-16 h-24 rounded-lg overflow-hidden flex-shrink-0"
                 />
                 <div>
                   <div
                     className="text-base font-semibold"
                     dangerouslySetInnerHTML={{ __html: highlight(it.name, q) }}
                   />
-                  <div className="text-sm text-slate-500">
+                  <div className="text-sm text-muted">
                     {it.type || 'Unknown'} {it.releaseYear ? `• ${it.releaseYear}` : ''}
                     {typeof it.voteAverage === 'number' ? (
                       <span className="ml-2 text-amber-400">★ {it.voteAverage.toFixed(1)}</span>
@@ -448,7 +469,7 @@ export function HomePage() {
                     {(typeof it.ratingsImdb === 'number' ||
                       typeof it.ratingsRottenTomatoes === 'number' ||
                       typeof it.ratingsMetacritic === 'number') && (
-                      <span className="ml-2 text-slate-500">
+                      <span className="ml-2 text-muted">
                         {typeof it.ratingsImdb === 'number' && (
                           <>IMDB {(it.ratingsImdb / 10).toFixed(1)}</>
                         )}
@@ -487,10 +508,10 @@ export function HomePage() {
             </Card>
           ))}
           {items.length === 0 && !loading && (
-            <div className="text-slate-500 text-sm">No results yet. Try adjusting filters.</div>
+            <div className="text-muted text-sm">No results yet. Try adjusting filters.</div>
           )}
         </div>
-        <div className="mt-4">
+        <div className="mt-4 text-center">
           <Button variant="secondary" onClick={() => setFrom(from + size)} disabled={loading}>
             {loading ? 'Loading…' : 'Load more'}
           </Button>
@@ -499,32 +520,34 @@ export function HomePage() {
 
       {/* Trending */}
       <section className="grid gap-3">
-        <h2 className="text-lg font-medium">Trending now</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <h2 className="text-xl font-semibold tracking-tight">Trending now</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {trending.map((it) => (
-            <Card key={`t-${it.id}`} className="hover:shadow-sm">
+            <Card key={`t-${it.id}`} interactive className="p-0 overflow-hidden">
               <Thumb
                 posterUrl={it.posterUrl}
                 backdropUrl={it.backdropUrl}
-                className="w-full h-32 rounded-md overflow-hidden mb-3"
+                className="w-full h-40 overflow-hidden"
               />
-              <div className="text-base font-semibold">{it.name}</div>
-              <div className="text-sm text-slate-500">
-                {it.type || 'Unknown'} {it.releaseYear ? `• ${it.releaseYear}` : ''}
-                {typeof it.voteAverage === 'number' ? (
-                  <span className="ml-2 text-amber-400">★ {it.voteAverage.toFixed(1)}</span>
+              <div className="p-3">
+                <div className="text-sm font-semibold">{it.name}</div>
+                <div className="text-xs text-muted">
+                  {it.type || 'Unknown'} {it.releaseYear ? `• ${it.releaseYear}` : ''}
+                  {typeof it.voteAverage === 'number' ? (
+                    <span className="ml-1 text-amber-400">★ {it.voteAverage.toFixed(1)}</span>
+                  ) : null}
+                </div>
+                {Array.isArray(it.availabilityServices) && it.availabilityServices.length ? (
+                  <div className="mt-2 flex gap-1 flex-wrap">
+                    {it.availabilityServices.slice(0, 2).map((svc) => (
+                      <Chip key={svc}>
+                        {svc.replace('_', ' ')}
+                        {region ? ` • ${region}` : ''}
+                      </Chip>
+                    ))}
+                  </div>
                 ) : null}
               </div>
-              {Array.isArray(it.availabilityServices) && it.availabilityServices.length ? (
-                <div className="mt-2 flex gap-2 flex-wrap">
-                  {it.availabilityServices.slice(0, 3).map((svc) => (
-                    <Chip key={svc}>
-                      {svc.replace('_', ' ')}
-                      {region ? ` • ${region}` : ''}
-                    </Chip>
-                  ))}
-                </div>
-              ) : null}
             </Card>
           ))}
         </div>
@@ -532,24 +555,24 @@ export function HomePage() {
 
       {/* Features */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <div className="text-2xl mb-2">🔍</div>
-          <h3 className="text-base font-medium mb-1">Unified Search</h3>
-          <p className="text-sm text-slate-500">
+        <Card className="p-6 text-center">
+          <div className="mx-auto mb-3 h-12 w-12 rounded-xl bg-chip-bg flex items-center justify-center text-2xl">🔍</div>
+          <h3 className="text-base font-semibold mb-1">Unified Search</h3>
+          <p className="text-sm text-muted">
             Find movies and shows across all your streaming services, instantly.
           </p>
         </Card>
-        <Card>
-          <div className="text-2xl mb-2">✨</div>
-          <h3 className="text-base font-medium mb-1">Daily Picks</h3>
-          <p className="text-sm text-slate-500">
+        <Card className="p-6 text-center">
+          <div className="mx-auto mb-3 h-12 w-12 rounded-xl bg-chip-bg flex items-center justify-center text-2xl">✨</div>
+          <h3 className="text-base font-semibold mb-1">Daily Picks</h3>
+          <p className="text-sm text-muted">
             Smart, fresh recommendations tailored to your subscriptions and taste.
           </p>
         </Card>
-        <Card>
-          <div className="text-2xl mb-2">🔔</div>
-          <h3 className="text-base font-medium mb-1">Availability Alerts</h3>
-          <p className="text-sm text-slate-500">
+        <Card className="p-6 text-center">
+          <div className="mx-auto mb-3 h-12 w-12 rounded-xl bg-chip-bg flex items-center justify-center text-2xl">🔔</div>
+          <h3 className="text-base font-semibold mb-1">Availability Alerts</h3>
+          <p className="text-sm text-muted">
             Get notified the moment a title becomes available where you watch.
           </p>
         </Card>

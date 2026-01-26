@@ -12,7 +12,7 @@ export function ChatFollowUps({ questions, onSelect }: ChatFollowUpsProps) {
         <button
           key={q}
           onClick={() => onSelect(q)}
-          className="rounded-full border border-border bg-card px-3 py-1 text-xs text-muted transition-colors hover:bg-accent hover:text-accent-foreground"
+          className="rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted shadow-sm transition-all duration-200 hover:shadow-md hover:bg-accent hover:text-accent-foreground"
         >
           {q}
         </button>

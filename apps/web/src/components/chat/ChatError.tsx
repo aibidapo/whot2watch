@@ -18,11 +18,11 @@ export function ChatError({ error, onDismiss }: ChatErrorProps) {
   const displayMessage = ERROR_MESSAGES[error.code] || error.message;
 
   return (
-    <div className="mx-3 my-2 flex items-start gap-2 rounded-lg border border-red-500/40 bg-red-900/20 p-3 text-sm text-red-300">
+    <div className="mx-3 my-2 flex items-start gap-2 rounded-lg border border-error-border bg-error-bg p-3 text-sm text-error-text">
       <p className="flex-1">{displayMessage}</p>
       <button
         onClick={onDismiss}
-        className="flex-shrink-0 text-red-400 hover:text-red-200"
+        className="flex-shrink-0 text-error-text opacity-70 hover:opacity-100 transition-opacity"
         aria-label="Dismiss error"
       >
         <svg

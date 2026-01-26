@@ -16,7 +16,7 @@ export function ChatFab() {
         <button
           onClick={chat.toggle}
           aria-label="Open AI Concierge"
-          className="fixed bottom-4 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105"
+          className="fixed bottom-4 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105 fab-pulse"
           style={{ background: 'var(--brand-grad)' }}
         >
           <svg

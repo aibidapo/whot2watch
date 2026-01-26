@@ -18,11 +18,11 @@ export function Thumb({
   // Prefer poster; if it errors, fall back to backdrop or skeleton
   if (posterUrl && !imgError) {
     return (
-      <div className={`relative ${className}`} {...rest}>
+      <div className={`group relative overflow-hidden ${className}`} {...rest}>
         <img
           src={posterUrl}
           alt=""
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
           onError={() => setImgError(true)}
         />

@@ -33,7 +33,7 @@ export default function ListsPage() {
     <div className="grid gap-4">
       <Card className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
         <div className="md:col-span-2">
-          <label className="block text-sm text-slate-500">Profile ID</label>
+          <label className="block text-sm text-muted">Profile ID</label>
           <Input
             value={profileId}
             onChange={(e) => setProfileId(e.target.value)}
@@ -41,7 +41,7 @@ export default function ListsPage() {
           />
         </div>
         <div>
-          <label className="block text-sm text-slate-500">Name</label>
+          <label className="block text-sm text-muted">Name</label>
           <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1" />
         </div>
         <div className="flex gap-2">
@@ -53,12 +53,12 @@ export default function ListsPage() {
       </Card>
       <ul className="grid gap-2">
         {lists.map((l) => (
-          <li key={l.id} className="card p-3">
+          <li key={l.id} className="card p-3 hover:bg-card-hover transition-colors duration-200">
             <span className="font-medium">{l.name}</span>
-            {l.visibility ? <span className="text-slate-500"> — {l.visibility}</span> : null}
+            {l.visibility ? <span className="text-muted"> — {l.visibility}</span> : null}
           </li>
         ))}
-        {lists.length === 0 && <li className="text-slate-500 text-sm">No lists</li>}
+        {lists.length === 0 && <li className="text-muted text-sm">No lists</li>}
       </ul>
     </div>
   );

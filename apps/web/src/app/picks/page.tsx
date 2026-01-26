@@ -69,7 +69,7 @@ export default function PicksPage() {
     <div className="grid gap-4">
       <Card className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
         <div className="md:col-span-2">
-          <label className="block text-sm text-slate-500">Profile ID</label>
+          <label className="block text-sm text-muted">Profile ID</label>
           <Input
             value={profileId}
             onChange={(e) => setProfileId(e.target.value)}
@@ -91,7 +91,7 @@ export default function PicksPage() {
           </Button>
         </div>
         <div className="flex items-center gap-3">
-          <label htmlFor="ratingsBias" className="text-sm text-slate-500">
+          <label htmlFor="ratingsBias" className="text-sm text-muted">
             Ratings bias
           </label>
           <input
@@ -107,16 +107,16 @@ export default function PicksPage() {
             }}
             className="w-48"
           />
-          <span className="text-sm text-slate-500">{ratingsBias.toFixed(1)}</span>
+          <span className="text-sm text-muted">{ratingsBias.toFixed(1)}</span>
         </div>
       </Card>
 
-      {loading && <div className="text-slate-500">Loading…</div>}
-      {error && <div className="text-red-600">{error}</div>}
+      {loading && <div className="text-muted">Loading…</div>}
+      {error && <div className="text-error-text">{error}</div>}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map((it) => (
-          <Card key={it.id} className="hover:shadow-sm">
+          <Card key={it.id} interactive>
             <div className="flex gap-3">
               <Thumb
                 posterUrl={it.posterUrl}
@@ -124,7 +124,7 @@ export default function PicksPage() {
               />
               <div>
                 <div className="text-base font-semibold">{it.name}</div>
-                <div className="text-sm text-slate-500">
+                <div className="text-sm text-muted">
                   {it.type || 'Unknown'} {it.releaseYear ? `• ${it.releaseYear}` : ''}
                   {typeof it.voteAverage === 'number' ? (
                     <span className="ml-2 text-amber-400">★ {it.voteAverage.toFixed(1)}</span>
@@ -132,7 +132,7 @@ export default function PicksPage() {
                   {(typeof it.ratingsImdb === 'number' ||
                     typeof it.ratingsRottenTomatoes === 'number' ||
                     typeof it.ratingsMetacritic === 'number') && (
-                    <span className="ml-2 text-slate-500">
+                    <span className="ml-2 text-muted">
                       {typeof it.ratingsImdb === 'number' && (
                         <>IMDB {(it.ratingsImdb / 10).toFixed(1)}</>
                       )}
@@ -167,7 +167,7 @@ export default function PicksPage() {
                 {it.watchUrl && (
                   <div className="mt-2 flex items-center gap-3">
                     <a
-                      className="text-sky-300 hover:underline"
+                      className="text-brand-cyan hover:underline"
                       href={it.watchUrl}
                       target="_blank"
                       rel="noreferrer"
@@ -201,7 +201,7 @@ export default function PicksPage() {
                       <Chip>{(it.availabilityServices[0] || '').replace('_', ' ')}</Chip>
                     ) : null}
                     <button
-                      className="text-xs text-slate-400 hover:text-slate-200"
+                      className="text-xs text-muted hover:text-foreground transition-colors"
                       onClick={() => {
                         try {
                           navigator.clipboard.writeText(it.watchUrl!);
@@ -211,7 +211,7 @@ export default function PicksPage() {
                       Copy link
                     </button>
                     <button
-                      className="text-xs text-slate-400 hover:text-slate-200"
+                      className="text-xs text-muted hover:text-foreground transition-colors"
                       onClick={async () => {
                         try {
                           const json = await api.post(`/profiles/${profileId}/lists`, {
@@ -240,7 +240,7 @@ export default function PicksPage() {
                       Add to List
                     </button>
                     <button
-                      className="text-xs text-slate-400 hover:text-slate-200"
+                      className="text-xs text-muted hover:text-foreground transition-colors"
                       onClick={async () => {
                         try {
                           await api.post(`/feedback`, {
@@ -268,13 +268,13 @@ export default function PicksPage() {
                     </button>
                   </div>
                 )}
-                {it.reason && <div className="text-sm text-slate-500 mt-2">{it.reason}</div>}
+                {it.reason && <div className="text-sm text-muted mt-2">{it.reason}</div>}
               </div>
             </div>
           </Card>
         ))}
         {items.length === 0 && !loading && (
-          <div className="text-slate-500 text-sm">No picks loaded.</div>
+          <div className="text-muted text-sm">No picks loaded.</div>
         )}
       </div>
     </div>
