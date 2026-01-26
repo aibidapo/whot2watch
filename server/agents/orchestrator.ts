@@ -24,6 +24,8 @@ import type {
 } from "./types";
 import { isAIConciergeEnabled, hasValidLLMProvider } from "./config";
 import { getContextManager } from "./context";
+import { validateInput, validateOutput, sanitizeReason } from "./safety";
+import { recordChatEvent, recordChatError } from "./telemetry";
 import { executeSearch, type SearchWorkerDeps } from "./workers/search.worker";
 import { executeAvailability, type AvailabilityWorkerDeps } from "./workers/availability.worker";
 import { executePreferences } from "./workers/preferences.worker";
@@ -91,6 +93,20 @@ async function orchestrateWithNLU(
 
   const sessionId = context.sessionId;
 
+  // Safety: validate input before processing
+  const inputCheck = validateInput(input.message);
+  if (!inputCheck.safe) {
+    const latencyMs = Date.now() - start;
+    recordChatError(sessionId, "INPUT_BLOCKED", latencyMs);
+    return {
+      sessionId,
+      recommendations: [],
+      reasoning: inputCheck.reason || "Your message could not be processed.",
+      fallbackUsed: true,
+      workerResults: [],
+    };
+  }
+
   // Step 1: Classify intent
   const intent = classifyIntent(input.message);
   logger.info("Intent classified", {
@@ -123,7 +139,18 @@ async function orchestrateWithNLU(
     workerResults
   );
 
-  // Step 5: Record the turn in conversation history
+  // Step 5: Safety-check output reasoning
+  const outputCheck = validateOutput(output.reasoning);
+  if (!outputCheck.safe && outputCheck.filtered) {
+    output.reasoning = outputCheck.filtered;
+  }
+
+  // Step 6: Sanitize recommendation reasons
+  for (const rec of output.recommendations) {
+    rec.reason = sanitizeReason(rec.reason);
+  }
+
+  // Step 7: Record the turn in conversation history
   const recommendationIds = output.recommendations.map((r) => r.title.id);
   await contextManager.addTurn(
     sessionId,
@@ -133,11 +160,25 @@ async function orchestrateWithNLU(
     recommendationIds
   );
 
+  const latencyMs = Date.now() - start;
+
+  // Step 8: Record telemetry
+  const workerErrors = workerResults.filter((r) => !r.success).length;
+  recordChatEvent({
+    sessionId,
+    intent: intent.intent,
+    latencyMs,
+    recommendationCount: output.recommendations.length,
+    fallbackUsed: output.fallbackUsed,
+    workerErrors,
+    timestamp: Date.now(),
+  });
+
   logger.info("Orchestration complete", {
     sessionId,
     intent: intent.intent,
     recommendationCount: output.recommendations.length,
-    latencyMs: Date.now() - start,
+    latencyMs,
     fallbackUsed: output.fallbackUsed,
   });
 

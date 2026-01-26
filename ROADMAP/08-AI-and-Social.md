@@ -79,8 +79,8 @@ Reference: `docs/adr/0002-mcp-agentic-architecture.md`
   - [x] Type definitions (`server/agents/types.ts`)
   - [x] Conversation context (`server/agents/context.ts`)
   - [x] Feature flag config (`server/agents/config.ts`)
-  - [ ] Safety filters (`server/agents/safety.ts`)
-  - [ ] Telemetry (`server/agents/telemetry.ts`)
+  - [x] Safety filters (`server/agents/safety.ts`)
+  - [x] Telemetry (`server/agents/telemetry.ts`)
 - [x] Worker Agents
   - [x] Search worker (`server/agents/workers/search.worker.ts`)
   - [x] Availability worker (`server/agents/workers/availability.worker.ts`)
@@ -104,10 +104,10 @@ Reference: `docs/adr/0002-mcp-agentic-architecture.md`
   - [x] useChat hook (`apps/web/src/components/chat/hooks/useChat.ts`)
   - [ ] Search bar NLU augment (optional)
 - [ ] Production
-  - [ ] Rate limiting (per-user/day)
+  - [x] Rate limiting (per-user/day)
   - [ ] Freemium gating
-  - [ ] LLM cost monitoring
-  - [ ] Safety filters enabled
+  - [x] LLM cost monitoring (`/v1/chat/metrics` endpoint)
+  - [x] Safety filters enabled (input/output validation, PII redaction)
   - [ ] Load testing (k6)
   - [ ] Security testing (ZAP)
 

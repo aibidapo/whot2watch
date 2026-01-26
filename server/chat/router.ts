@@ -22,6 +22,7 @@ import type {
 } from "../agents/types";
 import { isAIConciergeEnabled } from "../agents/config";
 import { orchestrate, type OrchestratorDeps } from "../agents/orchestrator";
+import { recordChatError, getTelemetrySnapshot } from "../agents/telemetry";
 import { getChatSessionManager, resetChatSessionManager, type ChatSessionManagerOptions } from "./session";
 import type { MCPClient } from "../mcp/client";
 import { createLogger } from "../common/logger";
@@ -174,6 +175,7 @@ export default async function chatRouter(
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
         logger.error("Chat endpoint error", { error: msg, sessionId });
+        recordChatError(sessionId || "unknown", "INTERNAL_ERROR", 0);
         return reply.status(500).send({
           error: "Internal server error",
           code: "INTERNAL_ERROR",
@@ -278,6 +280,7 @@ export default async function chatRouter(
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
         logger.error("Chat stream error", { error: msg, sessionId });
+        recordChatError(sessionId || "unknown", "STREAM_ERROR", 0);
 
         sendEvent({
           type: "error",
@@ -331,5 +334,13 @@ export default async function chatRouter(
       enabled: isAIConciergeEnabled(),
       status: isAIConciergeEnabled() ? "ready" : "disabled",
     });
+  });
+
+  // --------------------------------------------------------------------------
+  // GET /v1/chat/metrics — Telemetry snapshot
+  // --------------------------------------------------------------------------
+
+  app.get("/chat/metrics", async (_request, reply) => {
+    return reply.status(200).send(getTelemetrySnapshot());
   });
 }
