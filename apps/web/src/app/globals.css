@@ -200,6 +200,15 @@ a {
   border-bottom: 1px solid var(--glass-border);
 }
 
+/* Select / option dropdown colors */
+select {
+  color-scheme: light dark;
+}
+select option {
+  background: var(--card);
+  color: var(--foreground);
+}
+
 /* Focus styles */
 :where(button, a, input, select, textarea):focus-visible {
   outline: none;
