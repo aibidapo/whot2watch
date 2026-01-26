@@ -99,9 +99,9 @@ Reference: `docs/adr/0002-mcp-agentic-architecture.md`
   - [x] Feature-flag gating (503 when disabled)
   - [x] Rate limiting (per-user/day via Redis)
   - [x] Routes registered in `server/api.ts`
-- [ ] Frontend
-  - [ ] ChatPanel component (`apps/web/src/components/chat/ChatPanel.tsx`)
-  - [ ] useChat hook (`apps/web/src/components/chat/hooks/useChat.ts`)
+- [x] Frontend
+  - [x] ChatPanel component (`apps/web/src/components/chat/ChatPanel.tsx`)
+  - [x] useChat hook (`apps/web/src/components/chat/hooks/useChat.ts`)
   - [ ] Search bar NLU augment (optional)
 - [ ] Production
   - [ ] Rate limiting (per-user/day)

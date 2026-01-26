@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { HeaderActions } from '@/components/HeaderActions';
+import { ChatFab } from '@/components/chat/ChatFab';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -70,6 +71,9 @@ export default function RootLayout({
             </a>
           </footer>
         </div>
+        <Suspense fallback={null}>
+          <ChatFab />
+        </Suspense>
       </body>
     </html>
   );

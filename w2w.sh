@@ -255,12 +255,12 @@ start_web() {
   cd "$PROJECT_DIR"
   load_env
 
-  eval $PNPM --filter web dev \
+  PORT=$WEB_PORT eval $PNPM --filter web dev \
     > "$LOG_DIR/web.log" 2>&1 &
   local pid=$!
   save_pid web "$pid"
 
-  for i in $(seq 1 30); do
+  for i in $(seq 1 60); do
     if port_alive "$WEB_PORT"; then
       ok "Web server started (PID $pid) on http://localhost:$WEB_PORT"
       return
@@ -375,8 +375,9 @@ print_status() {
   # Chat API health (only if API is running)
   if port_alive "$API_PORT"; then
     local health
-    health=$(curl -s "http://localhost:$API_PORT/v1/chat/health" 2>/dev/null || echo "")
-    if [[ -n "$health" ]]; then
+    health=$(curl -s -H "Accept: application/json" "http://localhost:$API_PORT/v1/chat/health" 2>/dev/null || echo "")
+    # Only display if response looks like JSON (not an HTML page)
+    if [[ -n "$health" && "$health" == "{"* ]]; then
       echo ""
       echo -e "${BOLD}Chat API${NC}"
       printf "  Health: %s\n" "$health"
