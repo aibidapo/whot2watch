@@ -33,6 +33,7 @@ enum Service {
   PEACOCK
   CRUNCHYROLL
   TUBI
+  YOUTUBE
   OTHER
 }
 

@@ -40,6 +40,7 @@ export const STREAMING_SERVICES = [
   'PEACOCK',
   'CRUNCHYROLL',
   'TUBI',
+  'YOUTUBE',
 ] as const;
 
 export const STORAGE_KEY_PROFILE_ID = 'w2w-profileId';

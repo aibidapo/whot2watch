@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Card } from '@/components/ui/Card';
+import { STREAMING_SERVICES } from '@/constants/onboarding';
 
 type Sub = { id: string; service: string; region?: string };
 
@@ -72,10 +73,11 @@ export default function SubsPage() {
           <label className="block text-sm text-muted">Service</label>
           <Select value={service} onChange={(e) => setService(e.target.value)} className="mt-1">
             <option value="">Select</option>
-            <option>NETFLIX</option>
-            <option>DISNEY_PLUS</option>
-            <option>HULU</option>
-            <option>MAX</option>
+            {STREAMING_SERVICES.map((s) => (
+              <option key={s} value={s}>
+                {s.replace(/_/g, ' ')}
+              </option>
+            ))}
           </Select>
         </div>
         <div>

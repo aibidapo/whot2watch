@@ -466,6 +466,7 @@ components:
           PEACOCK,
           CRUNCHYROLL,
           TUBI,
+          YOUTUBE,
           OTHER,
         ]
     Availability:
