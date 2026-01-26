@@ -106,12 +106,12 @@ export function buildSearchParams(
     }
   }
   if (entities.duration) {
-    params.runtimeMin = entities.duration.min;
-    params.runtimeMax = entities.duration.max;
+    if (entities.duration.min !== undefined) params.runtimeMin = entities.duration.min;
+    if (entities.duration.max !== undefined) params.runtimeMax = entities.duration.max;
   }
   if (entities.releaseYear) {
-    params.yearMin = entities.releaseYear.min;
-    params.yearMax = entities.releaseYear.max;
+    if (entities.releaseYear.min !== undefined) params.yearMin = entities.releaseYear.min;
+    if (entities.releaseYear.max !== undefined) params.yearMax = entities.releaseYear.max;
   }
   if (entities.titles?.length) {
     // If specific titles mentioned, search for them directly
@@ -222,21 +222,22 @@ async function searchOpenSearch(
     const hits = ((data.hits as Record<string, unknown>)?.hits as Array<Record<string, unknown>>) || [];
     const results: TitleResult[] = hits.map((h) => {
       const src = h._source as Record<string, unknown>;
-      return {
+      const result: TitleResult = {
         id: h._id as string,
         name: src.name as string,
         type: src.type as "movie" | "tv",
-        tmdbId: src.tmdbId as number | undefined,
-        imdbId: src.imdbId as string | undefined,
-        releaseYear: src.releaseYear as number | undefined,
-        runtimeMin: src.runtimeMin as number | undefined,
         genres: (src.genres as string[]) || [],
         moods: (src.moods as string[]) || [],
-        voteAverage: src.voteAverage as number | undefined,
-        popularity: src.popularity as number | undefined,
-        posterUrl: src.posterUrl as string | undefined,
-        backdropUrl: src.backdropUrl as string | undefined,
       };
+      if (src.tmdbId != null) result.tmdbId = src.tmdbId as number;
+      if (src.imdbId != null) result.imdbId = src.imdbId as string;
+      if (src.releaseYear != null) result.releaseYear = src.releaseYear as number;
+      if (src.runtimeMin != null) result.runtimeMin = src.runtimeMin as number;
+      if (src.voteAverage != null) result.voteAverage = src.voteAverage as number;
+      if (src.popularity != null) result.popularity = src.popularity as number;
+      if (src.posterUrl != null) result.posterUrl = src.posterUrl as string;
+      if (src.backdropUrl != null) result.backdropUrl = src.backdropUrl as string;
+      return result;
     });
 
     // Cache results
@@ -276,21 +277,24 @@ async function searchPrismaFallback(
       include: { availability: true },
     });
 
-    return rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      type: row.type as "movie" | "tv",
-      tmdbId: row.tmdbId ? Number(row.tmdbId) : undefined,
-      imdbId: row.imdbId || undefined,
-      releaseYear: row.releaseYear || undefined,
-      runtimeMin: row.runtimeMin || undefined,
-      genres: row.genres || [],
-      moods: row.moods || [],
-      voteAverage: row.voteAverage || undefined,
-      popularity: row.popularity || undefined,
-      posterUrl: row.posterUrl || undefined,
-      backdropUrl: row.backdropUrl || undefined,
-    }));
+    return rows.map((row) => {
+      const result: TitleResult = {
+        id: row.id,
+        name: row.name,
+        type: row.type as "movie" | "tv",
+        genres: row.genres || [],
+        moods: row.moods || [],
+      };
+      if (row.tmdbId) result.tmdbId = Number(row.tmdbId);
+      if (row.imdbId) result.imdbId = row.imdbId;
+      if (row.releaseYear) result.releaseYear = row.releaseYear;
+      if (row.runtimeMin) result.runtimeMin = row.runtimeMin;
+      if (row.voteAverage) result.voteAverage = row.voteAverage;
+      if (row.popularity) result.popularity = row.popularity;
+      if (row.posterUrl) result.posterUrl = row.posterUrl;
+      if (row.backdropUrl) result.backdropUrl = row.backdropUrl;
+      return result;
+    });
   } catch (error) {
     logger.error("Prisma search fallback failed", { error: String(error) });
     return [];

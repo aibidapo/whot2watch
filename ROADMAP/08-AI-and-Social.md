@@ -86,14 +86,19 @@ Reference: `docs/adr/0002-mcp-agentic-architecture.md`
   - [x] Availability worker (`server/agents/workers/availability.worker.ts`)
   - [x] Preferences worker (`server/agents/workers/preferences.worker.ts`)
   - [x] Recommendations worker (`server/agents/workers/recommendations.worker.ts`)
-- [ ] Orchestrator (`server/agents/orchestrator.ts`)
-  - [ ] Intent classification
-  - [ ] Worker routing
-  - [ ] Response aggregation
-- [ ] Chat API
-  - [ ] POST /v1/chat endpoint (`server/chat/router.ts`)
-  - [ ] SSE streaming (`server/chat/streaming.ts`)
-  - [ ] Session management (`server/chat/session.ts`)
+- [x] Orchestrator (`server/agents/orchestrator.ts`)
+  - [x] Intent classification (rules-based NLU)
+  - [x] Worker routing (parallel + sequential pipelines)
+  - [x] Response aggregation
+  - [x] Entity extraction (genres, services, moods, duration, year, region)
+  - [x] Follow-up question generation
+- [x] Chat API
+  - [x] POST /v1/chat endpoint (`server/chat/router.ts`)
+  - [x] SSE streaming (`server/chat/router.ts` — GET /chat/stream)
+  - [x] Session management (`server/chat/session.ts`)
+  - [x] Feature-flag gating (503 when disabled)
+  - [x] Rate limiting (per-user/day via Redis)
+  - [x] Routes registered in `server/api.ts`
 - [ ] Frontend
   - [ ] ChatPanel component (`apps/web/src/components/chat/ChatPanel.tsx`)
   - [ ] useChat hook (`apps/web/src/components/chat/hooks/useChat.ts`)

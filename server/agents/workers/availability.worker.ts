@@ -122,13 +122,14 @@ async function checkAvailabilityLocal(
 
       if (title) {
         for (const avail of title.availability) {
-          results.push({
+          const item: AvailabilityResult = {
             titleId: title.id,
             service: avail.service,
             region: avail.region,
             offerType: avail.offerType as AvailabilityResult["offerType"],
-            deepLink: avail.deepLink || undefined,
-          });
+          };
+          if (avail.deepLink) item.deepLink = avail.deepLink;
+          results.push(item);
         }
       }
     } catch (error) {

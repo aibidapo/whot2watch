@@ -12,6 +12,7 @@ import type {
   WorkerResult,
   TitleResult,
   RecommendationResult,
+  AvailabilityResult,
   RedisLike,
 } from "../types";
 import type { ProfilePreferences } from "./preferences.worker";
@@ -67,13 +68,16 @@ export async function executeRecommendations(
     const diverse = diversityPick(candidates, 6);
 
     // Build recommendation results with reasons
-    const recommendations: RecommendationResult[] = diverse.map((c) => ({
-      title: c.title,
-      score: c.score,
-      reason: c.reason,
-      availability: c.availability,
-      matchedPreferences: c.matchedPreferences,
-    }));
+    const recommendations: RecommendationResult[] = diverse.map((c) => {
+      const rec: RecommendationResult = {
+        title: c.title,
+        score: c.score,
+        reason: c.reason,
+      };
+      if (c.availability) rec.availability = c.availability as AvailabilityResult[];
+      if (c.matchedPreferences) rec.matchedPreferences = c.matchedPreferences;
+      return rec;
+    });
 
     return {
       worker: "recommendations",
@@ -261,11 +265,11 @@ async function scoreSearchResults(
     const avail = availMap.get(t.id) || [];
     const enriched: TitleWithRatings = {
       ...t,
-      ratingsImdb: ratings.IMDB,
-      ratingsRottenTomatoes: ratings.ROTTEN_TOMATOES,
-      ratingsMetacritic: ratings.METACRITIC,
       availability: avail,
     };
+    if (ratings.IMDB != null) enriched.ratingsImdb = ratings.IMDB;
+    if (ratings.ROTTEN_TOMATOES != null) enriched.ratingsRottenTomatoes = ratings.ROTTEN_TOMATOES;
+    if (ratings.METACRITIC != null) enriched.ratingsMetacritic = ratings.METACRITIC;
     const { score, matchedPrefs, reason } = scoreTitleForUser(
       enriched,
       subscriptions,
@@ -317,7 +321,7 @@ async function generatePicksCandidates(
       where: { titleId: { in: titleIds } },
       select: { titleId: true, source: true, valueNum: true },
     }),
-    (deps.prisma as Record<string, unknown>).trendingSignal
+    (deps.prisma as unknown as Record<string, unknown>).trendingSignal
       ? (deps.prisma as any).trendingSignal.findMany({
           where: { titleId: { in: titleIds } },
           select: { titleId: true, source: true, value: true },
@@ -340,8 +344,8 @@ async function generatePicksCandidates(
   for (const s of trendingSignals as Array<{ titleId: string; source: string; value: number }>) {
     const src = s.source.toUpperCase();
     const entry = trendingMap.get(s.titleId) || {};
-    if (src === "TMDB_DAY") entry.day = s.value;
-    else if (src === "TMDB_WEEK") entry.week = s.value;
+    if (src === "TMDB_DAY") { entry.day = s.value; }
+    else if (src === "TMDB_WEEK") { entry.week = s.value; }
     trendingMap.set(s.titleId, entry);
   }
 
@@ -352,27 +356,27 @@ async function generatePicksCandidates(
       id: t.id,
       name: t.name,
       type: t.type as "movie" | "tv",
-      tmdbId: t.tmdbId ? Number(t.tmdbId) : undefined,
-      imdbId: t.imdbId || undefined,
-      releaseYear: t.releaseYear || undefined,
-      runtimeMin: t.runtimeMin || undefined,
       genres: t.genres || [],
       moods: t.moods || [],
-      voteAverage: t.voteAverage || undefined,
-      popularity: t.popularity || undefined,
-      posterUrl: t.posterUrl || undefined,
-      backdropUrl: t.backdropUrl || undefined,
-      ratingsImdb: ratings.IMDB,
-      ratingsRottenTomatoes: ratings.ROTTEN_TOMATOES,
-      ratingsMetacritic: ratings.METACRITIC,
-      trendingDay: trending.day,
-      trendingWeek: trending.week,
       availability: (t.availability || []).map((a) => ({
         service: a.service,
         region: a.region,
         offerType: a.offerType,
       })),
     };
+    if (t.tmdbId) enriched.tmdbId = Number(t.tmdbId);
+    if (t.imdbId) enriched.imdbId = t.imdbId;
+    if (t.releaseYear) enriched.releaseYear = t.releaseYear;
+    if (t.runtimeMin) enriched.runtimeMin = t.runtimeMin;
+    if (t.voteAverage) enriched.voteAverage = t.voteAverage;
+    if (t.popularity) enriched.popularity = t.popularity;
+    if (t.posterUrl) enriched.posterUrl = t.posterUrl;
+    if (t.backdropUrl) enriched.backdropUrl = t.backdropUrl;
+    if (ratings.IMDB != null) enriched.ratingsImdb = ratings.IMDB;
+    if (ratings.ROTTEN_TOMATOES != null) enriched.ratingsRottenTomatoes = ratings.ROTTEN_TOMATOES;
+    if (ratings.METACRITIC != null) enriched.ratingsMetacritic = ratings.METACRITIC;
+    if (trending.day != null) enriched.trendingDay = trending.day;
+    if (trending.week != null) enriched.trendingWeek = trending.week;
     const { score, matchedPrefs, reason } = scoreTitleForUser(
       enriched,
       subscriptions,
@@ -380,24 +384,26 @@ async function generatePicksCandidates(
       prefs,
       coldStart
     );
-    return {
-      title: {
-        id: t.id,
-        name: t.name,
-        type: t.type as "movie" | "tv",
-        releaseYear: t.releaseYear || undefined,
-        genres: t.genres || [],
-        moods: t.moods || [],
-        posterUrl: t.posterUrl || undefined,
-        backdropUrl: t.backdropUrl || undefined,
-        voteAverage: t.voteAverage || undefined,
-        popularity: t.popularity || undefined,
-      },
+    const title: TitleResult = {
+      id: t.id,
+      name: t.name,
+      type: t.type as "movie" | "tv",
+      genres: t.genres || [],
+      moods: t.moods || [],
+    };
+    if (t.releaseYear) title.releaseYear = t.releaseYear;
+    if (t.posterUrl) title.posterUrl = t.posterUrl;
+    if (t.backdropUrl) title.backdropUrl = t.backdropUrl;
+    if (t.voteAverage) title.voteAverage = t.voteAverage;
+    if (t.popularity) title.popularity = t.popularity;
+    const candidate: ScoredCandidate = {
+      title,
       score,
       reason,
-      availability: enriched.availability,
       matchedPreferences: matchedPrefs,
     };
+    if (enriched.availability) candidate.availability = enriched.availability;
+    return candidate;
   }).sort((a, b) => b.score - a.score);
 }
 

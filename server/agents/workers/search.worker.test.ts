@@ -229,7 +229,8 @@ describe("search.worker", () => {
       });
 
       expect(redis.set).toHaveBeenCalled();
-      const setCall = redis.set.mock.calls[0];
+      const setCall = redis.set.mock.calls[0] as unknown[];
+      expect(setCall).toBeDefined();
       expect(setCall[2]).toEqual({ EX: 60 });
     });
 

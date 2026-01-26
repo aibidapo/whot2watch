@@ -231,17 +231,18 @@ docs/adr/
 | Progressive discovery | `server/mcp/registry.ts` | Epic 8 |
 | Integration tests | `server/mcp/**/*.test.ts` | Epic 6 |
 
-### Phase 4: Orchestrator + Chat API (Week 7-9)
+### Phase 4: Orchestrator + Chat API (Week 7-9) ✅
 **Goal**: Central agent and new API endpoint
 
-| Task | Files | Tracking |
-|------|-------|----------|
-| Orchestrator implementation | `server/agents/orchestrator.ts` | Epic 8 |
-| Chat router (REST + SSE) | `server/chat/router.ts` | Epic 2/8 |
-| Session management | `server/chat/session.ts` | Epic 8 |
-| Register routes in api.ts | `server/api.ts` (modify) | Epic 2 |
-| OpenAPI spec update | `Whot2Watch-docs/docs/rest/openapi.yaml` | Epic 2 |
-| Chat endpoint tests | `server/chat/*.test.ts` | Epic 6 |
+| Task | Files | Tracking | Status |
+|------|-------|----------|--------|
+| Orchestrator implementation | `server/agents/orchestrator.ts` | Epic 8 | ✅ |
+| Chat router (REST + SSE) | `server/chat/router.ts` | Epic 2/8 | ✅ |
+| Session management | `server/chat/session.ts` | Epic 8 | ✅ |
+| Register routes in api.ts | `server/api.ts` (modify) | Epic 2 | ✅ |
+| Orchestrator tests | `server/agents/orchestrator.test.ts` | Epic 6 | ✅ (29 tests) |
+| Chat endpoint tests | `server/chat/router.test.ts` | Epic 6 | ✅ (12 tests) |
+| OpenAPI spec update | `Whot2Watch-docs/docs/rest/openapi.yaml` | Epic 2 | Deferred |
 
 ### Phase 5: Frontend Integration (Week 10-11)
 **Goal**: Chat UI in Next.js app

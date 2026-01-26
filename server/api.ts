@@ -10,6 +10,7 @@ import rateLimit from '@fastify/rate-limit';
 import { withRequestId } from './common/requestId';
 import { logger } from './common/logger';
 import { normalizeDeepLink } from '../services/catalog/deeplink';
+import chatRouter from './chat/router';
 
 const OPENSEARCH_URL = process.env.OPENSEARCH_URL || 'http://localhost:9200';
 const PORT = Number(process.env.PORT || 4000);
@@ -153,6 +154,9 @@ const app = Fastify({ logger: false });
 app.register(cors, { origin: true });
 app.register(helmet, { contentSecurityPolicy: false });
 app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
+
+// Chat API (AI Concierge — Epic 8)
+app.register(chatRouter, { prisma });
 
 // request-id middleware
 app.addHook('onRequest', (req, reply, done) => {

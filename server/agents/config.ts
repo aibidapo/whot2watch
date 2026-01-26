@@ -49,22 +49,26 @@ export function getLLMProviderConfig(): LLMProviderConfig {
   const provider = (process.env.LLM_PROVIDER || "none") as LLMProvider;
 
   switch (provider) {
-    case "anthropic":
-      return {
+    case "anthropic": {
+      const result: LLMProviderConfig = {
         provider: "anthropic",
-        apiKey: process.env.ANTHROPIC_API_KEY,
         model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514",
         maxTokens: envInt("LLM_MAX_TOKENS", 1024),
         temperature: envFloat("LLM_TEMPERATURE", 0.7),
       };
-    case "openai":
-      return {
+      if (process.env.ANTHROPIC_API_KEY) result.apiKey = process.env.ANTHROPIC_API_KEY;
+      return result;
+    }
+    case "openai": {
+      const result: LLMProviderConfig = {
         provider: "openai",
-        apiKey: process.env.OPENAI_API_KEY,
         model: process.env.OPENAI_MODEL || "gpt-4o",
         maxTokens: envInt("LLM_MAX_TOKENS", 1024),
         temperature: envFloat("LLM_TEMPERATURE", 0.7),
       };
+      if (process.env.OPENAI_API_KEY) result.apiKey = process.env.OPENAI_API_KEY;
+      return result;
+    }
     default:
       return {
         provider: "none",

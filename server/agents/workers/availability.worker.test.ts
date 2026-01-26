@@ -96,9 +96,11 @@ describe("availability.worker", () => {
 
       const data = result.data as { items: AvailabilityResult[] };
       expect(data.items).toHaveLength(1);
-      expect(data.items[0].service).toBe("netflix");
-      expect(data.items[0].region).toBe("US");
-      expect(data.items[0].offerType).toBe("flatrate");
+      const first = data.items[0];
+      expect(first).toBeDefined();
+      expect(first?.service).toBe("netflix");
+      expect(first?.region).toBe("US");
+      expect(first?.offerType).toBe("flatrate");
     });
 
     it("returns empty items when no titles specified", async () => {

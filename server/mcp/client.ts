@@ -34,7 +34,7 @@ export class MCPClient {
   private toolRegistry = new Map<string, MCPServerConfig>();
 
   constructor(options: MCPClientOptions = {}) {
-    this.redis = options.redis;
+    if (options.redis) this.redis = options.redis;
     this.cacheKeyPrefix = options.cacheKeyPrefix || "mcp:cache:";
   }
 
@@ -44,7 +44,7 @@ export class MCPClient {
 
   registerServer(config: MCPServerConfig): void {
     this.toolRegistry.set(config.name, config);
-    logger.info({ server: config.name }, "MCP server registered");
+    logger.info("MCP server registered", { server: config.name });
   }
 
   async getServer(name: string): Promise<MCPServerInstance | undefined> {
@@ -55,7 +55,7 @@ export class MCPClient {
 
     const config = this.toolRegistry.get(name);
     if (!config) {
-      logger.warn({ server: name }, "MCP server not registered");
+      logger.warn("MCP server not registered", { server: name });
       return undefined;
     }
 
@@ -72,7 +72,7 @@ export class MCPClient {
   private async initializeServer(
     config: MCPServerConfig
   ): Promise<MCPServerInstance> {
-    logger.info({ server: config.name }, "Initializing MCP server");
+    logger.info("Initializing MCP server", { server: config.name });
 
     // In a real implementation, this would spawn the MCP server process
     // using the @modelcontextprotocol/sdk
@@ -88,7 +88,7 @@ export class MCPClient {
   async shutdownServer(name: string): Promise<void> {
     const instance = this.servers.get(name);
     if (instance) {
-      logger.info({ server: name }, "Shutting down MCP server");
+      logger.info("Shutting down MCP server", { server: name });
       // In real implementation: close process, cleanup resources
       this.servers.delete(name);
     }
@@ -112,7 +112,7 @@ export class MCPClient {
     // Check cache first
     const cached = await this.getCached(cacheKey);
     if (cached) {
-      logger.debug({ server: serverName, tool: toolCall.name }, "Cache hit");
+      logger.debug("Cache hit", { server: serverName, tool: toolCall.name });
       return cached;
     }
 
@@ -147,28 +147,22 @@ export class MCPClient {
         // Execute the tool call
         const result = await this.executeTool(server, toolCall);
 
-        logger.info(
-          {
-            server: serverName,
-            tool: toolCall.name,
-            attempt,
-            success: result.success,
-          },
-          "MCP tool call completed"
-        );
+        logger.info("MCP tool call completed", {
+          server: serverName,
+          tool: toolCall.name,
+          attempt,
+          success: result.success,
+        });
 
         return result;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        logger.warn(
-          {
-            server: serverName,
-            tool: toolCall.name,
-            attempt,
-            error: lastError.message,
-          },
-          "MCP tool call failed, retrying"
-        );
+        logger.warn("MCP tool call failed, retrying", {
+          server: serverName,
+          tool: toolCall.name,
+          attempt,
+          error: lastError.message,
+        });
 
         if (attempt < this.config.maxRetries) {
           await this.sleep(backoffMs);
@@ -177,14 +171,11 @@ export class MCPClient {
       }
     }
 
-    logger.error(
-      {
-        server: serverName,
-        tool: toolCall.name,
-        error: lastError?.message,
-      },
-      "MCP tool call failed after all retries"
-    );
+    logger.error("MCP tool call failed after all retries", {
+      server: serverName,
+      tool: toolCall.name,
+      error: lastError?.message,
+    });
 
     return {
       success: false,
@@ -242,7 +233,7 @@ export class MCPClient {
         return JSON.parse(cached) as MCPToolResult;
       }
     } catch (error) {
-      logger.warn({ key, error }, "Cache read failed");
+      logger.warn("Cache read failed", { key, error: String(error) });
     }
 
     return null;
@@ -256,7 +247,7 @@ export class MCPClient {
         EX: this.config.cacheSeconds,
       });
     } catch (error) {
-      logger.warn({ key, error }, "Cache write failed");
+      logger.warn("Cache write failed", { key, error: String(error) });
     }
   }
 
@@ -264,7 +255,7 @@ export class MCPClient {
     if (!this.redis) return;
 
     // In production, use SCAN to find and delete matching keys
-    logger.info({ pattern }, "Cache invalidation requested");
+    logger.info("Cache invalidation requested", { pattern });
   }
 
   // --------------------------------------------------------------------------
@@ -322,7 +313,7 @@ export function getMCPClient(options?: MCPClientOptions): MCPClient {
 export function resetMCPClient(): void {
   if (mcpClientInstance) {
     mcpClientInstance.shutdownAll().catch((err) => {
-      logger.error({ error: err }, "Error shutting down MCP client");
+      logger.error("Error shutting down MCP client", { error: String(err) });
     });
     mcpClientInstance = null;
   }

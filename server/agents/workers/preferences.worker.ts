@@ -145,14 +145,15 @@ async function loadProfilePreferences(
 // ============================================================================
 
 function parsePreferences(raw: Record<string, unknown>): UserPreferences {
-  return {
+  const prefs: UserPreferences = {
     genres: asStringArray(raw.genres),
     moods: asStringArray(raw.moods),
     avoidGenres: asStringArray(raw.avoidGenres),
-    minRating:
-      typeof raw.minRating === "number" ? raw.minRating : undefined,
-    preferredDuration: parseDuration(raw.preferredDuration),
   };
+  if (typeof raw.minRating === "number") prefs.minRating = raw.minRating;
+  const dur = parseDuration(raw.preferredDuration);
+  if (dur) prefs.preferredDuration = dur;
+  return prefs;
 }
 
 function parseDuration(
@@ -160,10 +161,10 @@ function parseDuration(
 ): { min?: number; max?: number } | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const d = raw as Record<string, unknown>;
-  return {
-    min: typeof d.min === "number" ? d.min : undefined,
-    max: typeof d.max === "number" ? d.max : undefined,
-  };
+  const result: { min?: number; max?: number } = {};
+  if (typeof d.min === "number") result.min = d.min;
+  if (typeof d.max === "number") result.max = d.max;
+  return Object.keys(result).length > 0 ? result : undefined;
 }
 
 function asStringArray(val: unknown): string[] {

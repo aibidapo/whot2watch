@@ -64,7 +64,7 @@ export class RedisContextStore implements ContextStore {
 
       return context;
     } catch (error) {
-      logger.error({ sessionId, error }, "Failed to get conversation context");
+      logger.error("Failed to get conversation context", { sessionId, error: String(error) });
       return null;
     }
   }
@@ -76,10 +76,10 @@ export class RedisContextStore implements ContextStore {
         EX: this.config.ttlSeconds,
       });
     } catch (error) {
-      logger.error(
-        { sessionId: context.sessionId, error },
-        "Failed to set conversation context"
-      );
+      logger.error("Failed to set conversation context", {
+        sessionId: context.sessionId,
+        error: String(error),
+      });
     }
   }
 
@@ -88,10 +88,10 @@ export class RedisContextStore implements ContextStore {
       const key = this.buildKey(sessionId);
       await this.redis.del(key);
     } catch (error) {
-      logger.error(
-        { sessionId, error },
-        "Failed to delete conversation context"
-      );
+      logger.error("Failed to delete conversation context", {
+        sessionId,
+        error: String(error),
+      });
     }
   }
 
@@ -196,8 +196,6 @@ export class ConversationContextManager {
     const newSessionId = sessionId || randomUUID();
     const context: ConversationContext = {
       sessionId: newSessionId,
-      profileId,
-      region,
       subscriptions: subscriptions || [],
       history: [],
       preferences: {
@@ -208,9 +206,11 @@ export class ConversationContextManager {
       createdAt: new Date(),
       lastActiveAt: new Date(),
     };
+    if (profileId) context.profileId = profileId;
+    if (region) context.region = region;
 
     await this.store.set(context);
-    logger.info({ sessionId: newSessionId, profileId }, "Created new session");
+    logger.info("Created new session", { sessionId: newSessionId, profileId });
 
     return context;
   }
@@ -224,7 +224,7 @@ export class ConversationContextManager {
   ): Promise<ConversationContext | null> {
     const context = await this.store.get(sessionId);
     if (!context) {
-      logger.warn({ sessionId }, "Session not found for addTurn");
+      logger.warn("Session not found for addTurn", { sessionId });
       return null;
     }
 
@@ -233,7 +233,7 @@ export class ConversationContextManager {
       // Remove oldest turn(s) to make room
       const removeCount = Math.ceil(this.config.maxTurns * 0.2); // Remove 20%
       context.history = context.history.slice(removeCount);
-      logger.info({ sessionId, removed: removeCount }, "Trimmed conversation history");
+      logger.info("Trimmed conversation history", { sessionId, removed: removeCount });
     }
 
     const turn: ConversationTurn = {
@@ -289,7 +289,7 @@ export class ConversationContextManager {
 
   async endSession(sessionId: string): Promise<void> {
     await this.store.delete(sessionId);
-    logger.info({ sessionId }, "Session ended");
+    logger.info("Session ended", { sessionId });
   }
 
   async getRecentHistory(

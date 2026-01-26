@@ -220,8 +220,10 @@ describe("preferences.worker", () => {
       });
       const data = result.data as ProfilePreferences;
       expect(data.recentFeedback).toHaveLength(2);
-      expect(data.recentFeedback[0].action).toBe("LIKE");
-      expect(data.recentFeedback[0].titleName).toBe("Dune");
+      const firstFeedback = data.recentFeedback[0];
+      expect(firstFeedback).toBeDefined();
+      expect(firstFeedback?.action).toBe("LIKE");
+      expect(firstFeedback?.titleName).toBe("Dune");
     });
 
     it("returns error result on DB failure", async () => {

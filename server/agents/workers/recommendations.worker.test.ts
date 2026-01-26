@@ -401,9 +401,7 @@ describe("recommendations.worker", () => {
     });
 
     it("handles missing previous results gracefully", async () => {
-      const input = makeInput({
-        previousResults: undefined,
-      });
+      const input = makeInput({});
 
       const result = await executeRecommendations(input, {
         prisma: makePrisma(),
