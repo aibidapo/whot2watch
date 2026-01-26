@@ -19,6 +19,8 @@ Thumbs.db
 *.log
 server_api_out.txt
 server_api_err.txt
+.logs/
+.pids/
 
 # Archives
 *.zip
