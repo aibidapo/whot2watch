@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { Thumb } from '@/components/ui/Thumb';
 import { Chip } from '@/components/ui/Chip';
+import { STORAGE_KEY_PROFILE_ID } from '@/constants/onboarding';
 
 type PickItem = {
   id: string;
@@ -23,9 +24,7 @@ type PickItem = {
 };
 
 export default function PicksPage() {
-  const [profileId, setProfileId] = useState<string>(
-    process.env.NEXT_PUBLIC_DEFAULT_PROFILE_ID || '',
-  );
+  const [profileId, setProfileId] = useState<string>('');
   const [items, setItems] = useState<PickItem[]>([]);
   const [profiles, setProfiles] = useState<{ id: string; name?: string }[]>([]);
   const [loading, setLoading] = useState(false);
@@ -33,6 +32,7 @@ export default function PicksPage() {
   const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', []);
   const [ratingsBias, setRatingsBias] = useState<number>(0);
   const api = useMemo(() => createClient({ baseUrl: `${apiBase}/v1` }), [apiBase]);
+  const [autoLoaded, setAutoLoaded] = useState(false);
 
   async function loadPicks() {
     if (!profileId) return;
@@ -55,6 +55,23 @@ export default function PicksPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY_PROFILE_ID);
+    const id = stored || process.env.NEXT_PUBLIC_DEFAULT_PROFILE_ID || '';
+    if (id) {
+      setProfileId(id);
+      setAutoLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (autoLoaded && profileId) {
+      loadPicks();
+      setAutoLoaded(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLoaded, profileId]);
 
   useEffect(() => {
     (async () => {

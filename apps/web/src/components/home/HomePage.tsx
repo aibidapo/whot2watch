@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/Select';
 import { Card } from '@/components/ui/Card';
 import { Thumb } from '@/components/ui/Thumb';
 import { Chip } from '@/components/ui/Chip';
+import { STORAGE_KEY_PROFILE_ID } from '@/constants/onboarding';
 
 type SearchItem = {
   id: string;
@@ -82,6 +83,13 @@ function buildSearchQuery(params: {
 
 export function HomePage() {
   const searchParams = useSearchParams();
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY_PROFILE_ID);
+    if (!stored) setNeedsOnboarding(true);
+  }, []);
+
   const [q, setQ] = useState('');
   const [service, setService] = useState<string>('');
   const defaultRegionOptions = useMemo(
@@ -197,6 +205,18 @@ export function HomePage() {
 
   return (
     <div className="grid gap-6">
+      {/* Onboarding banner */}
+      {needsOnboarding && (
+        <Card className="flex items-center justify-between gap-4 animate-fade-in-up">
+          <p className="text-sm text-muted">
+            Set up your taste profile for personalized picks.
+          </p>
+          <Link href="/onboarding">
+            <Button>Get Started</Button>
+          </Link>
+        </Card>
+      )}
+
       {/* Hero */}
       <section
         className="relative rounded-2xl border border-border p-8 md:p-12 overflow-hidden"

@@ -29,5 +29,13 @@ export default function createClient(cfg: ClientConfig = {}) {
       const payload = body === undefined ? undefined : JSON.stringify(body);
       return request<T>('POST', path, { body: payload });
     },
+    put: <T = unknown>(path: string, body?: unknown) => {
+      const payload = body === undefined ? undefined : JSON.stringify(body);
+      return request<T>('PUT', path, { body: payload });
+    },
+    patch: <T = unknown>(path: string, body?: unknown) => {
+      const payload = body === undefined ? undefined : JSON.stringify(body);
+      return request<T>('PATCH', path, { body: payload });
+    },
   };
 }

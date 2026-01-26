@@ -2,7 +2,7 @@ import * as url from 'url';
 import * as fs from 'fs';
 import * as path from 'path';
 import { createClient } from 'redis';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
@@ -534,7 +534,7 @@ app.get('/v1/search', async (request, reply) => {
 });
 
 app.route({
-  method: ['GET', 'POST', 'DELETE'] as any,
+  method: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as any,
   url: '/v1/*',
   handler: async (request, reply) => {
     try {
@@ -1344,6 +1344,7 @@ app.post(
       await app.redis?.del(`picks:v2:${profileId}:${todayKey}`);
       await app.redis?.del(`picks:v3:${profileId}:${todayKey}`);
       await app.redis?.del(`picks:v4:${profileId}:${todayKey}`);
+      await app.redis?.del(`picks:v5:${profileId}:${todayKey}`);
     } catch {}
     return { subscription: sub };
   },
@@ -1381,7 +1382,145 @@ app.delete(
       await app.redis?.del(`picks:v2:${profileId}:${todayKey}`);
       await app.redis?.del(`picks:v3:${profileId}:${todayKey}`);
       await app.redis?.del(`picks:v4:${profileId}:${todayKey}`);
+      await app.redis?.del(`picks:v5:${profileId}:${todayKey}`);
     } catch {}
+    return { ok: true };
+  },
+);
+
+// ── Preferences ────────────────────────────────────────────────────────────
+
+app.get(
+  '/profiles/:profileId/preferences',
+  {
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            genres: { type: 'array', items: { type: 'string' } },
+            moods: { type: 'array', items: { type: 'string' } },
+            avoidGenres: { type: 'array', items: { type: 'string' } },
+            minRating: { type: ['number', 'null'] },
+            onboardingComplete: { type: 'boolean' },
+          },
+        },
+      },
+    },
+  },
+  async (request) => {
+    const profileId = String((request.params as any).profileId || '');
+    if (!profileId)
+      return { genres: [], moods: [], avoidGenres: [], minRating: null, onboardingComplete: false };
+    const profile = await prisma.profile.findUnique({
+      where: { id: profileId },
+      select: { preferences: true },
+    });
+    const raw = (profile?.preferences as Record<string, unknown>) || {};
+    return {
+      genres: Array.isArray(raw.genres) ? raw.genres : [],
+      moods: Array.isArray(raw.moods) ? raw.moods : [],
+      avoidGenres: Array.isArray(raw.avoidGenres) ? raw.avoidGenres : [],
+      minRating: typeof raw.minRating === 'number' ? raw.minRating : null,
+      onboardingComplete: raw.onboardingComplete === true,
+    };
+  },
+);
+
+app.put(
+  '/profiles/:profileId/preferences',
+  {
+    preHandler: authPreHandler,
+    schema: {
+      body: {
+        type: 'object',
+        properties: {
+          genres: { type: 'array', items: { type: 'string' } },
+          moods: { type: 'array', items: { type: 'string' } },
+          avoidGenres: { type: 'array', items: { type: 'string' } },
+          minRating: { type: ['number', 'null'] },
+        },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: { preferences: { type: 'object', additionalProperties: true } },
+          required: ['preferences'],
+        },
+      },
+    },
+  },
+  async (request) => {
+    const profileId = String((request.params as any).profileId || '');
+    const body = (request.body as any) || {};
+    if (!profileId) return { error: 'invalid_input' };
+
+    const existing = await prisma.profile.findUnique({
+      where: { id: profileId },
+      select: { preferences: true },
+    });
+    const current = (existing?.preferences as Record<string, unknown>) || {};
+
+    const updated: Record<string, unknown> = {
+      ...current,
+      genres: Array.isArray(body.genres)
+        ? body.genres.filter((g: unknown) => typeof g === 'string')
+        : current.genres || [],
+      moods: Array.isArray(body.moods)
+        ? body.moods.filter((m: unknown) => typeof m === 'string')
+        : current.moods || [],
+      avoidGenres: Array.isArray(body.avoidGenres)
+        ? body.avoidGenres.filter((g: unknown) => typeof g === 'string')
+        : current.avoidGenres || [],
+      minRating:
+        body.minRating !== undefined
+          ? typeof body.minRating === 'number'
+            ? body.minRating
+            : null
+          : (current.minRating ?? null),
+    };
+
+    await prisma.profile.update({
+      where: { id: profileId },
+      data: { preferences: updated as Prisma.InputJsonValue },
+    });
+
+    // Invalidate picks cache
+    try {
+      const todayKey = new Date().toISOString().slice(0, 10);
+      await (app as any).redis?.del(`picks:v4:${profileId}:${todayKey}`);
+      await (app as any).redis?.del(`picks:v5:${profileId}:${todayKey}`);
+    } catch {}
+
+    return { preferences: updated };
+  },
+);
+
+app.patch(
+  '/profiles/:profileId/onboarding-complete',
+  {
+    preHandler: authPreHandler,
+    schema: {
+      response: {
+        200: { type: 'object', properties: { ok: { type: 'boolean' } }, required: ['ok'] },
+      },
+    },
+  },
+  async (request) => {
+    const profileId = String((request.params as any).profileId || '');
+    if (!profileId) return { error: 'invalid_input' };
+
+    const existing = await prisma.profile.findUnique({
+      where: { id: profileId },
+      select: { preferences: true },
+    });
+    const current = (existing?.preferences as Record<string, unknown>) || {};
+
+    await prisma.profile.update({
+      where: { id: profileId },
+      data: { preferences: { ...current, onboardingComplete: true } as Prisma.InputJsonValue },
+    });
+
     return { ok: true };
   },
 );
@@ -1454,7 +1593,7 @@ app.get(
         : 0;
     const todayKey = new Date().toISOString().slice(0, 10);
     // Bump cache key version due to ranking changes
-    const cacheKey = `picks:v4:${profileId}:${todayKey}`;
+    const cacheKey = `picks:v5:${profileId}:${todayKey}`;
     const useCache = ratingsBias === 0;
     if (useCache) {
       try {
@@ -1477,6 +1616,18 @@ app.get(
         return 'US';
       }
     })();
+
+    // Parse user taste preferences
+    const rawPrefs = (profile?.preferences as Record<string, unknown>) || {};
+    const userGenres: string[] = Array.isArray(rawPrefs.genres)
+      ? rawPrefs.genres.filter((g: unknown): g is string => typeof g === 'string')
+      : [];
+    const userMoods: string[] = Array.isArray(rawPrefs.moods)
+      ? rawPrefs.moods.filter((m: unknown): m is string => typeof m === 'string')
+      : [];
+    const userAvoidGenres: string[] = Array.isArray(rawPrefs.avoidGenres)
+      ? rawPrefs.avoidGenres.filter((g: unknown): g is string => typeof g === 'string')
+      : [];
 
     const tCandidateStart = Date.now();
     // candidates: titles with availability in user's services/region
@@ -1596,6 +1747,21 @@ app.get(
       } catch {}
       // presence of imagery
       if (t.posterUrl || t.backdropUrl) s += 0.2;
+      // genre preference boost
+      if (userGenres.length > 0 && Array.isArray(t.genres)) {
+        const matched = (t.genres as string[]).filter((g: string) => userGenres.includes(g));
+        s += matched.length * 1.0;
+      }
+      // mood preference boost
+      if (userMoods.length > 0 && Array.isArray(t.moods)) {
+        const matched = (t.moods as string[]).filter((m: string) => userMoods.includes(m));
+        s += matched.length * 0.5;
+      }
+      // avoid genre penalty
+      if (userAvoidGenres.length > 0 && Array.isArray(t.genres)) {
+        const avoided = (t.genres as string[]).filter((g: string) => userAvoidGenres.includes(g));
+        s -= avoided.length * 1.0;
+      }
       return s;
     }
 
@@ -1629,6 +1795,15 @@ app.get(
         else if (typeof tr.trakt === 'number' && tr.trakt >= 0.6) bits.push('trending');
       } catch {}
       if (t.releaseYear && t.releaseYear >= new Date().getFullYear() - 1) bits.push('new');
+      // preference-based reason bits
+      if (userGenres.length > 0 && Array.isArray(t.genres)) {
+        const matched = (t.genres as string[]).filter((g: string) => userGenres.includes(g));
+        if (matched.length > 0) bits.push(`matches your taste in ${matched[0]}`);
+      }
+      if (userMoods.length > 0 && Array.isArray(t.moods)) {
+        const matched = (t.moods as string[]).filter((m: string) => userMoods.includes(m));
+        if (matched.length > 0) bits.push(`${matched[0]} mood`);
+      }
       if (cold) {
         const r = bits.length ? bits.join(' • ') : 'is a quality pick';
         return `Because it ${r} • quality blend`;
