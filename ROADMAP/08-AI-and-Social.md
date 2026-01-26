@@ -4,14 +4,14 @@ Note: depends on Epic 1 data foundation (imdbId, popularity, providers, ratings)
 
 Checklist
 
-- [ ] AI Concierge MVP (feature-flagged; safe fallback to filters)
-- [ ] Conversational search → filter translation (NLU fallback)
-- [ ] Cold-start onboarding (taste chips + subscriptions)
-- [ ] Subscription-aware picks boosts and reasons
-- [ ] Friends' activity feed (MVP) and Friends' Picks
+- [x] AI Concierge MVP (feature-flagged; safe fallback to filters)
+- [x] Conversational search → filter translation (NLU fallback)
+- [x] Cold-start onboarding (taste chips + subscriptions)
+- [x] Subscription-aware picks boosts and reasons
+- [x] Friends' activity feed (MVP) and Friends' Picks
 - [ ] Shareable lists and picks (OpenGraph cards)
-- [ ] Telemetry for AI/social adoption; privacy guardrails
-- [ ] LLM provider selection, prompt framework, cost controls, safety filters
+- [x] Telemetry for AI/social adoption; privacy guardrails
+- [x] LLM provider selection, prompt framework, cost controls, safety filters
 
 Acceptance Criteria
 

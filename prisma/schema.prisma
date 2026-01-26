@@ -183,8 +183,9 @@ model Friend {
   id            String  @id @default(uuid()) @db.Uuid
   fromProfileId String  @db.Uuid
   toProfileId   String  @db.Uuid
-  status        String  // REQUESTED | ACCEPTED
-  fromProfile   Profile @relation("fromProfile", fields: [fromProfileId], references: [id], onDelete: Cascade)
+  status        String   // REQUESTED | ACCEPTED
+  createdAt     DateTime @default(now())
+  fromProfile   Profile  @relation("fromProfile", fields: [fromProfileId], references: [id], onDelete: Cascade)
   toProfile     Profile @relation("toProfile", fields: [toProfileId], references: [id], onDelete: Cascade)
   @@index([fromProfileId])
   @@index([toProfileId])

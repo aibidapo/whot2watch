@@ -52,6 +52,12 @@ export default function RootLayout({
               <a href="/subscriptions" className="px-3 py-1.5 rounded-lg text-muted hover:text-foreground hover:bg-card-hover transition-colors duration-200">
                 Subscriptions
               </a>
+              <a href="/friends" className="px-3 py-1.5 rounded-lg text-muted hover:text-foreground hover:bg-card-hover transition-colors duration-200">
+                Friends
+              </a>
+              <a href="/social" className="px-3 py-1.5 rounded-lg text-muted hover:text-foreground hover:bg-card-hover transition-colors duration-200">
+                Social
+              </a>
             </nav>
             <Suspense fallback={null}>
               <HeaderActions />

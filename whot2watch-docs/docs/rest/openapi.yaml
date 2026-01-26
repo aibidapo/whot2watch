@@ -19,6 +19,10 @@ tags:
     description: Alert configuration and management
   - name: Subscriptions
     description: Streaming service subscriptions for profiles
+  - name: Feedback
+    description: Title feedback (like, dislike, save)
+  - name: Social
+    description: Friends management, activity feed, and friends' picks
   - name: GroupSessions
     description: Group watch sessions
 paths:
@@ -415,6 +419,153 @@ paths:
                   - type: object
                     properties: { feedback: { $ref: '#/components/schemas/Feedback' } }
                     required: [feedback]
+  /profiles/{profileId}/friends:
+    post:
+      operationId: sendFriendRequest
+      tags: [Social]
+      summary: Send a friend request
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [toProfileId]
+              properties:
+                toProfileId: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Friend request sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { friend: { $ref: '#/components/schemas/Friend' } }
+                required: [friend]
+        '409':
+          description: Relationship already exists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { error: { type: string } }
+    get:
+      operationId: listFriends
+      tags: [Social]
+      summary: List friends for a profile
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: status
+          schema: { type: string, enum: [REQUESTED, ACCEPTED] }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/FriendWithProfile' } }
+                required: [items]
+  /friends/{friendId}:
+    patch:
+      operationId: respondFriendRequest
+      tags: [Social]
+      summary: Accept or reject a friend request
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: friendId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [accept]
+              properties:
+                accept: { type: boolean }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    properties: { friend: { $ref: '#/components/schemas/Friend' } }
+                    required: [friend]
+                  - type: object
+                    properties: { ok: { type: boolean } }
+                    required: [ok]
+  /social/feed/{profileId}:
+    get:
+      operationId: getSocialFeed
+      tags: [Social]
+      summary: Activity feed of friends' recent likes and saves
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20, maximum: 50 }
+        - in: query
+          name: before
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/FeedItem' } }
+                required: [items]
+        '503':
+          description: Social features disabled
+  /social/friends-picks/{profileId}:
+    get:
+      operationId: getFriendsPicks
+      tags: [Social]
+      summary: Titles popular among friends in the last N days
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: days
+          schema: { type: integer, default: 14, maximum: 30 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 10, maximum: 30 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/FriendsPickItem' } }
+                required: [items]
+        '503':
+          description: Social features disabled
   /group-sessions:
     get:
       operationId: listGroupSessions
@@ -558,6 +709,56 @@ components:
         action: { type: string, enum: [LIKE, DISLIKE, SAVE] }
         reasonOpt: { type: string }
         ts: { type: string, format: date-time }
+    Friend:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        fromProfileId: { type: string, format: uuid }
+        toProfileId: { type: string, format: uuid }
+        status: { type: string, enum: [REQUESTED, ACCEPTED] }
+        createdAt: { type: string, format: date-time }
+    FriendWithProfile:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        profileId: { type: string, format: uuid }
+        name: { type: string }
+        avatarUrl: { type: string }
+        status: { type: string, enum: [REQUESTED, ACCEPTED] }
+        createdAt: { type: string, format: date-time }
+    FeedItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        profileId: { type: string, format: uuid }
+        profileName: { type: string }
+        profileAvatarUrl: { type: string }
+        action: { type: string, enum: [LIKE, SAVE] }
+        title:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            type: { type: string, enum: [MOVIE, SHOW] }
+            releaseYear: { type: integer }
+            posterUrl: { type: string }
+            voteAverage: { type: number }
+        ts: { type: string, format: date-time }
+    FriendsPickItem:
+      type: object
+      properties:
+        title:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            type: { type: string, enum: [MOVIE, SHOW] }
+            releaseYear: { type: integer }
+            posterUrl: { type: string }
+            voteAverage: { type: number }
+        friendCount: { type: integer }
+        friendNames: { type: array, items: { type: string } }
+        latestTs: { type: string, format: date-time }
   securitySchemes:
     bearerAuth:
       type: http

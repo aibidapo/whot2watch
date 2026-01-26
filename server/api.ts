@@ -11,6 +11,7 @@ import { withRequestId } from './common/requestId';
 import { logger } from './common/logger';
 import { normalizeDeepLink } from '../services/catalog/deeplink';
 import chatRouter from './chat/router';
+import { isSocialFeedEnabled } from './agents/config';
 
 const OPENSEARCH_URL = process.env.OPENSEARCH_URL || 'http://localhost:9200';
 const PORT = Number(process.env.PORT || 4000);
@@ -1237,6 +1238,323 @@ app.post(
       data: { profileId, titleId, action, reasonOpt: reasonOpt ?? null },
     });
     return { feedback: rec };
+  },
+);
+
+// ---- Social (friends, feed, friends' picks) ----
+async function socialFeedGate(_request: any, reply: any) {
+  if (!isSocialFeedEnabled()) {
+    reply.code(503).send({ error: 'social_feed_disabled' });
+  }
+}
+
+// POST /profiles/:profileId/friends — send friend request
+app.post(
+  '/profiles/:profileId/friends',
+  {
+    preHandler: [socialFeedGate, authPreHandler],
+    schema: {
+      body: {
+        type: 'object',
+        required: ['toProfileId'],
+        properties: { toProfileId: { type: 'string' } },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: { friend: { type: 'object' }, error: { type: 'string' } },
+        },
+      },
+    },
+  },
+  async (request) => {
+    const profileId = String((request.params as any).profileId || '');
+    const { toProfileId } = request.body as any;
+    if (!profileId || !toProfileId || profileId === toProfileId) {
+      return { error: 'invalid_input' };
+    }
+    const existing = await prisma.friend.findFirst({
+      where: {
+        OR: [
+          { fromProfileId: profileId, toProfileId },
+          { fromProfileId: toProfileId, toProfileId: profileId },
+        ],
+      },
+    });
+    if (existing) return { error: 'already_exists' };
+    const friend = await prisma.friend.create({
+      data: { fromProfileId: profileId, toProfileId, status: 'REQUESTED' },
+    });
+    return { friend };
+  },
+);
+
+// GET /profiles/:profileId/friends — list friends
+app.get(
+  '/profiles/:profileId/friends',
+  {
+    preHandler: socialFeedGate,
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: { items: { type: 'array', items: { type: 'object' } } },
+          required: ['items'],
+        },
+      },
+    },
+  },
+  async (request) => {
+    const profileId = String((request.params as any).profileId || '');
+    if (!profileId) return { items: [] };
+    const parsed = url.parse(request.raw.url || '', true);
+    const statusFilter = (parsed.query as Record<string, string | undefined>).status;
+    const friends = await prisma.friend.findMany({
+      where: {
+        OR: [{ fromProfileId: profileId }, { toProfileId: profileId }],
+        ...(statusFilter ? { status: statusFilter } : {}),
+      },
+      include: {
+        fromProfile: { select: { id: true, name: true, avatarUrl: true } },
+        toProfile: { select: { id: true, name: true, avatarUrl: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    const items = friends.map((f) => {
+      const other = f.fromProfileId === profileId ? f.toProfile : f.fromProfile;
+      return {
+        id: f.id,
+        profileId: other.id,
+        name: other.name,
+        avatarUrl: other.avatarUrl,
+        status: f.status,
+        createdAt: f.createdAt,
+      };
+    });
+    return { items };
+  },
+);
+
+// PATCH /friends/:friendId — accept or reject
+app.patch(
+  '/friends/:friendId',
+  {
+    preHandler: [socialFeedGate, authPreHandler],
+    schema: {
+      body: {
+        type: 'object',
+        required: ['accept'],
+        properties: { accept: { type: 'boolean' } },
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: { friend: { type: 'object' }, ok: { type: 'boolean' } },
+        },
+      },
+    },
+  },
+  async (request) => {
+    const friendId = String((request.params as any).friendId || '');
+    const { accept } = request.body as any;
+    if (!friendId) return { error: 'invalid_input' };
+    if (accept) {
+      const friend = await prisma.friend.update({
+        where: { id: friendId },
+        data: { status: 'ACCEPTED' },
+      });
+      return { friend };
+    }
+    await prisma.friend.delete({ where: { id: friendId } });
+    return { ok: true };
+  },
+);
+
+// GET /social/feed/:profileId — friends' activity feed
+app.get(
+  '/social/feed/:profileId',
+  {
+    preHandler: socialFeedGate,
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: { items: { type: 'array', items: { type: 'object' } } },
+          required: ['items'],
+        },
+      },
+    },
+  },
+  async (request) => {
+    const profileId = String((request.params as any).profileId || '');
+    if (!profileId) return { items: [] };
+    const parsed = url.parse(request.raw.url || '', true);
+    const qs = parsed.query as Record<string, string | undefined>;
+    const limit = Math.min(Number(qs.limit) || 20, 50);
+    const before = qs.before;
+
+    // Get accepted friend profile IDs
+    const friendRows = await prisma.friend.findMany({
+      where: {
+        OR: [{ fromProfileId: profileId }, { toProfileId: profileId }],
+        status: 'ACCEPTED',
+      },
+      select: { fromProfileId: true, toProfileId: true },
+    });
+    const friendIds = friendRows.map((f) =>
+      f.fromProfileId === profileId ? f.toProfileId : f.fromProfileId,
+    );
+    if (friendIds.length === 0) return { items: [] };
+
+    // Query recent LIKE/SAVE feedback from friends
+    const feedback = await prisma.feedback.findMany({
+      where: {
+        profileId: { in: friendIds },
+        action: { in: ['LIKE', 'SAVE'] },
+        ...(before ? { ts: { lt: new Date(before) } } : {}),
+      },
+      orderBy: { ts: 'desc' },
+      take: limit,
+      include: {
+        profile: { select: { id: true, name: true, avatarUrl: true } },
+        title: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            releaseYear: true,
+            posterUrl: true,
+            voteAverage: true,
+          },
+        },
+      },
+    });
+
+    const items = feedback.map((fb) => ({
+      id: fb.id,
+      profileId: fb.profile.id,
+      profileName: fb.profile.name,
+      profileAvatarUrl: fb.profile.avatarUrl,
+      action: fb.action,
+      title: fb.title,
+      ts: fb.ts,
+    }));
+
+    handleAnalytics(app, {
+      event: 'social_feed_viewed',
+      profileId,
+      friendCount: friendIds.length,
+      itemCount: items.length,
+    });
+
+    return { items };
+  },
+);
+
+// GET /social/friends-picks/:profileId — titles popular among friends
+app.get(
+  '/social/friends-picks/:profileId',
+  {
+    preHandler: socialFeedGate,
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: { items: { type: 'array', items: { type: 'object' } } },
+          required: ['items'],
+        },
+      },
+    },
+  },
+  async (request) => {
+    const profileId = String((request.params as any).profileId || '');
+    if (!profileId) return { items: [] };
+    const parsed = url.parse(request.raw.url || '', true);
+    const qs = parsed.query as Record<string, string | undefined>;
+    const days = Math.min(Number(qs.days) || 14, 30);
+    const limit = Math.min(Number(qs.limit) || 10, 30);
+
+    // Get accepted friend profile IDs
+    const friendRows = await prisma.friend.findMany({
+      where: {
+        OR: [{ fromProfileId: profileId }, { toProfileId: profileId }],
+        status: 'ACCEPTED',
+      },
+      select: { fromProfileId: true, toProfileId: true },
+    });
+    const friendIds = friendRows.map((f) =>
+      f.fromProfileId === profileId ? f.toProfileId : f.fromProfileId,
+    );
+    if (friendIds.length === 0) return { items: [] };
+
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    // Get all LIKE/SAVE feedback from friends in window
+    const feedback = await prisma.feedback.findMany({
+      where: {
+        profileId: { in: friendIds },
+        action: { in: ['LIKE', 'SAVE'] },
+        ts: { gte: since },
+      },
+      include: {
+        profile: { select: { name: true } },
+        title: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            releaseYear: true,
+            posterUrl: true,
+            voteAverage: true,
+          },
+        },
+      },
+    });
+
+    // Aggregate by titleId
+    const titleMap = new Map<
+      string,
+      { title: (typeof feedback)[number]['title']; friendNames: Set<string>; latestTs: Date }
+    >();
+    for (const fb of feedback) {
+      const existing = titleMap.get(fb.titleId);
+      if (existing) {
+        existing.friendNames.add(fb.profile.name);
+        if (fb.ts > existing.latestTs) existing.latestTs = fb.ts;
+      } else {
+        titleMap.set(fb.titleId, {
+          title: fb.title,
+          friendNames: new Set([fb.profile.name]),
+          latestTs: fb.ts,
+        });
+      }
+    }
+
+    // Sort by friend count desc, then by latestTs desc
+    const sorted = Array.from(titleMap.values())
+      .sort(
+        (a, b) =>
+          b.friendNames.size - a.friendNames.size ||
+          b.latestTs.getTime() - a.latestTs.getTime(),
+      )
+      .slice(0, limit);
+
+    const items = sorted.map((entry) => ({
+      title: entry.title,
+      friendCount: entry.friendNames.size,
+      friendNames: Array.from(entry.friendNames),
+      latestTs: entry.latestTs,
+    }));
+
+    handleAnalytics(app, {
+      event: 'friends_picks_viewed',
+      profileId,
+      friendCount: friendIds.length,
+      itemCount: items.length,
+      days,
+    });
+
+    return { items };
   },
 );
 

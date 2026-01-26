@@ -287,6 +287,30 @@ type Friend {
   fromProfileId: ID!
   toProfileId: ID!
   status: FriendStatus!
+  createdAt: DateTime
+}
+
+"""
+A single activity in the social feed (friend liked/saved a title).
+"""
+type FeedItem {
+  id: ID!
+  profileId: ID!
+  profileName: String!
+  profileAvatarUrl: String
+  action: FeedbackAction!
+  title: Title!
+  ts: DateTime!
+}
+
+"""
+A title popular among friends, with aggregated friend count.
+"""
+type FriendsPickItem {
+  title: Title!
+  friendCount: Int!
+  friendNames: [String!]!
+  latestTs: DateTime!
 }
 
 """
@@ -396,6 +420,9 @@ type Query {
     after: String
   ): SearchResultConnection!
   subscriptions(profileId: ID!): [Subscription!]!
+  friends(profileId: ID!, status: FriendStatus, first: Int = 50): [Friend!]!
+  socialFeed(profileId: ID!, limit: Int = 20, before: DateTime): [FeedItem!]!
+  friendsPicks(profileId: ID!, days: Int = 14, limit: Int = 10): [FriendsPickItem!]!
   groupSessions(
     hostProfileId: ID
     participantProfileId: ID
