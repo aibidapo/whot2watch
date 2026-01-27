@@ -199,12 +199,20 @@ export interface ChatRequest {
   context?: Partial<ConversationContext>;
 }
 
+export interface ChatQuota {
+  remaining: number;
+  limit: number;
+  resetsAt: string;
+  tier: "free" | "premium";
+}
+
 export interface ChatResponse {
   sessionId: string;
   recommendations: RecommendationResult[];
   reasoning: string;
   alternatives?: TitleResult[];
   followUpQuestions?: string[];
+  quota?: ChatQuota;
 }
 
 export interface ChatStreamEvent {

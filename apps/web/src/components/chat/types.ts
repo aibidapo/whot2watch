@@ -44,12 +44,20 @@ export interface ChatStreamEvent {
   data: unknown;
 }
 
+export interface ChatQuota {
+  remaining: number;
+  limit: number;
+  resetsAt: string;
+  tier: 'free' | 'premium';
+}
+
 export interface ChatDoneData {
   sessionId: string;
   reasoning: string;
   followUpQuestions?: string[];
   totalRecommendations: number;
   fallbackUsed: boolean;
+  quota?: ChatQuota;
 }
 
 // -- Internal UI types --
@@ -77,6 +85,7 @@ export interface UseChatReturn {
   isEnabled: boolean | null;
   error: ChatError | null;
   sessionId: string | null;
+  quota: ChatQuota | null;
   send: (message: string) => void;
   toggle: () => void;
   close: () => void;

@@ -16,6 +16,7 @@ import type { PrismaClient } from "@prisma/client";
 import type {
   ChatRequest,
   ChatResponse,
+  ChatQuota,
   ChatStreamEvent,
   OrchestratorInput,
   RedisLike,
@@ -28,6 +29,33 @@ import type { MCPClient } from "../mcp/client";
 import { createLogger } from "../common/logger";
 
 const logger = createLogger("chat-router");
+
+// ============================================================================
+// Tier Lookup
+// ============================================================================
+
+type UserTier = "free" | "premium";
+
+async function lookupTier(
+  prisma: PrismaClient,
+  profileId?: string
+): Promise<UserTier> {
+  if (!profileId) return "free";
+  try {
+    const profile = await prisma.profile.findUnique({
+      where: { id: profileId },
+      select: { user: { select: { tier: true } } },
+    });
+    const tier = profile?.user?.tier;
+    return tier === "premium" ? "premium" : "free";
+  } catch (error) {
+    logger.warn("Tier lookup failed, defaulting to free", {
+      profileId,
+      error: String(error),
+    });
+    return "free";
+  }
+}
 
 // ============================================================================
 // Plugin Options
@@ -109,9 +137,12 @@ export default async function chatRouter(
       if (redis) sessionOpts.redis = redis;
       const sessionManager = getChatSessionManager(sessionOpts);
 
-      // Optional rate limiting
+      // Tier lookup
+      const tier = await lookupTier(prisma, profileId);
+
+      // Optional per-minute rate limiting
       if (profileId) {
-        const rateCheck = await sessionManager.checkRateLimit(profileId);
+        const rateCheck = await sessionManager.checkRateLimit(profileId, tier);
         if (!rateCheck.allowed) {
           return reply.status(429).send({
             error: "Rate limit exceeded. Please try again later.",
@@ -120,6 +151,28 @@ export default async function chatRouter(
             remaining: 0,
           });
         }
+      }
+
+      // Daily quota check
+      let quota: ChatQuota | undefined;
+      if (profileId) {
+        const quotaCheck = await sessionManager.checkDailyQuota(profileId, tier);
+        if (!quotaCheck.allowed) {
+          return reply.status(429).send({
+            error: "Daily message limit reached. Upgrade to Premium for more.",
+            code: "DAILY_LIMIT_EXCEEDED",
+            tier,
+            resetsAt: quotaCheck.resetsAt,
+            limit: quotaCheck.limit,
+            remaining: 0,
+          });
+        }
+        quota = {
+          remaining: quotaCheck.remaining,
+          limit: quotaCheck.limit,
+          resetsAt: quotaCheck.resetsAt,
+          tier,
+        };
       }
 
       try {
@@ -163,6 +216,9 @@ export default async function chatRouter(
           result.followUpQuestions.length > 0
         ) {
           response.followUpQuestions = result.followUpQuestions;
+        }
+        if (quota) {
+          response.quota = quota;
         }
 
         logger.info("Chat response sent", {
@@ -220,6 +276,46 @@ export default async function chatRouter(
         });
       }
 
+      // Tier lookup + rate/quota checks (before opening SSE stream)
+      const sseTier = await lookupTier(prisma, profileId);
+      const sseRedis = getRedis(app);
+      const sseSessionOpts: ChatSessionManagerOptions = {};
+      if (sseRedis) sseSessionOpts.redis = sseRedis;
+      const sessionManager = getChatSessionManager(sseSessionOpts);
+
+      if (profileId) {
+        const rateCheck = await sessionManager.checkRateLimit(profileId, sseTier);
+        if (!rateCheck.allowed) {
+          return reply.status(429).send({
+            error: "Rate limit exceeded. Please try again later.",
+            code: "RATE_LIMIT_EXCEEDED",
+            limit: rateCheck.limit,
+            remaining: 0,
+          });
+        }
+      }
+
+      let sseQuota: ChatQuota | undefined;
+      if (profileId) {
+        const quotaCheck = await sessionManager.checkDailyQuota(profileId, sseTier);
+        if (!quotaCheck.allowed) {
+          return reply.status(429).send({
+            error: "Daily message limit reached. Upgrade to Premium for more.",
+            code: "DAILY_LIMIT_EXCEEDED",
+            tier: sseTier,
+            resetsAt: quotaCheck.resetsAt,
+            limit: quotaCheck.limit,
+            remaining: 0,
+          });
+        }
+        sseQuota = {
+          remaining: quotaCheck.remaining,
+          limit: quotaCheck.limit,
+          resetsAt: quotaCheck.resetsAt,
+          tier: sseTier,
+        };
+      }
+
       // Set SSE headers
       reply.raw.writeHead(200, {
         "Content-Type": "text/event-stream",
@@ -240,10 +336,6 @@ export default async function chatRouter(
         });
 
         // Session management
-        const sseRedis = getRedis(app);
-        const sseSessionOpts: ChatSessionManagerOptions = {};
-        if (sseRedis) sseSessionOpts.redis = sseRedis;
-        const sessionManager = getChatSessionManager(sseSessionOpts);
         const session = await sessionManager.getOrCreateSession(
           sessionId,
           profileId
@@ -267,16 +359,15 @@ export default async function chatRouter(
         }
 
         // Send done event with full response metadata
-        sendEvent({
-          type: "done",
-          data: {
-            sessionId: result.sessionId,
-            reasoning: result.reasoning,
-            followUpQuestions: result.followUpQuestions,
-            totalRecommendations: result.recommendations.length,
-            fallbackUsed: result.fallbackUsed,
-          },
-        });
+        const doneData: Record<string, unknown> = {
+          sessionId: result.sessionId,
+          reasoning: result.reasoning,
+          followUpQuestions: result.followUpQuestions,
+          totalRecommendations: result.recommendations.length,
+          fallbackUsed: result.fallbackUsed,
+        };
+        if (sseQuota) doneData.quota = sseQuota;
+        sendEvent({ type: "done", data: doneData });
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
         logger.error("Chat stream error", { error: msg, sessionId });

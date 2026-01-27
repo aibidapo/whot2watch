@@ -25,6 +25,8 @@ tags:
     description: Friends management, activity feed, and friends' picks
   - name: GroupSessions
     description: Group watch sessions
+  - name: Chat
+    description: AI Concierge chat and quota management
 paths:
   /picks/{profileId}:
     get:
@@ -637,6 +639,26 @@ paths:
                 properties:
                   items: { type: array, items: { $ref: '#/components/schemas/GroupSession' } }
                   nextCursor: { type: string }
+  /profiles/{profileId}/tier:
+    get:
+      operationId: getProfileTier
+      tags: [Chat]
+      summary: Get user tier and daily chat quota
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tier: { type: string, enum: [free, premium] }
+                  quota: { $ref: '#/components/schemas/ChatQuota' }
 components:
   schemas:
     Region:
@@ -829,6 +851,13 @@ components:
         friendCount: { type: integer }
         friendNames: { type: array, items: { type: string } }
         latestTs: { type: string, format: date-time }
+    ChatQuota:
+      type: object
+      properties:
+        used: { type: integer }
+        limit: { type: integer }
+        remaining: { type: integer }
+        resetsAt: { type: string, format: date-time }
   securitySchemes:
     bearerAuth:
       type: http

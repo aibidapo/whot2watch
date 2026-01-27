@@ -7,6 +7,7 @@ import type {
   ChatDoneData,
   ChatStreamEvent,
   ChatError,
+  ChatQuota,
   UseChatReturn,
 } from '../types';
 
@@ -31,6 +32,7 @@ export function useChat(): UseChatReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [isEnabled, setIsEnabled] = useState<boolean | null>(null);
   const [error, setError] = useState<ChatError | null>(null);
+  const [quota, setQuota] = useState<ChatQuota | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const pendingIdRef = useRef<string | null>(null);
 
@@ -44,6 +46,31 @@ export function useChat(): UseChatReturn {
       })
       .catch(() => {
         if (!cancelled) setIsEnabled(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Fetch tier/quota on mount
+  useEffect(() => {
+    if (!PROFILE_ID) return;
+    let cancelled = false;
+    fetch(`${API_BASE}/v1/profiles/${PROFILE_ID}/tier`)
+      .then((r) => r.json())
+      .then((body: { tier?: string; quota?: { remaining?: number; limit?: number; resetsAt?: string } }) => {
+        if (cancelled) return;
+        if (body.tier && body.quota) {
+          setQuota({
+            remaining: body.quota.remaining ?? 0,
+            limit: body.quota.limit ?? 0,
+            resetsAt: body.quota.resetsAt ?? '',
+            tier: body.tier === 'premium' ? 'premium' : 'free',
+          });
+        }
+      })
+      .catch(() => {
+        // Non-critical — quota display just won't appear
       });
     return () => {
       cancelled = true;
@@ -112,13 +139,15 @@ export function useChat(): UseChatReturn {
               /* ignore parse failure */
             }
             const code =
-              res.status === 503
-                ? 'CONCIERGE_DISABLED'
-                : res.status === 429
-                  ? 'RATE_LIMIT_EXCEEDED'
-                  : res.status === 400
-                    ? 'INVALID_REQUEST'
-                    : 'NETWORK_ERROR';
+              errBody.code === 'DAILY_LIMIT_EXCEEDED'
+                ? 'DAILY_LIMIT_EXCEEDED'
+                : res.status === 503
+                  ? 'CONCIERGE_DISABLED'
+                  : res.status === 429
+                    ? 'RATE_LIMIT_EXCEEDED'
+                    : res.status === 400
+                      ? 'INVALID_REQUEST'
+                      : 'NETWORK_ERROR';
             const msg =
               errBody.error ||
               (res.status === 503
@@ -181,6 +210,9 @@ export function useChat(): UseChatReturn {
                   case 'done': {
                     const doneData = event.data as ChatDoneData;
                     setSessionId(doneData.sessionId);
+                    if (doneData.quota) {
+                      setQuota(doneData.quota);
+                    }
                     const finalRecs = [...recs];
                     const followUps = doneData.followUpQuestions || [];
                     setMessages((prev) =>
@@ -259,6 +291,7 @@ export function useChat(): UseChatReturn {
       isEnabled,
       error,
       sessionId,
+      quota,
       send,
       toggle,
       close,
@@ -272,6 +305,7 @@ export function useChat(): UseChatReturn {
       isEnabled,
       error,
       sessionId,
+      quota,
       send,
       toggle,
       close,

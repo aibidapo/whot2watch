@@ -105,7 +105,7 @@ Reference: `docs/adr/0002-mcp-agentic-architecture.md`
   - [ ] Search bar NLU augment (optional)
 - [ ] Production
   - [x] Rate limiting (per-user/day)
-  - [ ] Freemium gating
+  - [x] Freemium gating
   - [x] LLM cost monitoring (`/v1/chat/metrics` endpoint)
   - [x] Safety filters enabled (input/output validation, PII redaction)
   - [ ] Load testing (k6)

@@ -14,7 +14,11 @@ import {
   getContextManager,
   type ConversationContextManager,
 } from "../agents/context";
-import { getRateLimitConfig, getSessionConfig } from "../agents/config";
+import {
+  getCostControlConfig,
+  getRateLimitConfig,
+  getSessionConfig,
+} from "../agents/config";
 import { createLogger } from "../common/logger";
 
 const logger = createLogger("chat-session");
@@ -34,11 +38,19 @@ export interface ChatSessionManagerOptions {
   redis?: RedisLike;
 }
 
+export interface DailyQuotaResult {
+  allowed: boolean;
+  remaining: number;
+  limit: number;
+  resetsAt: string; // ISO-8601 midnight UTC
+}
+
 export class ChatSessionManager {
   private contextManager: ConversationContextManager;
   private redis?: RedisLike;
   private sessionConfig = getSessionConfig();
   private rateLimitConfig = getRateLimitConfig();
+  private costConfig = getCostControlConfig();
 
   constructor(options: ChatSessionManagerOptions = {}) {
     if (options.redis) this.redis = options.redis;
@@ -146,6 +158,55 @@ export class ChatSessionManager {
         error: String(error),
       });
       return { allowed: true, remaining: -1, limit };
+    }
+  }
+
+  /**
+   * Check daily message quota using Redis.
+   * Key: chat:dailyquota:{profileId}:{YYYY-MM-DD} with TTL until midnight UTC.
+   * Fails open (allows) if Redis is unavailable.
+   */
+  async checkDailyQuota(
+    profileId: string,
+    tier: "free" | "premium" = "free"
+  ): Promise<DailyQuotaResult> {
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
+    const tomorrow = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+    );
+    const resetsAt = tomorrow.toISOString();
+    const ttlSeconds = Math.ceil((tomorrow.getTime() - now.getTime()) / 1000);
+
+    const limit =
+      tier === "premium"
+        ? this.costConfig.dailyLimitPremium
+        : this.costConfig.dailyLimitFree;
+
+    if (!this.redis) {
+      return { allowed: true, remaining: -1, limit, resetsAt };
+    }
+
+    const key = `chat:dailyquota:${profileId}:${dateStr}`;
+
+    try {
+      const currentStr = await this.redis.get(key);
+      const current = currentStr ? parseInt(currentStr, 10) : 0;
+
+      if (current >= limit) {
+        return { allowed: false, remaining: 0, limit, resetsAt };
+      }
+
+      const next = current + 1;
+      await this.redis.set(key, String(next), { EX: ttlSeconds });
+
+      return { allowed: true, remaining: limit - next, limit, resetsAt };
+    } catch (error) {
+      logger.warn("Daily quota check failed, allowing request", {
+        profileId,
+        error: String(error),
+      });
+      return { allowed: true, remaining: -1, limit, resetsAt };
     }
   }
 }

@@ -11,7 +11,7 @@ import { withRequestId } from './common/requestId';
 import { logger } from './common/logger';
 import { normalizeDeepLink } from '../services/catalog/deeplink';
 import chatRouter from './chat/router';
-import { isSocialFeedEnabled } from './agents/config';
+import { getCostControlConfig, isSocialFeedEnabled } from './agents/config';
 
 const OPENSEARCH_URL = process.env.OPENSEARCH_URL || 'http://localhost:9200';
 const PORT = Number(process.env.PORT || 4000);
@@ -1805,6 +1805,82 @@ app.delete(
       await app.redis?.del(`picks:v5:${profileId}:${todayKey}`);
     } catch {}
     return { ok: true };
+  },
+);
+
+// ── Tier & Quota ──────────────────────────────────────────────────────────
+
+app.get(
+  '/profiles/:profileId/tier',
+  {
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            tier: { type: 'string', enum: ['free', 'premium'] },
+            quota: {
+              type: 'object',
+              properties: {
+                used: { type: 'integer' },
+                limit: { type: 'integer' },
+                remaining: { type: 'integer' },
+                resetsAt: { type: 'string', format: 'date-time' },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+  async (request, reply) => {
+    const profileId = String((request.params as any).profileId || '');
+    if (!profileId) {
+      return reply.code(400).send({ error: 'profileId is required' });
+    }
+
+    // Look up user tier
+    let tier: 'free' | 'premium' = 'free';
+    try {
+      const profile = await prisma.profile.findUnique({
+        where: { id: profileId },
+        select: { user: { select: { tier: true } } },
+      });
+      if (profile?.user?.tier === 'premium') tier = 'premium';
+    } catch {
+      // default to free
+    }
+
+    // Read daily quota counter from Redis
+    const costConfig = getCostControlConfig();
+    const limit = tier === 'premium' ? costConfig.dailyLimitPremium : costConfig.dailyLimitFree;
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const tomorrow = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1),
+    );
+    const resetsAt = tomorrow.toISOString();
+
+    let used = 0;
+    try {
+      const redis = (app as any).redis;
+      if (redis) {
+        const val = await redis.get(`chat:dailyquota:${profileId}:${dateStr}`);
+        if (val) used = parseInt(val, 10) || 0;
+      }
+    } catch {
+      // no Redis or read failure — return 0
+    }
+
+    return {
+      tier,
+      quota: {
+        used,
+        limit,
+        remaining: Math.max(0, limit - used),
+        resetsAt,
+      },
+    };
   },
 );
 

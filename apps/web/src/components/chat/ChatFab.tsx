@@ -40,6 +40,7 @@ export function ChatFab() {
           messages={chat.messages}
           isLoading={chat.isLoading}
           error={chat.error}
+          quota={chat.quota}
           onSend={chat.send}
           onClose={chat.close}
           onClearError={chat.clearError}

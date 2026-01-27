@@ -51,6 +51,14 @@ enum Region {
   IN
 }
 
+"""
+User subscription tier for freemium gating.
+"""
+enum UserTier {
+  FREE
+  PREMIUM
+}
+
 type User {
   id: ID!
   email: String!
@@ -67,6 +75,7 @@ type Profile {
   preferences: JSON
   privateModeDefault: Boolean!
   locale: String
+  tier: UserTier
   createdAt: DateTime!
   subscriptions: [Subscription!]!
 }

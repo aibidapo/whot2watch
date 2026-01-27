@@ -112,6 +112,14 @@ enum GroupSessionStatus {
 }
 
 """
+User subscription tier for freemium gating.
+"""
+enum UserTier {
+  FREE
+  PREMIUM
+}
+
+"""
 Generic identifier alias for clarity in fields.
 """
 scalar ID
@@ -228,6 +236,7 @@ type Profile {
   id: ID!
   preferences: Preferences
   locale: String
+  tier: UserTier
 }
 
 """

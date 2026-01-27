@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import type { ChatMessageData, ChatError as ChatErrorType } from './types';
+import type { ChatMessageData, ChatError as ChatErrorType, ChatQuota } from './types';
 import { ChatMessageList } from './ChatMessageList';
 import { ChatInput } from './ChatInput';
 import { ChatError } from './ChatError';
@@ -10,6 +10,7 @@ interface ChatPanelProps {
   messages: ChatMessageData[];
   isLoading: boolean;
   error: ChatErrorType | null;
+  quota: ChatQuota | null;
   onSend: (message: string) => void;
   onClose: () => void;
   onClearError: () => void;
@@ -20,6 +21,7 @@ export function ChatPanel({
   messages,
   isLoading,
   error,
+  quota,
   onSend,
   onClose,
   onClearError,
@@ -42,7 +44,14 @@ export function ChatPanel({
     >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <h2 className="text-sm font-semibold brand-text">AI Concierge</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold brand-text">AI Concierge</h2>
+          {quota && quota.remaining >= 0 && (
+            <span className="text-xs text-muted">
+              {quota.remaining}/{quota.limit} left
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           {messages.length > 0 && (
             <button

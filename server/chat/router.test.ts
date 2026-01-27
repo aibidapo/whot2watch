@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import Fastify from "fastify";
 import chatRouter from "./router";
+import { resetChatSessionManager } from "./session";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -9,7 +10,9 @@ import chatRouter from "./router";
 function makePrisma() {
   return {
     profile: {
-      findUnique: vi.fn(async () => null),
+      findUnique: vi.fn(async () => ({
+        user: { tier: "free" },
+      })),
     },
     subscription: {
       findMany: vi.fn(async () => []),
@@ -50,13 +53,19 @@ const sampleOsResponse = {
   },
 };
 
-async function buildApp(envOverrides?: Record<string, string>) {
+async function buildApp(
+  envOverrides?: Record<string, string>,
+  options?: { redis?: Record<string, unknown> }
+) {
   // Apply env overrides
   for (const [key, value] of Object.entries(envOverrides || {})) {
     process.env[key] = value;
   }
 
   const app = Fastify({ logger: false });
+  if (options?.redis) {
+    (app as any).redis = options.redis;
+  }
   await app.register(chatRouter, { prisma: makePrisma() });
   await app.ready();
   return app;
@@ -79,8 +88,10 @@ describe("chat router", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    resetChatSessionManager();
     // Clean up env vars
     delete process.env.AI_CONCIERGE_ENABLED;
+    delete process.env.LLM_DAILY_LIMIT_FREE;
   });
 
   // ---------- Health endpoint ----------
@@ -245,6 +256,59 @@ describe("chat router", () => {
       expect(body).toContain("data:");
       // Should have a "done" event
       expect(body).toContain('"type":"done"');
+      await app.close();
+    });
+  });
+
+  // ---------- Daily Quota ----------
+
+  describe("POST /chat daily quota", () => {
+    it("returns 429 with DAILY_LIMIT_EXCEEDED when quota is exhausted", async () => {
+      // Set daily limit to 0 to immediately trigger quota exceeded
+      const mockRedis = {
+        get: vi.fn(async () => "0"),
+        set: vi.fn(async () => "OK"),
+      };
+      const app = await buildApp(
+        { AI_CONCIERGE_ENABLED: "true", LLM_DAILY_LIMIT_FREE: "0" },
+        { redis: mockRedis }
+      );
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/chat",
+        payload: { message: "hello", profileId: "test-profile-id" },
+      });
+      expect(res.statusCode).toBe(429);
+      const body = res.json();
+      expect(body.code).toBe("DAILY_LIMIT_EXCEEDED");
+      expect(body.tier).toBeDefined();
+      expect(body.resetsAt).toBeDefined();
+      await app.close();
+    });
+
+    it("includes quota in successful response", async () => {
+      const mockRedis = {
+        get: vi.fn(async () => "1"),
+        set: vi.fn(async () => "OK"),
+      };
+      const app = await buildApp(
+        { AI_CONCIERGE_ENABLED: "true" },
+        { redis: mockRedis }
+      );
+
+      const res = await app.inject({
+        method: "POST",
+        url: "/chat",
+        payload: { message: "recommend a movie", profileId: "test-profile-id" },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.quota).toBeDefined();
+      expect(body.quota.tier).toBe("free");
+      expect(typeof body.quota.remaining).toBe("number");
+      expect(typeof body.quota.limit).toBe("number");
+      expect(body.quota.resetsAt).toBeDefined();
       await app.close();
     });
   });
