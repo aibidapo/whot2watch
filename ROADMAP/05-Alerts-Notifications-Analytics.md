@@ -2,16 +2,16 @@
 
 Checklist
 
-- [ ] Alerts MVP (create/list for availability change)
-- [ ] Notification service (FCM/APNs capture; worker; optional email fallback)
+- [x] Alerts MVP (create/list for availability change)
+- [x] Notification service (FCM/APNs capture; worker; optional email fallback)
 - [x] Analytics buffering with retry/background flushing (Redis/in-memory)
-- [ ] Analytics hardening (schema validation, sampling; PostHog/Amplitude dashboard)
-- [ ] Availability delta detection job (compare lastSeenAt to prior snapshot)
-- [ ] Admin dashboard cards (ingest success, availability freshness, ratings coverage)
-- [ ] Personalization for alerts (services/regions per profile; frequency controls)
-- [ ] Multi-channel notifications (email/SMS/webhook opt-in)
-- [ ] Notification preferences & pacing (quiet hours; per-channel opt-in)
-- [ ] Compliance: CAN-SPAM/GDPR consent, unsubscribe links, data retention
+- [x] Analytics hardening (schema validation, sampling; PostHog/Amplitude dashboard)
+- [x] Availability delta detection job (compare lastSeenAt to prior snapshot)
+- [x] Admin dashboard cards (ingest success, availability freshness, ratings coverage)
+- [x] Personalization for alerts (services/regions per profile; frequency controls)
+- [x] Multi-channel notifications (email/SMS/webhook opt-in)
+- [x] Notification preferences & pacing (quiet hours; per-channel opt-in)
+- [x] Compliance: CAN-SPAM/GDPR consent, unsubscribe links, data retention
 
 Acceptance Criteria
 

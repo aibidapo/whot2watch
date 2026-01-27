@@ -30,6 +30,15 @@ function makeMockPrisma() {
     trendingSignal: {
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
+    deviceToken: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    notificationPreference: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    notificationLog: {
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
   } as any;
 }
 
@@ -63,6 +72,12 @@ describe('exportUserData', () => {
     prisma.alert.findMany.mockResolvedValue([
       { alertType: 'NEW_SEASON', status: 'ACTIVE', region: 'US' },
     ]);
+    prisma.deviceToken.findMany.mockResolvedValue([
+      { token: 'tok-123', platform: 'WEB' },
+    ]);
+    prisma.notificationPreference.findMany.mockResolvedValue([
+      { pushEnabled: true, emailEnabled: false, webhookEnabled: false, frequencyCap: 10, consentGiven: true },
+    ]);
 
     const result = await exportUserData('u1', prisma);
     expect(result).not.toBeNull();
@@ -72,6 +87,8 @@ describe('exportUserData', () => {
     expect(result!.lists).toHaveLength(1);
     expect(result!.feedback).toHaveLength(1);
     expect(result!.alerts).toHaveLength(1);
+    expect(result!.deviceTokens).toHaveLength(1);
+    expect(result!.notificationPreferences).toHaveLength(1);
   });
 });
 
@@ -111,12 +128,14 @@ describe('enforceRetentionPolicy', () => {
     prisma.alert.deleteMany.mockResolvedValue({ count: 3 });
     prisma.recommendation.deleteMany.mockResolvedValue({ count: 10 });
     prisma.trendingSignal.deleteMany.mockResolvedValue({ count: 2 });
+    prisma.notificationLog.deleteMany.mockResolvedValue({ count: 7 });
 
     const result = await enforceRetentionPolicy(prisma);
     expect(result.feedbackPurged).toBe(5);
     expect(result.alertsPurged).toBe(3);
     expect(result.recommendationsPurged).toBe(10);
     expect(result.trendingPurged).toBe(2);
+    expect(result.notificationLogsPurged).toBe(7);
   });
 
   it('respects custom retention days from env', async () => {

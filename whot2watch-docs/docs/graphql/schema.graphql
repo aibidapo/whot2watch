@@ -284,8 +284,79 @@ type Alert {
   alertType: AlertType!
   services: [Service!]
   region: Region!
+  priority: String!
   status: AlertStatus!
+  firedAt: DateTime
+  unsubscribeToken: String
   createdAt: DateTime!
+}
+
+"""
+Platform for push notification device tokens.
+"""
+enum DeviceTokenPlatform {
+  IOS
+  ANDROID
+  WEB
+}
+
+"""
+A registered device token for push notifications.
+"""
+type DeviceToken {
+  id: ID!
+  profileId: ID!
+  token: String!
+  platform: DeviceTokenPlatform!
+  createdAt: DateTime!
+}
+
+"""
+Notification channel types.
+"""
+enum NotificationChannel {
+  PUSH
+  EMAIL
+  WEBHOOK
+}
+
+"""
+User notification preferences per profile.
+"""
+type NotificationPreference {
+  id: ID!
+  profileId: ID!
+  pushEnabled: Boolean!
+  emailEnabled: Boolean!
+  webhookEnabled: Boolean!
+  quietHoursStart: String
+  quietHoursEnd: String
+  frequencyCap: Int!
+  consentGiven: Boolean!
+  consentTs: DateTime
+}
+
+"""
+Input for updating notification preferences.
+"""
+input NotificationPreferenceInput {
+  pushEnabled: Boolean
+  emailEnabled: Boolean
+  webhookEnabled: Boolean
+  quietHoursStart: String
+  quietHoursEnd: String
+  frequencyCap: Int
+  consentGiven: Boolean
+}
+
+"""
+Summary of an availability delta detection run.
+"""
+type DeltaRunSummary {
+  titlesScanned: Int!
+  deltasFound: Int!
+  notificationsSent: Int!
+  duration: String!
 }
 
 """
@@ -502,6 +573,9 @@ type Query {
 
   # B2B (Epic 9)
   demoDashboard: DemoDashboard
+
+  # Notifications (Epic 5)
+  notificationPreferences(profileId: ID!): NotificationPreference
 }
 
 # Mutations
@@ -556,6 +630,11 @@ type Mutation {
   # Referrals (Epic 9)
   generateReferralCode(userId: ID!): ReferralCodeResult!
   redeemReferralCode(code: String!, redeemedByUserId: ID!): ReferralRedeemResult!
+
+  # Notifications (Epic 5)
+  registerDeviceToken(profileId: ID!, token: String!, platform: DeviceTokenPlatform!): DeviceToken!
+  updateNotificationPreferences(profileId: ID!, input: NotificationPreferenceInput!): NotificationPreference!
+  unsubscribeAlert(alertId: ID!, token: String!): Boolean!
 }
 
 # ── Epic 9: Monetization & Growth Types ──────────────────────────────────────
@@ -640,6 +719,13 @@ type DemoDashboard {
   premiumUsers: Int!
   totalReferrals: Int!
   topTrending: [TrendingItem!]!
+  ingestSuccessRate: Float!
+  availabilityFreshnessHours: Float!
+  ratingsCoveragePercent: Float!
+  activeAlerts: Int!
+  firedAlerts24h: Int!
+  notificationsSent24h: Int!
+  deviceTokenCount: Int!
 }
 
 """

@@ -366,6 +366,136 @@ paths:
                 type: object
                 properties: { alert: { $ref: '#/components/schemas/Alert' } }
                 required: [alert]
+  /profiles/{profileId}/alerts/{alertId}:
+    delete:
+      operationId: deleteAlert
+      tags: [Alerts]
+      summary: Cancel an alert (soft-delete sets status to CANCELLED)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: alertId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { alert: { $ref: '#/components/schemas/Alert' } }
+                required: [alert]
+        '403':
+          description: Forbidden — alert does not belong to profile
+        '404':
+          description: Alert not found
+  /profiles/{profileId}/alerts/{alertId}/unsubscribe:
+    post:
+      operationId: unsubscribeAlert
+      tags: [Alerts]
+      summary: Token-based unsubscribe (no auth required)
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: alertId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: token
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UnsubscribeResult' }
+        '400':
+          description: Invalid or expired token
+        '404':
+          description: Alert not found
+  /profiles/{profileId}/device-tokens:
+    post:
+      operationId: registerDeviceToken
+      tags: [Alerts]
+      summary: Register a push notification device token
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeviceToken' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeviceToken' }
+  /profiles/{profileId}/notification-preferences:
+    get:
+      operationId: getNotificationPreferences
+      tags: [Alerts]
+      summary: Get notification preferences for a profile
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationPreference' }
+    put:
+      operationId: updateNotificationPreferences
+      tags: [Alerts]
+      summary: Update notification preferences for a profile
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NotificationPreference' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationPreference' }
+  /v1/admin/alerts/check-deltas:
+    post:
+      operationId: checkAlertDeltas
+      tags: [Admin]
+      summary: Trigger availability delta detection (admin-gated)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeltaRunSummary' }
+        '403':
+          description: Admin access required
   /profiles/{profileId}/subscriptions:
     get:
       operationId: listSubscriptions
@@ -1083,7 +1213,10 @@ components:
         alertType: { type: string, enum: [AVAILABILITY] }
         services: { type: array, items: { $ref: '#/components/schemas/Provider' } }
         region: { $ref: '#/components/schemas/Region' }
+        priority: { type: string, enum: [EARLY, STANDARD] }
         status: { type: string, enum: [ACTIVE, FIRED, CANCELLED] }
+        firedAt: { type: string, format: date-time, nullable: true }
+        unsubscribeToken: { type: string, nullable: true }
         createdAt: { type: string, format: date-time }
     Feedback:
       type: object
@@ -1223,6 +1356,13 @@ components:
         premiumUsers: { type: integer }
         totalReferrals: { type: integer }
         topTrending: { type: array, items: { type: object, properties: { name: { type: string }, score: { type: number } } } }
+        ingestSuccessRate: { type: number }
+        availabilityFreshnessHours: { type: number }
+        ratingsCoveragePercent: { type: number }
+        activeAlerts: { type: integer }
+        firedAlerts24h: { type: integer }
+        notificationsSent24h: { type: integer }
+        deviceTokenCount: { type: integer }
     ApmSnapshot:
       type: object
       description: API performance monitoring snapshot
@@ -1261,6 +1401,40 @@ components:
         alertsPurged: { type: integer }
         recommendationsPurged: { type: integer }
         trendingPurged: { type: integer }
+    DeviceToken:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        profileId: { type: string, format: uuid }
+        token: { type: string }
+        platform: { type: string, enum: [IOS, ANDROID, WEB] }
+        createdAt: { type: string, format: date-time }
+      required: [token, platform]
+    NotificationPreference:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        profileId: { type: string, format: uuid }
+        pushEnabled: { type: boolean }
+        emailEnabled: { type: boolean }
+        webhookEnabled: { type: boolean }
+        quietHoursStart: { type: string, nullable: true }
+        quietHoursEnd: { type: string, nullable: true }
+        frequencyCap: { type: integer }
+        consentGiven: { type: boolean }
+        consentTs: { type: string, format: date-time, nullable: true }
+    DeltaRunSummary:
+      type: object
+      properties:
+        titlesScanned: { type: integer }
+        deltasFound: { type: integer }
+        notificationsSent: { type: integer }
+        duration: { type: string }
+    UnsubscribeResult:
+      type: object
+      properties:
+        success: { type: boolean }
+        alertId: { type: string, format: uuid }
   securitySchemes:
     bearerAuth:
       type: http

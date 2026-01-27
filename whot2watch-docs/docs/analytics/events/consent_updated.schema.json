@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/consent_updated.schema.json",
+  "title": "consent_updated properties",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "profile_id": { "type": "string", "format": "uuid" },
+    "consent_given": { "type": "boolean" }
+  },
+  "required": ["profile_id", "consent_given"]
+}

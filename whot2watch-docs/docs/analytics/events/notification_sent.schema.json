@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/notification_sent.schema.json",
+  "title": "notification_sent properties",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "alert_id": { "type": "string", "format": "uuid" },
+    "profile_id": { "type": "string", "format": "uuid" },
+    "channel": { "type": "string", "enum": ["PUSH", "EMAIL", "WEBHOOK"] },
+    "status": { "type": "string", "enum": ["SENT", "FAILED", "SUPPRESSED"] }
+  },
+  "required": ["alert_id", "profile_id", "channel", "status"]
+}

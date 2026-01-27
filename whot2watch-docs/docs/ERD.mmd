@@ -45,11 +45,45 @@ erDiagram
     datetime createdAt
   }
 
+  DEVICE_TOKENS {
+    uuid id PK
+    uuid profileId FK
+    string token
+    string platform
+    datetime createdAt
+  }
+
+  NOTIFICATION_PREFERENCES {
+    uuid id PK
+    uuid profileId FK
+    boolean pushEnabled
+    boolean emailEnabled
+    boolean webhookEnabled
+    string quietHoursStart
+    string quietHoursEnd
+    int frequencyCap
+    boolean consentGiven
+    datetime consentTs
+  }
+
+  NOTIFICATION_LOG {
+    uuid id PK
+    uuid alertId FK
+    uuid profileId FK
+    string channel
+    string status
+    string error
+    datetime sentAt
+  }
+
   PROFILES ||--o{ LISTS : owns
   PROFILES ||--o{ ALERTS : sets
   PROFILES ||--o{ SUBSCRIPTIONS : has
   PROFILES ||--o{ FRIENDS : relates
   PROFILES ||--o{ GROUP_SESSIONS : hosts
+  PROFILES ||--o{ DEVICE_TOKENS : registers
+  PROFILES ||--o| NOTIFICATION_PREFERENCES : configures
+  ALERTS ||--o{ NOTIFICATION_LOG : triggers
 
   FriendStatus {
     REQUESTED

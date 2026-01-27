@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://Whot2Watch.local/schemas/events/alert_cancelled.schema.json",
+  "title": "alert_cancelled properties",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "alert_id": { "type": "string", "format": "uuid" },
+    "profile_id": { "type": "string", "format": "uuid" },
+    "method": { "type": "string", "enum": ["delete", "unsubscribe"] }
+  },
+  "required": ["alert_id", "profile_id"]
+}

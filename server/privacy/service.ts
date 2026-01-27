@@ -49,6 +49,17 @@ export interface UserDataExport {
     status: string;
     region: string;
   }>;
+  deviceTokens: Array<{
+    token: string;
+    platform: string;
+  }>;
+  notificationPreferences: Array<{
+    pushEnabled: boolean;
+    emailEnabled: boolean;
+    webhookEnabled: boolean;
+    frequencyCap: number;
+    consentGiven: boolean;
+  }>;
 }
 
 export interface DeletionSummary {
@@ -62,6 +73,7 @@ export interface RetentionSummary {
   alertsPurged: number;
   recommendationsPurged: number;
   trendingPurged: number;
+  notificationLogsPurged: number;
 }
 
 // ============================================================================
@@ -73,12 +85,14 @@ function getRetentionDays(): {
   alerts: number;
   recommendations: number;
   trending: number;
+  notificationLogs: number;
 } {
   return {
     feedback: Number(process.env.DATA_RETENTION_FEEDBACK_DAYS || 730),
     alerts: Number(process.env.DATA_RETENTION_ALERTS_DAYS || 90),
     recommendations: Number(process.env.DATA_RETENTION_RECOMMENDATIONS_DAYS || 30),
     trending: Number(process.env.DATA_RETENTION_TRENDING_DAYS || 90),
+    notificationLogs: Number(process.env.DATA_RETENTION_NOTIFICATION_LOG_DAYS || 90),
   };
 }
 
@@ -128,6 +142,22 @@ export async function exportUserData(
     select: { alertType: true, status: true, region: true },
   });
 
+  const deviceTokens = await (prisma as any).deviceToken.findMany({
+    where: { profileId: { in: profileIds } },
+    select: { token: true, platform: true },
+  });
+
+  const notificationPreferences = await (prisma as any).notificationPreference.findMany({
+    where: { profileId: { in: profileIds } },
+    select: {
+      pushEnabled: true,
+      emailEnabled: true,
+      webhookEnabled: true,
+      frequencyCap: true,
+      consentGiven: true,
+    },
+  });
+
   return {
     user: {
       id: user.id,
@@ -141,6 +171,8 @@ export async function exportUserData(
     lists,
     feedback,
     alerts,
+    deviceTokens,
+    notificationPreferences,
   };
 }
 
@@ -192,10 +224,15 @@ export async function enforceRetentionPolicy(prisma: PrismaClient): Promise<Rete
     where: { ts: { lt: daysAgo(cfg.trending) } },
   });
 
+  const notificationLogsResult = await (prisma as any).notificationLog.deleteMany({
+    where: { sentAt: { lt: daysAgo(cfg.notificationLogs) } },
+  });
+
   return {
     feedbackPurged: feedbackResult.count,
     alertsPurged: alertsResult.count,
     recommendationsPurged: recommendationsResult.count,
     trendingPurged: trendingResult.count,
+    notificationLogsPurged: notificationLogsResult.count,
   };
 }

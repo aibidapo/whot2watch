@@ -30,11 +30,14 @@ import { ReferralService } from './referrals/service';
 import { apiKeyGate } from './plans/api-key-gate';
 import { recordRequest, getApmSnapshot } from './apm/middleware';
 import { exportUserData, deleteUserData, enforceRetentionPolicy } from './privacy/service';
+import { NotificationService } from './notifications/service';
+import { validateAnalyticsEvent } from './analytics/validator';
 
 const OPENSEARCH_URL = process.env.OPENSEARCH_URL || 'http://localhost:9200';
 const PORT = Number(process.env.PORT || 4000);
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const prisma = new PrismaClient();
+const notificationService = new NotificationService(prisma);
 
 // --- Analytics buffering (optional) ---
 function isAnalyticsBufferEnabled(): boolean {
@@ -1228,6 +1231,16 @@ app.post(
   async (request, reply) => {
     try {
       const body = (request.body as any) || {};
+
+      // Runtime schema validation (Epic 5)
+      const validation = validateAnalyticsEvent(body.event, body);
+      if (!validation.valid) {
+        logger.warn('analytics_validation_failed', {
+          event: body.event,
+          errors: validation.errors,
+        });
+      }
+
       const isPrivate =
         request.headers['x-private-mode'] === 'true' || (request.query as any)?.private === 'true';
       if (!isPrivate) {
@@ -2121,6 +2134,21 @@ app.post(
     const services: string[] = Array.isArray(body.services) ? body.services : [];
     const region: string = typeof body.region === 'string' ? body.region : 'US';
     if (!profileId || (!titleId && services.length === 0)) return { error: 'invalid_input' };
+
+    // Dedup: check for existing ACTIVE alert with same key
+    try {
+      const existing = await prisma.alert.findFirst({
+        where: {
+          profileId,
+          titleId: titleId ?? null,
+          alertType: 'AVAILABILITY',
+          region,
+          status: 'ACTIVE',
+        },
+      });
+      if (existing) return { alert: existing, idempotent: true };
+    } catch {}
+
     // Premium users get EARLY priority alerts
     let priority = 'STANDARD';
     try {
@@ -2144,6 +2172,147 @@ app.post(
     if (titleId) data.titleId = titleId;
     const rec = await prisma.alert.create({ data });
     return { alert: rec };
+  },
+);
+
+// ── Epic 5: Alert DELETE, Device Tokens, Notification Preferences ────────────
+
+app.delete(
+  '/profiles/:profileId/alerts/:alertId',
+  {
+    preHandler: authPreHandler,
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: { alert: { type: 'object', additionalProperties: true } },
+          required: ['alert'],
+        },
+      },
+    },
+  },
+  async (request, reply) => {
+    const { profileId, alertId } = request.params as any;
+    const alert = await prisma.alert.findUnique({ where: { id: alertId } });
+    if (!alert) return reply.code(404).send({ error: 'not_found' });
+    if (alert.profileId !== profileId) return reply.code(403).send({ error: 'forbidden' });
+    const updated = await prisma.alert.update({
+      where: { id: alertId },
+      data: { status: 'CANCELLED' },
+    });
+    handleAnalytics(app, { event: 'alert_cancelled', alertId, profileId });
+    return { alert: updated };
+  },
+);
+
+app.post(
+  '/profiles/:profileId/alerts/:alertId/unsubscribe',
+  {
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            alertId: { type: 'string' },
+          },
+        },
+      },
+    },
+  },
+  async (request, reply) => {
+    const { profileId, alertId } = request.params as any;
+    const token = (request.query as any)?.token;
+    if (!token) return reply.code(400).send({ error: 'token_required' });
+    const alert = await prisma.alert.findUnique({ where: { id: alertId } });
+    if (!alert) return reply.code(404).send({ error: 'not_found' });
+    if (alert.profileId !== profileId || alert.unsubscribeToken !== token) {
+      return reply.code(400).send({ error: 'invalid_token' });
+    }
+    await prisma.alert.update({
+      where: { id: alertId },
+      data: { status: 'CANCELLED' },
+    });
+    return { success: true, alertId };
+  },
+);
+
+app.post(
+  '/profiles/:profileId/device-tokens',
+  {
+    preHandler: authPreHandler,
+    schema: {
+      body: {
+        type: 'object',
+        properties: {
+          token: { type: 'string' },
+          platform: { type: 'string', enum: ['IOS', 'ANDROID', 'WEB'] },
+        },
+        required: ['token', 'platform'],
+      },
+      response: {
+        200: { type: 'object', additionalProperties: true },
+      },
+    },
+  },
+  async (request) => {
+    const { profileId } = request.params as any;
+    const { token, platform } = request.body as any;
+    const rec = await notificationService.registerDeviceToken(profileId, token, platform);
+    return rec;
+  },
+);
+
+app.get(
+  '/profiles/:profileId/notification-preferences',
+  {
+    preHandler: authPreHandler,
+    schema: {
+      response: {
+        200: { type: 'object', additionalProperties: true },
+      },
+    },
+  },
+  async (request) => {
+    const { profileId } = request.params as any;
+    return notificationService.getPreferences(profileId);
+  },
+);
+
+app.put(
+  '/profiles/:profileId/notification-preferences',
+  {
+    preHandler: authPreHandler,
+    schema: {
+      body: {
+        type: 'object',
+        properties: {
+          pushEnabled: { type: 'boolean' },
+          emailEnabled: { type: 'boolean' },
+          webhookEnabled: { type: 'boolean' },
+          quietHoursStart: { type: 'string', nullable: true },
+          quietHoursEnd: { type: 'string', nullable: true },
+          frequencyCap: { type: 'integer' },
+          consentGiven: { type: 'boolean' },
+        },
+      },
+      response: {
+        200: { type: 'object', additionalProperties: true },
+      },
+    },
+  },
+  async (request) => {
+    const { profileId } = request.params as any;
+    const body = request.body as any;
+    const result = await notificationService.upsertPreferences(profileId, body);
+    if (body.consentGiven !== undefined) {
+      handleAnalytics(app, {
+        event: 'consent_updated',
+        profileId,
+        consentGiven: body.consentGiven,
+      });
+    }
+    return result;
   },
 );
 
@@ -3033,6 +3202,13 @@ app.get(
             premiumUsers: { type: 'integer' },
             totalReferrals: { type: 'integer' },
             topTrending: { type: 'array', items: { type: 'object', additionalProperties: true } },
+            ingestSuccessRate: { type: 'number' },
+            availabilityFreshnessHours: { type: 'number' },
+            ratingsCoveragePercent: { type: 'number' },
+            activeAlerts: { type: 'integer' },
+            firedAlerts24h: { type: 'integer' },
+            notificationsSent24h: { type: 'integer' },
+            deviceTokenCount: { type: 'integer' },
           },
         },
       },
@@ -3061,7 +3237,55 @@ app.get(
         score: s.value,
       }));
 
-      return { totalUsers, premiumUsers, totalReferrals, topTrending };
+      // Epic 5: Extended dashboard metrics
+      const totalTitles = await prisma.title.count();
+      const titlesWithTmdb = await prisma.title.count({ where: { tmdbId: { not: null } } });
+      const ingestSuccessRate = totalTitles > 0 ? (titlesWithTmdb / totalTitles) * 100 : 0;
+
+      // Availability freshness: avg hours since lastSeenAt (7-day window)
+      let availabilityFreshnessHours = 0;
+      try {
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const freshResult: any[] = await prisma.$queryRawUnsafe(
+          `SELECT AVG(EXTRACT(EPOCH FROM (NOW() - "lastSeenAt")) / 3600) as avg_hours
+           FROM "Availability"
+           WHERE "lastSeenAt" IS NOT NULL AND "lastSeenAt" >= $1`,
+          sevenDaysAgo,
+        );
+        availabilityFreshnessHours = Number(freshResult[0]?.avg_hours ?? 0);
+      } catch {}
+
+      // Ratings coverage
+      const titlesWithRatings = await (prisma as any).externalRating.groupBy({
+        by: ['titleId'],
+      });
+      const ratingsCoveragePercent =
+        totalTitles > 0 ? (titlesWithRatings.length / totalTitles) * 100 : 0;
+
+      // Alert metrics
+      const activeAlerts = await prisma.alert.count({ where: { status: 'ACTIVE' } });
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const firedAlerts24h = await prisma.alert.count({
+        where: { status: 'FIRED', firedAt: { gte: twentyFourHoursAgo } },
+      });
+      const notificationsSent24h = await (prisma as any).notificationLog.count({
+        where: { sentAt: { gte: twentyFourHoursAgo } },
+      });
+      const deviceTokenCount = await (prisma as any).deviceToken.count();
+
+      return {
+        totalUsers,
+        premiumUsers,
+        totalReferrals,
+        topTrending,
+        ingestSuccessRate: Math.round(ingestSuccessRate * 100) / 100,
+        availabilityFreshnessHours: Math.round(availabilityFreshnessHours * 100) / 100,
+        ratingsCoveragePercent: Math.round(ratingsCoveragePercent * 100) / 100,
+        activeAlerts,
+        firedAlerts24h,
+        notificationsSent24h,
+        deviceTokenCount,
+      };
     } catch {
       return (reply as any).code(500).send({ error: 'dashboard_error' });
     }
