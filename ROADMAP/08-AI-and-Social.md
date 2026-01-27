@@ -102,7 +102,7 @@ Reference: `docs/adr/0002-mcp-agentic-architecture.md`
 - [x] Frontend
   - [x] ChatPanel component (`apps/web/src/components/chat/ChatPanel.tsx`)
   - [x] useChat hook (`apps/web/src/components/chat/hooks/useChat.ts`)
-  - [ ] Search bar NLU augment (optional)
+  - [x] Search bar NLU augment
 - [ ] Production
   - [x] Rate limiting (per-user/day)
   - [x] Freemium gating

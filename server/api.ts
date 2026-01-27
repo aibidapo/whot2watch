@@ -11,6 +11,7 @@ import { withRequestId } from './common/requestId';
 import { logger } from './common/logger';
 import { normalizeDeepLink } from '../services/catalog/deeplink';
 import chatRouter from './chat/router';
+import nluRouter from './nlu/router';
 import { getCostControlConfig, isSocialFeedEnabled } from './agents/config';
 
 const OPENSEARCH_URL = process.env.OPENSEARCH_URL || 'http://localhost:9200';
@@ -158,6 +159,9 @@ app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
 
 // Chat API (AI Concierge — Epic 8)
 app.register(chatRouter, { prisma });
+
+// NLU Parse API (Epic 8 — Search bar augment)
+app.register(nluRouter);
 
 // request-id middleware
 app.addHook('onRequest', (req, reply, done) => {

@@ -364,7 +364,7 @@ type Vote {
 }
 
 """
-NLU parsing result (Phase 2).
+NLU parsing result (Phase 2 — intent classification).
 """
 type NluParseResult {
   intent: String
@@ -380,6 +380,44 @@ type NluSearchResult {
   results: SearchResultConnection
   relaxed: Boolean
   relaxNotes: String
+}
+
+"""
+Duration range constraint extracted from a query.
+"""
+type DurationRange {
+  min: Int
+  max: Int
+}
+
+"""
+Year range constraint extracted from a query.
+"""
+type YearRange {
+  min: Int
+  max: Int
+}
+
+"""
+Structured entities extracted from a natural-language search query.
+"""
+type ExtractedEntities {
+  genres: [String!]
+  services: [String!]
+  moods: [String!]
+  titles: [String!]
+  duration: DurationRange
+  releaseYear: YearRange
+  region: String
+}
+
+"""
+Search bar NLU augment result — parsed entities + cleaned query.
+"""
+type NluSearchBarResult {
+  originalQuery: String!
+  cleanQuery: String!
+  entities: ExtractedEntities!
 }
 
 # Queries
@@ -414,6 +452,11 @@ type Query {
   NLU search (Phase 2).
   """
   nluSearch(q: String!, profileId: ID!, first: Int = 20, after: String): NluSearchResult
+
+  """
+  Parse a natural-language query into structured entities for search bar augment.
+  """
+  nluParse(q: String!): NluSearchBarResult
 
   """
   Get a single list by ID with items and title details.

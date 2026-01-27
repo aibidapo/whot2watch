@@ -226,6 +226,44 @@ input SearchFilters {
   releaseYearLte: Int
 }
 
+"""
+Duration range constraint extracted from a query.
+"""
+type DurationRange {
+  min: Int
+  max: Int
+}
+
+"""
+Year range constraint extracted from a query.
+"""
+type YearRange {
+  min: Int
+  max: Int
+}
+
+"""
+Structured entities extracted from a natural-language search query.
+"""
+type ExtractedEntities {
+  genres: [String!]
+  services: [String!]
+  moods: [String!]
+  titles: [String!]
+  duration: DurationRange
+  releaseYear: YearRange
+  region: String
+}
+
+"""
+Search bar NLU augment result — parsed entities + cleaned query.
+"""
+type NluSearchBarResult {
+  originalQuery: String!
+  cleanQuery: String!
+  entities: ExtractedEntities!
+}
+
 type Query {
   me: User
   profile(id: ID!): Profile
@@ -249,6 +287,11 @@ type Query {
     first: Int = 20
     after: String
   ): [GroupSession!]!
+
+  """
+  Parse a natural-language query into structured entities for search bar augment.
+  """
+  nluParse(q: String!): NluSearchBarResult
 }
 
 input UpdatePreferencesInput {

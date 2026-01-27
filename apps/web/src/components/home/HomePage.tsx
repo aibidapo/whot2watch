@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import createClient from 'clients/rest/client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/Card';
 import { Thumb } from '@/components/ui/Thumb';
 import { Chip } from '@/components/ui/Chip';
 import { STORAGE_KEY_PROFILE_ID, STREAMING_SERVICES } from '@/constants/onboarding';
+import { useNluParse, type NluEntities } from '@/hooks/useNluParse';
 
 type SearchItem = {
   id: string;
@@ -55,6 +56,10 @@ function buildSearchQuery(params: {
   minImdb: number | '';
   minRt: number | '';
   minMc: number | '';
+  yearMin?: number;
+  yearMax?: number;
+  runtimeMin?: number;
+  runtimeMax?: number;
 }): string {
   const out = new URLSearchParams();
   const add = (key: string, val: string | number | undefined) => {
@@ -78,6 +83,10 @@ function buildSearchQuery(params: {
   addNum('minImdb', params.minImdb);
   addNum('minRt', params.minRt);
   addNum('minMc', params.minMc);
+  add('yearMin', params.yearMin);
+  add('yearMax', params.yearMax);
+  add('runtimeMin', params.runtimeMin);
+  add('runtimeMax', params.runtimeMax);
   return out.toString();
 }
 
@@ -114,6 +123,99 @@ export function HomePage() {
   const [minMc, setMinMc] = useState<number | ''>('');
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // NLU search augment
+  const nlu = useNluParse(q);
+  const [nluApplied, setNluApplied] = useState<NluEntities | null>(null);
+  const nluAppliedQueryRef = useRef<string>('');
+
+  // Apply NLU-parsed entities to filters when available
+  useEffect(() => {
+    if (!nlu.isParsed || !nlu.entities || !nlu.cleanQuery) return;
+    // Avoid re-applying for the same query
+    if (nluAppliedQueryRef.current === q) return;
+    nluAppliedQueryRef.current = q;
+
+    const ent = nlu.entities;
+    const applied: NluEntities = {};
+    let didApply = false;
+
+    if (ent.services && ent.services.length > 0) {
+      const svc = ent.services[0]!;
+      // Map NLU service name to STREAMING_SERVICES value
+      const match = STREAMING_SERVICES.find(
+        (s) => s.toLowerCase() === svc.toLowerCase() || svc.toLowerCase().includes(s.toLowerCase()),
+      );
+      if (match) {
+        setService(match);
+        applied.services = [match];
+        didApply = true;
+      }
+    }
+
+    if (ent.region) {
+      setRegion(ent.region);
+      setRegions([ent.region]);
+      applied.region = ent.region;
+      didApply = true;
+    }
+
+    if (ent.duration) {
+      if (typeof ent.duration.max === 'number') {
+        applied.duration = { ...applied.duration, max: ent.duration.max };
+        didApply = true;
+      }
+      if (typeof ent.duration.min === 'number') {
+        applied.duration = { ...applied.duration, min: ent.duration.min };
+        didApply = true;
+      }
+    }
+
+    if (ent.releaseYear) {
+      if (typeof ent.releaseYear.min === 'number') {
+        applied.releaseYear = { ...applied.releaseYear, min: ent.releaseYear.min };
+        didApply = true;
+      }
+      if (typeof ent.releaseYear.max === 'number') {
+        applied.releaseYear = { ...applied.releaseYear, max: ent.releaseYear.max };
+        didApply = true;
+      }
+    }
+
+    if (didApply) {
+      setNluApplied(applied);
+      // Replace query with cleaned version (entities stripped)
+      setQ(nlu.cleanQuery);
+      setFrom(0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nlu.isParsed, nlu.entities, nlu.cleanQuery]);
+
+  const clearNluFilter = useCallback(
+    (key: keyof NluEntities) => {
+      if (!nluApplied) return;
+      const next = { ...nluApplied };
+      delete next[key];
+
+      // Reset the corresponding filter
+      if (key === 'services') setService('');
+      if (key === 'region') {
+        setRegion((defaultRegionOptions[0] || 'US').toUpperCase());
+        setRegions(defaultRegionOptions);
+      }
+      if (key === 'duration') {
+        // No dedicated filter state for runtime in current UI (advanced filters unused here)
+      }
+      if (key === 'releaseYear') {
+        // No dedicated filter state for year in current UI
+      }
+
+      const hasAny = Object.keys(next).length > 0;
+      setNluApplied(hasAny ? next : null);
+      setFrom(0);
+    },
+    [nluApplied, defaultRegionOptions],
+  );
+
   const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', []);
   const api = useMemo(() => createClient({ baseUrl: `${apiBase}/v1` }), [apiBase]);
 
@@ -131,6 +233,10 @@ export function HomePage() {
       minImdb,
       minRt,
       minMc,
+      yearMin: nluApplied?.releaseYear?.min,
+      yearMax: nluApplied?.releaseYear?.max,
+      runtimeMin: nluApplied?.duration?.min,
+      runtimeMax: nluApplied?.duration?.max,
     });
     try {
       const json: any = await api.get(`/search?${query}`);
@@ -187,7 +293,7 @@ export function HomePage() {
     }, 250);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, service, regions, from, hasRatings, minRating, minImdb, minRt, minMc]);
+  }, [q, service, regions, from, hasRatings, minRating, minImdb, minRt, minMc, nluApplied]);
 
   // Preload trending (no query) separately for hero section
   const [trending, setTrending] = useState<SearchItem[]>([]);
@@ -251,7 +357,7 @@ export function HomePage() {
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search titles..."
+              placeholder="Search titles or try &quot;funny movies on Netflix&quot;..."
               className="mt-1"
             />
           </div>
@@ -461,7 +567,69 @@ export function HomePage() {
           </Button>
           {loading && <span className="text-muted text-sm">Loading…</span>}
           {error && <span className="text-error-text text-sm">{error}</span>}
+          {nlu.isLoading && <span className="text-muted text-xs">Parsing query…</span>}
         </div>
+
+        {/* NLU-applied filter chips */}
+        {nluApplied && Object.keys(nluApplied).length > 0 && (
+          <div className="mt-3 flex gap-2 flex-wrap items-center">
+            <span className="text-xs text-muted font-medium">AI-parsed:</span>
+            {nluApplied.services && nluApplied.services.length > 0 && (
+              <Chip>
+                {nluApplied.services.join(', ')}
+                <button
+                  type="button"
+                  onClick={() => clearNluFilter('services')}
+                  className="ml-1 text-muted hover:text-foreground"
+                  aria-label="Remove service filter"
+                >
+                  &times;
+                </button>
+              </Chip>
+            )}
+            {nluApplied.region && (
+              <Chip>
+                {nluApplied.region}
+                <button
+                  type="button"
+                  onClick={() => clearNluFilter('region')}
+                  className="ml-1 text-muted hover:text-foreground"
+                  aria-label="Remove region filter"
+                >
+                  &times;
+                </button>
+              </Chip>
+            )}
+            {nluApplied.duration && (
+              <Chip>
+                {nluApplied.duration.max ? `Under ${nluApplied.duration.max} min` : ''}
+                {nluApplied.duration.min ? `Over ${nluApplied.duration.min} min` : ''}
+                <button
+                  type="button"
+                  onClick={() => clearNluFilter('duration')}
+                  className="ml-1 text-muted hover:text-foreground"
+                  aria-label="Remove duration filter"
+                >
+                  &times;
+                </button>
+              </Chip>
+            )}
+            {nluApplied.releaseYear && (
+              <Chip>
+                {nluApplied.releaseYear.min ? `From ${nluApplied.releaseYear.min}` : ''}
+                {nluApplied.releaseYear.max ? `Before ${nluApplied.releaseYear.max}` : ''}
+                <button
+                  type="button"
+                  onClick={() => clearNluFilter('releaseYear')}
+                  className="ml-1 text-muted hover:text-foreground"
+                  aria-label="Remove year filter"
+                >
+                  &times;
+                </button>
+              </Chip>
+            )}
+          </div>
+        )}
       </Card>
 
       <section className="grid gap-3">

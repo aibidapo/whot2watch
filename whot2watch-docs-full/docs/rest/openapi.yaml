@@ -247,6 +247,30 @@ paths:
                 properties:
                   tier: { type: string, enum: [free, premium] }
                   quota: { $ref: '#/components/schemas/ChatQuota' }
+  /nlu/parse:
+    get:
+      operationId: nluParse
+      summary: Parse a natural-language query into structured search entities
+      description: >
+        Extracts genres, services, moods, duration, year, and region from
+        a conversational query. Returns cleaned query text with entity
+        phrases stripped.
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema: { type: string }
+          description: Natural-language search query
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NluParseResult' }
+        '400':
+          description: Missing or empty q parameter
+        '503':
+          description: NLU feature is disabled
 components:
   schemas:
     Region:
@@ -335,3 +359,28 @@ components:
         limit: { type: integer }
         remaining: { type: integer }
         resetsAt: { type: string, format: date-time }
+    NluParseResult:
+      type: object
+      required: [originalQuery, cleanQuery, entities]
+      properties:
+        originalQuery: { type: string }
+        cleanQuery: { type: string }
+        entities: { $ref: '#/components/schemas/ExtractedEntities' }
+    ExtractedEntities:
+      type: object
+      properties:
+        genres: { type: array, items: { type: string } }
+        services: { type: array, items: { type: string } }
+        moods: { type: array, items: { type: string } }
+        titles: { type: array, items: { type: string } }
+        duration:
+          type: object
+          properties:
+            min: { type: integer }
+            max: { type: integer }
+        releaseYear:
+          type: object
+          properties:
+            min: { type: integer }
+            max: { type: integer }
+        region: { type: string }
