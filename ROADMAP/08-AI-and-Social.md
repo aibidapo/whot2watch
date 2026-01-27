@@ -9,7 +9,7 @@ Checklist
 - [x] Cold-start onboarding (taste chips + subscriptions)
 - [x] Subscription-aware picks boosts and reasons
 - [x] Friends' activity feed (MVP) and Friends' Picks
-- [ ] Shareable lists and picks (OpenGraph cards)
+- [x] Shareable lists and picks (OpenGraph cards)
 - [x] Telemetry for AI/social adoption; privacy guardrails
 - [x] LLM provider selection, prompt framework, cost controls, safety filters
 

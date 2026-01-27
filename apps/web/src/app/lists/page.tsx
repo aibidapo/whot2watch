@@ -1,8 +1,10 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
+import { Chip } from '@/components/ui/Chip';
+import { STORAGE_KEY_PROFILE_ID } from '@/constants/onboarding';
 
 type List = { id: string; name: string; visibility?: string };
 
@@ -10,7 +12,19 @@ export default function ListsPage() {
   const [profileId, setProfileId] = useState('');
   const [name, setName] = useState('');
   const [lists, setLists] = useState<List[]>([]);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', []);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY_PROFILE_ID);
+    const id = stored || process.env.NEXT_PUBLIC_DEFAULT_PROFILE_ID || '';
+    if (id) setProfileId(id);
+  }, []);
+
+  useEffect(() => {
+    if (profileId) refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileId]);
 
   async function refresh() {
     if (!profileId) return;
@@ -27,6 +41,14 @@ export default function ListsPage() {
     });
     setName('');
     await refresh();
+  }
+
+  function handleShare(listId: string) {
+    const url = `${window.location.origin}/lists/${listId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedId(listId);
+      setTimeout(() => setCopiedId(null), 2000);
+    }).catch(() => {});
   }
 
   return (
@@ -52,12 +74,27 @@ export default function ListsPage() {
         </div>
       </Card>
       <ul className="grid gap-2">
-        {lists.map((l) => (
-          <li key={l.id} className="card p-3 hover:bg-card-hover transition-colors duration-200">
-            <span className="font-medium">{l.name}</span>
-            {l.visibility ? <span className="text-muted"> — {l.visibility}</span> : null}
-          </li>
-        ))}
+        {lists.map((l) => {
+          const isShareable = l.visibility === 'PUBLIC' || l.visibility === 'COLLAB';
+          return (
+            <li
+              key={l.id}
+              className="card p-3 hover:bg-card-hover transition-colors duration-200 flex items-center justify-between gap-2"
+            >
+              <a href={`/lists/${l.id}`} className="font-medium hover:underline min-w-0 truncate">
+                {l.name}
+              </a>
+              <div className="flex items-center gap-2 shrink-0">
+                {l.visibility && <Chip>{l.visibility}</Chip>}
+                {isShareable && (
+                  <Button variant="ghost" onClick={() => handleShare(l.id)}>
+                    {copiedId === l.id ? 'Copied!' : 'Share'}
+                  </Button>
+                )}
+              </div>
+            </li>
+          );
+        })}
         {lists.length === 0 && <li className="text-muted text-sm">No lists</li>}
       </ul>
     </div>

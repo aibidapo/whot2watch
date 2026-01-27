@@ -1033,6 +1033,108 @@ app.get(
   },
 );
 
+// ---- Single list detail (public access for sharing) ----
+app.get(
+  '/lists/:listId',
+  {
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: { list: { type: 'object', additionalProperties: true } },
+          required: ['list'],
+        },
+        403: {
+          type: 'object',
+          properties: { error: { type: 'string' } },
+          required: ['error'],
+        },
+        404: {
+          type: 'object',
+          properties: { error: { type: 'string' } },
+          required: ['error'],
+        },
+      },
+    },
+  },
+  async (request, reply) => {
+    const { listId } = request.params as { listId: string };
+    if (!listId) return reply.code(404).send({ error: 'not_found' });
+
+    const list = await prisma.list.findUnique({
+      where: { id: listId },
+      include: {
+        profile: { select: { id: true, name: true } },
+        items: {
+          orderBy: { position: 'asc' },
+          include: {
+            title: {
+              select: {
+                id: true,
+                name: true,
+                type: true,
+                releaseYear: true,
+                posterUrl: true,
+                backdropUrl: true,
+                voteAverage: true,
+                genres: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!list) return reply.code(404).send({ error: 'not_found' });
+
+    // Visibility gating: PRIVATE/FRIENDS require auth
+    if (list.visibility === 'PRIVATE' || list.visibility === 'FRIENDS') {
+      const authHeader = String(request.headers?.authorization || '');
+      if (!authHeader.toLowerCase().startsWith('bearer ')) {
+        return reply.code(403).send({ error: 'forbidden' });
+      }
+    }
+
+    // Fire analytics event
+    try {
+      logger.info('analytics_event', {
+        event: 'list_viewed',
+        listId: list.id,
+        profileId: list.profileId,
+        ts: new Date().toISOString(),
+      });
+    } catch {}
+
+    return {
+      list: {
+        id: list.id,
+        profileId: list.profile.id,
+        profileName: list.profile.name,
+        name: list.name,
+        visibility: list.visibility,
+        description: list.description ?? undefined,
+        createdAt: list.createdAt.toISOString(),
+        itemCount: list.items.length,
+        items: list.items.map((item) => ({
+          id: item.id,
+          position: item.position,
+          note: item.note ?? undefined,
+          addedAt: item.addedAt.toISOString(),
+          title: {
+            id: item.title.id,
+            name: item.title.name,
+            type: item.title.type,
+            releaseYear: item.title.releaseYear ?? undefined,
+            posterUrl: item.title.posterUrl ?? undefined,
+            backdropUrl: item.title.backdropUrl ?? undefined,
+            voteAverage: item.title.voteAverage ?? undefined,
+            genres: item.title.genres ?? [],
+          },
+        })),
+      },
+    };
+  },
+);
+
 app.post(
   '/analytics',
   {

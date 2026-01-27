@@ -202,6 +202,45 @@ paths:
                 type: object
                 properties: { list: { $ref: '#/components/schemas/List' } }
                 required: [list]
+  /lists/{listId}:
+    get:
+      operationId: getList
+      tags: [Lists]
+      summary: Get a single list with items and title details
+      description: >
+        PUBLIC/COLLAB lists are accessible without auth.
+        FRIENDS lists require authenticated caller with friendship.
+        PRIVATE lists require the list owner.
+      parameters:
+        - in: path
+          name: listId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  list:
+                    $ref: '#/components/schemas/ListDetail'
+                required: [list]
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { error: { type: string } }
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { error: { type: string } }
   /lists/{listId}/items:
     post:
       operationId: addListItem
@@ -680,6 +719,37 @@ components:
         position: { type: integer }
         note: { type: string }
         addedAt: { type: string, format: date-time }
+    ListDetail:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        profileId: { type: string, format: uuid }
+        profileName: { type: string }
+        name: { type: string }
+        visibility: { type: string, enum: [PRIVATE, FRIENDS, PUBLIC, COLLAB] }
+        description: { type: string }
+        createdAt: { type: string, format: date-time }
+        itemCount: { type: integer }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              position: { type: integer }
+              note: { type: string }
+              addedAt: { type: string, format: date-time }
+              title:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  name: { type: string }
+                  type: { type: string }
+                  releaseYear: { type: integer }
+                  posterUrl: { type: string }
+                  backdropUrl: { type: string }
+                  voteAverage: { type: number }
+                  genres: { type: array, items: { type: string } }
     GroupSession:
       type: object
       properties:

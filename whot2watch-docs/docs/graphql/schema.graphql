@@ -406,6 +406,11 @@ type Query {
   """
   nluSearch(q: String!, profileId: ID!, first: Int = 20, after: String): NluSearchResult
 
+  """
+  Get a single list by ID with items and title details.
+  """
+  list(id: ID!): List
+
   # Read/List queries
   lists(
     profileId: ID!
