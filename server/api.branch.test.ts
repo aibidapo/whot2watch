@@ -179,7 +179,8 @@ describe('API branch coverage', () => {
     },
   );
 
-  it('picks returns empty when no subscriptions', async () => {
+  it.skipIf(!process.env.DATABASE_URL)('picks returns empty when no subscriptions', async () => {
+    if (!dbReady) return;
     // ensure no active subs
     await prisma.subscription.updateMany({ where: { profileId }, data: { active: false } });
     const res = await app.inject({ method: 'GET', url: `/picks/${profileId}` });
@@ -188,7 +189,8 @@ describe('API branch coverage', () => {
     expect(Array.isArray(json.items)).toBe(true);
   });
 
-  it('subscriptions changes invalidate picks cache for today', async () => {
+  it.skipIf(!process.env.DATABASE_URL)('subscriptions changes invalidate picks cache for today', async () => {
+    if (!dbReady) return;
     // Ensure auth is disabled for this test path
     process.env.REQUIRE_AUTH = 'false';
     const profile = await prisma.profile.findFirst();

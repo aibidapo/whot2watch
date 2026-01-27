@@ -135,6 +135,10 @@ AI/MCP variables (see `.env.example` for full list):
 - Services are optional: Redis, OpenSearch gracefully degrade when unavailable
 - Test containers: set `TEST_WITH_CONTAINERS=true` for Postgres+Redis integration tests
 
+## Git Commits
+
+- **Never** add `Co-Authored-By` trailers to commit messages. Omit them entirely.
+
 ## CI/CD
 
 - Pre-commit: format, lint, typecheck

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": ["server/api.ts", "services/catalog/worker.ingest.js"],
+  "project": ["server/**/*.ts", "services/**/*.{ts,js}"],
+  "ignore": ["**/*.test.ts", "**/*.spec.ts", "*_files/**"],
+  "ignoreDependencies": [
+    "husky",
+    "@mermaid-js/mermaid-cli",
+    "@graphql-codegen/cli",
+    "@graphql-codegen/typescript",
+    "@graphql-inspector/cli",
+    "graphql-schema-linter",
+    "@stoplight/spectral-cli",
+    "swagger-cli",
+    "openapi-typescript",
+    "ts-node",
+    "jscpd",
+    "dependency-cruiser",
+    "markdownlint-cli",
+    "kill-port",
+    "knip",
+    "@commitlint/cli",
+    "@commitlint/config-conventional"
+  ]
+}

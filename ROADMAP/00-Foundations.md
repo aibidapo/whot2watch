@@ -35,16 +35,21 @@ Code Hygiene
 - [x] TS flags: enable `exactOptionalPropertyTypes`, `noImplicitOverride`
 - [x] ESLint ban TODO/FIXME via `no-warning-comments` (OpenAPI Spectral `no-todos` as well)
 - [x] Naming: `@typescript-eslint/naming-convention`; optional `cspell` in CI
+- [x] Root `.eslintrc.cjs` for ESLint 8.x (TS parser, plugin config, ignore `apps/web/` and generated files)
+- [x] `.prettierignore` covers generated artifacts (`.cursor/`, `*_files/`, `*.html`, `nul`)
 
 Architecture Boundaries
 
 - [x] dependency-cruiser (or eslint-plugin-boundaries) config to forbid cycles and enforce layering (apps → packages; services → packages; packages → no apps)
+- [x] `.dependency-cruiser.cjs` config file created (no-circular, no-orphans, exclude generated dirs)
 - [x] No deep imports: enforce barrel-only via `no-restricted-imports`
 
 Duplication & Dead Code
 
 - [x] Unify duplication threshold (3% or 5%) and fail builds when exceeded
 - [x] Dead-code check (`knip` or `ts-prune`) added to CI
+- [x] `knip.json` config with correct entry points, project globs, and ignored dev-only dependencies
+- [x] Fix `qa:deadcode` script (remove invalid `--exclude` flag; use `knip --production`)
 
 Naming & Ubiquitous Language
 
@@ -64,6 +69,10 @@ Data Model & Migrations
 
 Dependency & Tooling Health
 
+- [x] Upgrade `markdownlint-cli` to `^0.44.0` (fix Node v24 `fs.R_OK` deprecation)
+- [x] `.markdownlint.json` config (suppress MD013/MD033/MD041 for docs)
+- [x] Fix `qa:gitleaks` script (graceful skip when gitleaks binary not installed)
+- [x] Add `DATABASE_URL` skip guards to Prisma-dependent tests (`api.profiles.test.ts`, `api.branch.test.ts`)
 - [ ] Renovate (weekly) with safe automerge for dev deps; manual for prod deps
 - [ ] `npm audit` (prod) or Snyk in CI; fail on criticals unless risk-accepted
 
