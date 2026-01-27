@@ -9,27 +9,20 @@ async function upsertAvailability(prisma, titleId, region, offerType, providers)
     const service = canonicalizeProvider(rawName);
     if (!service || service === 'OTHER') continue;
     const deepLink = p.link || undefined;
-    const existing = await prisma.availability.findFirst({
-      where: { titleId, region, service, offerType },
-      select: { id: true },
+    await prisma.availability.upsert({
+      where: {
+        titleId_service_region_offerType: { titleId, service, region, offerType },
+      },
+      update: { deepLink: deepLink || null, lastSeenAt: new Date() },
+      create: {
+        titleId,
+        service,
+        region,
+        offerType,
+        deepLink: deepLink || null,
+        lastSeenAt: new Date(),
+      },
     });
-    if (existing?.id) {
-      await prisma.availability.update({
-        where: { id: existing.id },
-        data: { deepLink: deepLink || null, lastSeenAt: new Date() },
-      });
-    } else {
-      await prisma.availability.create({
-        data: {
-          titleId,
-          service,
-          region,
-          offerType,
-          deepLink: deepLink || null,
-          lastSeenAt: new Date(),
-        },
-      });
-    }
   }
 }
 

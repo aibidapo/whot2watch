@@ -37,6 +37,10 @@ tags:
     description: Referral code generation, redemption, and stats
   - name: B2B
     description: Public API, embeds, and demo dashboards
+  - name: Admin
+    description: Administrative endpoints for monitoring and maintenance
+  - name: Privacy
+    description: User data export, deletion, and retention management
 paths:
   /picks/{profileId}:
     get:
@@ -867,6 +871,74 @@ paths:
               schema: { type: string }
         '404':
           description: List not found or not public
+  /v1/admin/metrics:
+    get:
+      operationId: getAdminMetrics
+      tags: [Admin]
+      summary: API performance metrics snapshot (admin-gated)
+      description: Returns an in-memory APM snapshot including request counts, latency percentiles, per-route breakdown, and status code distribution.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApmSnapshot' }
+        '403':
+          description: Admin access required
+  /v1/admin/retention/enforce:
+    post:
+      operationId: enforceRetentionPolicy
+      tags: [Admin]
+      summary: Purge stale data according to retention policy (admin-gated)
+      description: Deletes old feedback, fired/cancelled alerts, stale recommendations, and expired trending signals based on configurable retention thresholds.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RetentionSummary' }
+        '403':
+          description: Admin access required
+  /v1/me/data-export:
+    get:
+      operationId: exportUserData
+      tags: [Privacy]
+      summary: Export all user data (GDPR right of access)
+      description: Returns a portable JSON export of all user data including profiles, subscriptions, lists, feedback, and alerts.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserDataExport' }
+        '401':
+          description: Unauthorized
+        '404':
+          description: User not found
+  /v1/me/data:
+    delete:
+      operationId: deleteUserData
+      tags: [Privacy]
+      summary: Delete all user data (GDPR right to erasure)
+      description: Permanently deletes the user and all associated data. Prisma cascade-delete removes profiles, subscriptions, lists, feedback, and alerts.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeletionSummary' }
+        '401':
+          description: Unauthorized
+        '404':
+          description: User not found
   /v1/admin/demo-dashboard:
     get:
       operationId: getDemoDashboard
@@ -1151,6 +1223,44 @@ components:
         premiumUsers: { type: integer }
         totalReferrals: { type: integer }
         topTrending: { type: array, items: { type: object, properties: { name: { type: string }, score: { type: number } } } }
+    ApmSnapshot:
+      type: object
+      description: API performance monitoring snapshot
+      properties:
+        totalRequests: { type: integer }
+        totalErrors: { type: integer }
+        total4xx: { type: integer }
+        avgLatencyMs: { type: integer }
+        p95LatencyMs: { type: integer }
+        p99LatencyMs: { type: integer }
+        uptimeMs: { type: integer }
+        byRoute: { type: object, additionalProperties: { type: object, properties: { count: { type: integer }, errors: { type: integer }, avgLatencyMs: { type: integer }, p95LatencyMs: { type: integer } } } }
+        statusDistribution: { type: object, additionalProperties: { type: integer } }
+    UserDataExport:
+      type: object
+      description: Portable export of all user data
+      properties:
+        user: { type: object, properties: { id: { type: string, format: uuid }, email: { type: string }, region: { type: string, nullable: true }, tier: { type: string }, createdAt: { type: string, format: date-time } } }
+        profiles: { type: array, items: { type: object, properties: { id: { type: string, format: uuid }, name: { type: string }, preferences: { type: object }, locale: { type: string, nullable: true } } } }
+        subscriptions: { type: array, items: { type: object, properties: { service: { type: string }, region: { type: string, nullable: true }, active: { type: boolean } } } }
+        lists: { type: array, items: { type: object, properties: { name: { type: string }, visibility: { type: string }, items: { type: array, items: { type: object, properties: { titleId: { type: string, format: uuid }, note: { type: string, nullable: true } } } } } } }
+        feedback: { type: array, items: { type: object, properties: { titleId: { type: string, format: uuid }, action: { type: string }, ts: { type: string, format: date-time } } } }
+        alerts: { type: array, items: { type: object, properties: { alertType: { type: string }, status: { type: string }, region: { type: string } } } }
+    DeletionSummary:
+      type: object
+      description: Summary of user data deletion
+      properties:
+        userId: { type: string, format: uuid }
+        deleted: { type: boolean }
+        profilesRemoved: { type: integer }
+    RetentionSummary:
+      type: object
+      description: Summary of retention policy enforcement
+      properties:
+        feedbackPurged: { type: integer }
+        alertsPurged: { type: integer }
+        recommendationsPurged: { type: integer }
+        trendingPurged: { type: integer }
   securitySchemes:
     bearerAuth:
       type: http

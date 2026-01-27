@@ -22,11 +22,14 @@ import { PlanService } from './plans/service';
 import {
   appendAffiliateParams as affiliateAppendParams,
   getDisclosureConfig,
+  isAdFree,
 } from './affiliates/params';
 import { getSocialAnalytics } from './plans/social-analytics';
 import { premiumGate } from './plans/gate';
 import { ReferralService } from './referrals/service';
 import { apiKeyGate } from './plans/api-key-gate';
+import { recordRequest, getApmSnapshot } from './apm/middleware';
+import { exportUserData, deleteUserData, enforceRetentionPolicy } from './privacy/service';
 
 const OPENSEARCH_URL = process.env.OPENSEARCH_URL || 'http://localhost:9200';
 const PORT = Number(process.env.PORT || 4000);
@@ -150,22 +153,6 @@ function arr(v: unknown): string[] | undefined {
 }
 /* c8 ignore stop */
 
-/* c8 ignore start */
-function appendAffiliateParams(rawUrl: string, service?: string): string {
-  try {
-    const u = new URL(rawUrl);
-    // generic UTM params for disclosure/attribution
-    if (!u.searchParams.has('utm_source')) u.searchParams.set('utm_source', 'whot2watch');
-    if (!u.searchParams.has('utm_medium')) u.searchParams.set('utm_medium', 'affiliate');
-    if (!u.searchParams.has('utm_campaign')) u.searchParams.set('utm_campaign', 'watch_now');
-    if (service && !u.searchParams.has('utm_content')) u.searchParams.set('utm_content', service);
-    return u.toString();
-  } catch {
-    return rawUrl;
-  }
-}
-/* c8 ignore stop */
-
 const app = Fastify({ logger: false });
 app.register(cors, { origin: true });
 app.register(helmet, { contentSecurityPolicy: false });
@@ -206,6 +193,31 @@ app.addHook('onRequest', (req, _reply, done) => {
       try {
         (req as any).url = rewritten;
       } catch {}
+    }
+  } catch {}
+  done();
+});
+
+// Log slow requests (>500ms) and record APM metrics
+app.addHook('onResponse', (request, reply, done) => {
+  try {
+    const elapsed = reply.elapsedTime;
+    if (typeof elapsed === 'number') {
+      recordRequest({
+        method: request.method,
+        route: request.url.split('?')[0] || request.url,
+        statusCode: reply.statusCode,
+        latencyMs: Math.round(elapsed),
+        timestamp: Date.now(),
+      });
+      if (elapsed > 500) {
+        logger.warn('slow_request', {
+          method: request.method,
+          url: request.url,
+          statusCode: reply.statusCode,
+          elapsedMs: Math.round(elapsed),
+        });
+      }
     }
   } catch {}
   done();
@@ -1038,6 +1050,23 @@ app.get(
         response = { items: mapped, total: mapped.length, took: data.took ?? 0, from, size };
       } catch {}
     }
+    // Apply affiliate params to search result deep links when enabled
+    if (process.env.AFFILIATES_ENABLED === 'true') {
+      const userId = String(request.headers?.['x-user-id'] || '');
+      const adFree = await isAdFree(userId || undefined, prisma);
+      if (!adFree) {
+        for (const item of response.items || []) {
+          if (Array.isArray(item.availability)) {
+            for (const a of item.availability) {
+              if (a.deepLink) {
+                a.deepLink = affiliateAppendParams(a.deepLink, a.service);
+              }
+            }
+          }
+        }
+      }
+    }
+
     try {
       reply.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=30');
     } catch {}
@@ -2210,7 +2239,11 @@ app.get(
                 }
               : {}),
           },
-      include: { availability: true },
+      include: {
+        availability: {
+          select: { service: true, region: true, deepLink: true, offerType: true },
+        },
+      },
     });
     // fetch external ratings in one query and index by titleId
     const titleIds = titles.map((t) => t.id);
@@ -2463,7 +2496,7 @@ app.get(
         watchUrl = normalizeDeepLink(ctx);
       }
       if (watchUrl && process.env.AFFILIATES_ENABLED === 'true') {
-        watchUrl = appendAffiliateParams(watchUrl, match?.service);
+        watchUrl = affiliateAppendParams(watchUrl, match?.service);
       }
       const ratingsBy = ratingsByTitle[t.id] || {};
       return {
@@ -2579,6 +2612,45 @@ app.get(
       }
     } catch {}
     return response;
+  },
+);
+
+// ── Privacy (Epic 1 — Data Export, Deletion, Retention) ─────────────────────
+
+app.get('/v1/me/data-export', { preHandler: authPreHandler }, async (request, reply) => {
+  try {
+    const userId = String(request.headers?.['x-user-id'] || '');
+    if (!userId) return reply.code(401).send({ error: 'unauthorized' });
+    const data = await exportUserData(userId, prisma);
+    if (!data) return reply.code(404).send({ error: 'not_found' });
+    return data;
+  } catch {
+    return reply.code(500).send({ error: 'export_failed' });
+  }
+});
+
+app.delete('/v1/me/data', { preHandler: authPreHandler }, async (request, reply) => {
+  try {
+    const userId = String(request.headers?.['x-user-id'] || '');
+    if (!userId) return reply.code(401).send({ error: 'unauthorized' });
+    const result = await deleteUserData(userId, prisma);
+    if (!result) return reply.code(404).send({ error: 'not_found' });
+    return result;
+  } catch {
+    return reply.code(500).send({ error: 'delete_failed' });
+  }
+});
+
+app.post(
+  '/v1/admin/retention/enforce',
+  { preHandler: adminPreHandler },
+  async (_request, reply) => {
+    try {
+      const result = await enforceRetentionPolicy(prisma);
+      return result;
+    } catch {
+      return reply.code(500).send({ error: 'retention_failed' });
+    }
   },
 );
 
@@ -2994,6 +3066,34 @@ app.get(
       return (reply as any).code(500).send({ error: 'dashboard_error' });
     }
   },
+);
+
+// ── APM Metrics (Epic 2) ─────────────────────────────────────────────────────
+
+app.get(
+  '/v1/admin/metrics',
+  {
+    preHandler: adminPreHandler,
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            totalRequests: { type: 'integer' },
+            totalErrors: { type: 'integer' },
+            total4xx: { type: 'integer' },
+            avgLatencyMs: { type: 'integer' },
+            p95LatencyMs: { type: 'integer' },
+            p99LatencyMs: { type: 'integer' },
+            uptimeMs: { type: 'integer' },
+            byRoute: { type: 'object', additionalProperties: true },
+            statusDistribution: { type: 'object', additionalProperties: true },
+          },
+        },
+      },
+    },
+  },
+  async () => getApmSnapshot(),
 );
 
 // ── Affiliates (Epic 9 — Disclosure) ────────────────────────────────────────

@@ -21,15 +21,15 @@ Planned Enhancements (TMDB + OMDb + Trakt)
 - [x] Title external IDs and popularity fields (`imdbId`, `traktId`, `popularity`) — popularity added
 - [x] External ratings table (IMDB, RottenTomatoes, Metacritic)
 - [x] Trending signals table (TMDB, Trakt; day/week)
-- [ ] TMDB external_ids + watch providers ingestion (normalize availability)
+- [x] TMDB external_ids + watch providers ingestion (normalize availability)
   - [x] external_ids (imdbId) — implemented
   - [x] watch providers ingestion — normalizes to Availability by region/service/offerType
 - [x] OMDb ratings enrichment by `imdbId`
 - [x] Trakt trending enrichment and optional fused popularity
 - [x] OpenSearch mapping updates for `ratings` and `popularity`
-- [ ] Data quality pipeline (validation, cleaning, quality metrics)
-- [ ] Data privacy: retention policy, export/delete endpoints
-- [ ] Performance optimization: DB indexing, query optimization
+- [x] Data quality pipeline (validation, cleaning, quality metrics)
+- [x] Data privacy: retention policy, export/delete endpoints
+- [x] Performance optimization: DB indexing, query optimization
 
 Step-by-Step Implementation Plan
 

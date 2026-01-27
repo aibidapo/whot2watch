@@ -15,13 +15,13 @@ Checklist
 - [x] Expose ratings and popularity in search and picks APIs
 - [x] Analytics: `/analytics` endpoint + optional buffering/forwarding
 - [x] Admin/on-demand refresh endpoints (by TMDB/IMDB id)
-- [ ] Affiliate link plumbing (feature-flagged) via deep-link builder
+- [x] Affiliate link plumbing (feature-flagged) via deep-link builder
   - [x] Append UTM params when `AFFILIATES_ENABLED=true`; preserve original query
 - [x] API versioning strategy (v1 prefix; backward compatibility policy)
 - [x] Granular rate limits (per-user/endpoint/feature)
 - [x] API caching strategy (Redis keys, TTLs, invalidation)
 - [x] Docs portal: interactive OpenAPI (non-prod gated); SDK generation guidance (TBD)
-- [ ] API performance monitoring (APM routes, latency/error dashboards)
+- [x] API performance monitoring (APM routes, latency/error dashboards)
 
 Acceptance Criteria
 
