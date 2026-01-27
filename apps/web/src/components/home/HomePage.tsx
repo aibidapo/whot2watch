@@ -9,7 +9,7 @@ import { Select } from '@/components/ui/Select';
 import { Card } from '@/components/ui/Card';
 import { Thumb } from '@/components/ui/Thumb';
 import { Chip } from '@/components/ui/Chip';
-import { STORAGE_KEY_PROFILE_ID } from '@/constants/onboarding';
+import { STORAGE_KEY_PROFILE_ID, STREAMING_SERVICES } from '@/constants/onboarding';
 
 type SearchItem = {
   id: string;
@@ -266,10 +266,9 @@ export function HomePage() {
               className="mt-1"
             >
               <option value="">Any</option>
-              <option>NETFLIX</option>
-              <option>DISNEY_PLUS</option>
-              <option>HULU</option>
-              <option>MAX</option>
+              {STREAMING_SERVICES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
             </Select>
           </div>
           <div>
