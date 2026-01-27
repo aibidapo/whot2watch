@@ -487,6 +487,21 @@ type Query {
     first: Int = 20
     after: String
   ): SearchResultConnection!
+
+  # Plans (Epic 9)
+  planStatus(userId: ID!): PlanStatus!
+
+  # Affiliates (Epic 9)
+  affiliateDisclosure: AffiliateDisclosure!
+
+  # Social Analytics (Epic 9)
+  socialAnalytics(profileId: ID!): SocialAnalytics
+
+  # Referrals (Epic 9)
+  referralStats(userId: ID!): ReferralStats
+
+  # B2B (Epic 9)
+  demoDashboard: DemoDashboard
 }
 
 # Mutations
@@ -532,4 +547,96 @@ type Mutation {
   addGroupSessionCandidate(id: ID!, titleId: ID!): Boolean!
   voteGroupSession(id: ID!, profileId: ID!, titleId: ID!, value: Int!): Vote!
   closeGroupSession(id: ID!): GroupSession!
+
+  # Plans (Epic 9)
+  subscribePlan(userId: ID!): PlanStatus!
+  cancelPlan(userId: ID!): PlanStatus!
+  startTrial(userId: ID!): PlanStatus!
+
+  # Referrals (Epic 9)
+  generateReferralCode(userId: ID!): ReferralCodeResult!
+  redeemReferralCode(code: String!, redeemedByUserId: ID!): ReferralRedeemResult!
+}
+
+# ── Epic 9: Monetization & Growth Types ──────────────────────────────────────
+
+"""
+Current plan status for a user.
+"""
+type PlanStatus {
+  plan: String!
+  status: String!
+  trialEndsAt: DateTime
+  subscribedAt: DateTime
+  cancelledAt: DateTime
+  features: [String!]!
+}
+
+"""
+Affiliate disclosure information.
+"""
+type AffiliateDisclosure {
+  enabled: Boolean!
+  text: String
+}
+
+"""
+Social analytics for premium users.
+"""
+type SocialAnalytics {
+  topGenresAmongFriends: [GenreCount!]!
+  friendsWatchingNow: Int!
+  sharedTitles: Int!
+  topServicesAmongFriends: [ServiceCount!]!
+}
+
+type GenreCount {
+  genre: String!
+  count: Int!
+}
+
+type ServiceCount {
+  service: String!
+  count: Int!
+}
+
+"""
+Referral code result.
+"""
+type ReferralCodeResult {
+  code: String!
+  userId: ID!
+  maxUses: Int!
+  redemptions: Int!
+}
+
+"""
+Referral redemption result.
+"""
+type ReferralRedeemResult {
+  success: Boolean!
+}
+
+"""
+Referral statistics for a user.
+"""
+type ReferralStats {
+  code: String
+  totalReferred: Int!
+  activeReferred: Int!
+}
+
+"""
+Demo dashboard stats for B2B.
+"""
+type DemoDashboard {
+  totalUsers: Int!
+  premiumUsers: Int!
+  totalReferrals: Int!
+  topTrending: [TrendingItem!]!
+}
+
+type TrendingItem {
+  name: String!
+  score: Float!
 }

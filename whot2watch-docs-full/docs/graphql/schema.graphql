@@ -292,6 +292,13 @@ type Query {
   Parse a natural-language query into structured entities for search bar augment.
   """
   nluParse(q: String!): NluSearchBarResult
+
+  # Plans (Epic 9)
+  planStatus(userId: ID!): PlanStatus!
+  affiliateDisclosure: AffiliateDisclosure!
+  socialAnalytics(profileId: ID!): SocialAnalytics
+  referralStats(userId: ID!): ReferralStats
+  demoDashboard: DemoDashboard
 }
 
 input UpdatePreferencesInput {
@@ -356,4 +363,73 @@ type Mutation {
   addCandidate(sessionId: ID!, titleId: ID!): Boolean
   vote(sessionId: ID!, titleId: ID!, profileId: ID!, value: Int!): Vote
   closeSession(sessionId: ID!): GroupSession
+
+  # Plans (Epic 9)
+  subscribePlan(userId: ID!): PlanStatus!
+  cancelPlan(userId: ID!): PlanStatus!
+  startTrial(userId: ID!): PlanStatus!
+  generateReferralCode(userId: ID!): ReferralCodeResult!
+  redeemReferralCode(code: String!, redeemedByUserId: ID!): ReferralRedeemResult!
+}
+
+# ── Epic 9: Monetization & Growth Types ──────────────────────────────────────
+
+type PlanStatus {
+  plan: String!
+  status: String!
+  trialEndsAt: DateTime
+  subscribedAt: DateTime
+  cancelledAt: DateTime
+  features: [String!]!
+}
+
+type AffiliateDisclosure {
+  enabled: Boolean!
+  text: String
+}
+
+type SocialAnalytics {
+  topGenresAmongFriends: [GenreCount!]!
+  friendsWatchingNow: Int!
+  sharedTitles: Int!
+  topServicesAmongFriends: [ServiceCount!]!
+}
+
+type GenreCount {
+  genre: String!
+  count: Int!
+}
+
+type ServiceCount {
+  service: String!
+  count: Int!
+}
+
+type ReferralCodeResult {
+  code: String!
+  userId: ID!
+  maxUses: Int!
+  redemptions: Int!
+}
+
+type ReferralRedeemResult {
+  success: Boolean!
+}
+
+type ReferralStats {
+  code: String
+  totalReferred: Int!
+  activeReferred: Int!
+}
+
+type DemoDashboard {
+  totalUsers: Int!
+  premiumUsers: Int!
+  totalReferrals: Int!
+  topTrending: [TrendingItem!]!
+}
+
+type TrendingItem {
+  name: String!
+  score: Float!
 }

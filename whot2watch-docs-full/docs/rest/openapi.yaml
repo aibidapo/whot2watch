@@ -271,8 +271,228 @@ paths:
           description: Missing or empty q parameter
         '503':
           description: NLU feature is disabled
+  /plans/status/{userId}:
+    get:
+      operationId: getPlanStatus
+      summary: Get current plan status for a user
+      parameters:
+        - in: path
+          name: userId
+          schema: { type: string, format: uuid }
+          required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlanStatus' }
+  /plans/trial:
+    post:
+      operationId: startTrial
+      summary: Start a 14-day premium trial
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlanSubscriptionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlanStatus' }
+  /plans/subscribe:
+    post:
+      operationId: subscribePlan
+      summary: Subscribe to premium (mocked billing)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlanSubscriptionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlanStatus' }
+  /plans/cancel:
+    post:
+      operationId: cancelPlan
+      summary: Cancel premium subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlanSubscriptionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlanStatus' }
+  /affiliates/disclosure:
+    get:
+      operationId: getAffiliateDisclosure
+      summary: Get affiliate disclosure text and status
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AffiliateDisclosure' }
+  /social/analytics/{profileId}:
+    get:
+      operationId: getSocialAnalytics
+      summary: Premium social analytics for a profile
+      parameters:
+        - in: path
+          name: profileId
+          schema: { type: string, format: uuid }
+          required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SocialAnalytics' }
+        '403':
+          description: Premium required
+  /referrals/generate:
+    post:
+      operationId: generateReferralCode
+      summary: Generate or return existing referral code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId: { type: string, format: uuid }
+              required: [userId]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReferralCode' }
+  /referrals/redeem:
+    post:
+      operationId: redeemReferralCode
+      summary: Redeem a referral code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code: { type: string }
+                redeemedByUserId: { type: string, format: uuid }
+              required: [code, redeemedByUserId]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+  /referrals/stats/{userId}:
+    get:
+      operationId: getReferralStats
+      summary: Get referral statistics for a user
+      parameters:
+        - in: path
+          name: userId
+          schema: { type: string, format: uuid }
+          required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReferralStats' }
+  /embed/{listId}:
+    get:
+      operationId: getEmbed
+      summary: Embeddable read-only list widget
+      parameters:
+        - in: path
+          name: listId
+          schema: { type: string, format: uuid }
+          required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            text/html:
+              schema: { type: string }
+        '404':
+          description: List not found or not public
+  /admin/demo-dashboard:
+    get:
+      operationId: getDemoDashboard
+      summary: Demo dashboard with aggregate stats (admin-gated)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoDashboard' }
+        '403':
+          description: Admin access required
 components:
   schemas:
+    PlanStatus:
+      type: object
+      properties:
+        plan: { type: string, enum: [free, premium] }
+        status: { type: string, enum: [active, trial, cancelled, expired] }
+        trialEndsAt: { type: string, format: date-time, nullable: true }
+        subscribedAt: { type: string, format: date-time, nullable: true }
+        cancelledAt: { type: string, format: date-time, nullable: true }
+        features: { type: array, items: { type: string } }
+      required: [plan, status, features]
+    PlanSubscriptionRequest:
+      type: object
+      properties:
+        userId: { type: string, format: uuid }
+      required: [userId]
+    AffiliateDisclosure:
+      type: object
+      properties:
+        enabled: { type: boolean }
+        text: { type: string, nullable: true }
+    SocialAnalytics:
+      type: object
+      properties:
+        topGenresAmongFriends: { type: array, items: { type: object } }
+        friendsWatchingNow: { type: integer }
+        sharedTitles: { type: integer }
+        topServicesAmongFriends: { type: array, items: { type: object } }
+    ReferralCode:
+      type: object
+      properties:
+        code: { type: string }
+        userId: { type: string, format: uuid }
+        maxUses: { type: integer }
+        redemptions: { type: integer }
+    ReferralStats:
+      type: object
+      properties:
+        code: { type: string }
+        totalReferred: { type: integer }
+        activeReferred: { type: integer }
+    DemoDashboard:
+      type: object
+      properties:
+        totalUsers: { type: integer }
+        premiumUsers: { type: integer }
+        totalReferrals: { type: integer }
+        topTrending: { type: array, items: { type: object } }
     Region:
       type: string
       enum: [US, CA, GB, AU, IN]

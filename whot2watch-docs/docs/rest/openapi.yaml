@@ -29,6 +29,14 @@ tags:
     description: AI Concierge chat and quota management
   - name: NLU
     description: Natural-language understanding for search augmentation
+  - name: Plans
+    description: Freemium plan management, trial, and subscription
+  - name: Affiliates
+    description: Affiliate link disclosure and configuration
+  - name: Referrals
+    description: Referral code generation, redemption, and stats
+  - name: B2B
+    description: Public API, embeds, and demo dashboards
 paths:
   /picks/{profileId}:
     get:
@@ -686,6 +694,192 @@ paths:
           description: Missing or empty q parameter
         '503':
           description: NLU feature is disabled
+  /plans/status/{userId}:
+    get:
+      operationId: getPlanStatus
+      tags: [Plans]
+      summary: Get current plan status for a user
+      parameters:
+        - in: path
+          name: userId
+          schema: { type: string, format: uuid }
+          required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlanStatus' }
+        '404':
+          description: User not found
+  /plans/trial:
+    post:
+      operationId: startTrial
+      tags: [Plans]
+      summary: Start a 14-day premium trial
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlanSubscriptionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlanStatus' }
+  /plans/subscribe:
+    post:
+      operationId: subscribePlan
+      tags: [Plans]
+      summary: Subscribe to premium (mocked billing)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlanSubscriptionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlanStatus' }
+  /plans/cancel:
+    post:
+      operationId: cancelPlan
+      tags: [Plans]
+      summary: Cancel premium subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlanSubscriptionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlanStatus' }
+  /affiliates/disclosure:
+    get:
+      operationId: getAffiliateDisclosure
+      tags: [Affiliates]
+      summary: Get affiliate disclosure text and status
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AffiliateDisclosure' }
+  /social/analytics/{profileId}:
+    get:
+      operationId: getSocialAnalytics
+      tags: [Social]
+      summary: Premium social analytics for a profile
+      parameters:
+        - in: path
+          name: profileId
+          schema: { type: string, format: uuid }
+          required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SocialAnalytics' }
+        '403':
+          description: Premium required
+  /referrals/generate:
+    post:
+      operationId: generateReferralCode
+      tags: [Referrals]
+      summary: Generate or return existing referral code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId: { type: string, format: uuid }
+              required: [userId]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReferralCode' }
+  /referrals/redeem:
+    post:
+      operationId: redeemReferralCode
+      tags: [Referrals]
+      summary: Redeem a referral code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code: { type: string }
+                redeemedByUserId: { type: string, format: uuid }
+              required: [code, redeemedByUserId]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+  /referrals/stats/{userId}:
+    get:
+      operationId: getReferralStats
+      tags: [Referrals]
+      summary: Get referral statistics for a user
+      parameters:
+        - in: path
+          name: userId
+          schema: { type: string, format: uuid }
+          required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReferralStats' }
+  /embed/{listId}:
+    get:
+      operationId: getEmbed
+      tags: [B2B]
+      summary: Embeddable read-only list widget
+      parameters:
+        - in: path
+          name: listId
+          schema: { type: string, format: uuid }
+          required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            text/html:
+              schema: { type: string }
+        '404':
+          description: List not found or not public
+  /v1/admin/demo-dashboard:
+    get:
+      operationId: getDemoDashboard
+      tags: [B2B]
+      summary: Demo dashboard with aggregate stats (admin-gated)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DemoDashboard' }
+        '403':
+          description: Admin access required
 components:
   schemas:
     Region:
@@ -910,6 +1104,53 @@ components:
             min: { type: integer }
             max: { type: integer }
         region: { type: string }
+    PlanStatus:
+      type: object
+      properties:
+        plan: { type: string, enum: [free, premium] }
+        status: { type: string, enum: [active, trial, cancelled, expired] }
+        trialEndsAt: { type: string, format: date-time, nullable: true }
+        subscribedAt: { type: string, format: date-time, nullable: true }
+        cancelledAt: { type: string, format: date-time, nullable: true }
+        features: { type: array, items: { type: string } }
+      required: [plan, status, features]
+    PlanSubscriptionRequest:
+      type: object
+      properties:
+        userId: { type: string, format: uuid }
+      required: [userId]
+    AffiliateDisclosure:
+      type: object
+      properties:
+        enabled: { type: boolean }
+        text: { type: string, nullable: true }
+    SocialAnalytics:
+      type: object
+      properties:
+        topGenresAmongFriends: { type: array, items: { type: object, properties: { genre: { type: string }, count: { type: integer } } } }
+        friendsWatchingNow: { type: integer }
+        sharedTitles: { type: integer }
+        topServicesAmongFriends: { type: array, items: { type: object, properties: { service: { type: string }, count: { type: integer } } } }
+    ReferralCode:
+      type: object
+      properties:
+        code: { type: string }
+        userId: { type: string, format: uuid }
+        maxUses: { type: integer }
+        redemptions: { type: integer }
+    ReferralStats:
+      type: object
+      properties:
+        code: { type: string }
+        totalReferred: { type: integer }
+        activeReferred: { type: integer }
+    DemoDashboard:
+      type: object
+      properties:
+        totalUsers: { type: integer }
+        premiumUsers: { type: integer }
+        totalReferrals: { type: integer }
+        topTrending: { type: array, items: { type: object, properties: { name: { type: string }, score: { type: number } } } }
   securitySchemes:
     bearerAuth:
       type: http

@@ -16,6 +16,9 @@ export function getFeatureFlags(): AIFeatureFlags {
     AI_CONCIERGE_ENABLED: envBool("AI_CONCIERGE_ENABLED", false),
     NLU_ENABLED: envBool("NLU_ENABLED", true),
     SOCIAL_FEED_ENABLED: envBool("SOCIAL_FEED_ENABLED", false),
+    PLAN_ENFORCEMENT_ENABLED: envBool("PLAN_ENFORCEMENT_ENABLED", false),
+    AFFILIATES_ENABLED: envBool("AFFILIATES_ENABLED", false),
+    REFERRAL_ENABLED: envBool("REFERRAL_ENABLED", false),
   };
 }
 
@@ -29,6 +32,35 @@ export function isNLUEnabled(): boolean {
 
 export function isSocialFeedEnabled(): boolean {
   return getFeatureFlags().SOCIAL_FEED_ENABLED;
+}
+
+// ============================================================================
+// Plan Configuration (Epic 9)
+// ============================================================================
+
+export interface PlanConfig {
+  planEnforcementEnabled: boolean;
+  trialDurationDays: number;
+  freeListLimit: number;
+  premiumFeatures: string[];
+}
+
+export function getPlanConfig(): PlanConfig {
+  return {
+    planEnforcementEnabled: envBool("PLAN_ENFORCEMENT_ENABLED", false),
+    trialDurationDays: envInt("PREMIUM_TRIAL_DAYS", 14),
+    freeListLimit: envInt("FREE_LIST_LIMIT", 5),
+    premiumFeatures: [
+      "advanced_filters",
+      "early_alerts",
+      "ad_free",
+      "social_analytics",
+    ],
+  };
+}
+
+export function isPlanEnforcementEnabled(): boolean {
+  return getPlanConfig().planEnforcementEnabled;
 }
 
 // ============================================================================

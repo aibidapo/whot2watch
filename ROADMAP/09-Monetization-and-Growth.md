@@ -2,11 +2,11 @@
 
 Checklist
 
-- [ ] Freemium plan definition and gating (features, limits)
-- [ ] Affiliate link instrumentation (opt-in; disclosure)
-- [ ] Premium features: advanced filters, early alerts, ad-free, social analytics
-- [ ] Referral/sharing growth loops; invite flow
-- [ ] Basic B2B readiness (public API/embeds policy; demo dashboards)
+- [x] Freemium plan definition and gating (features, limits)
+- [x] Affiliate link instrumentation (opt-in; disclosure)
+- [x] Premium features: advanced filters, early alerts, ad-free, social analytics
+- [x] Referral/sharing growth loops; invite flow
+- [x] Basic B2B readiness (public API/embeds policy; demo dashboards)
 
 Acceptance Criteria
 

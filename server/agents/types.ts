@@ -228,6 +228,9 @@ export interface AIFeatureFlags {
   AI_CONCIERGE_ENABLED: boolean;
   NLU_ENABLED: boolean;
   SOCIAL_FEED_ENABLED: boolean;
+  PLAN_ENFORCEMENT_ENABLED: boolean;
+  AFFILIATES_ENABLED: boolean;
+  REFERRAL_ENABLED: boolean;
 }
 
 // ============================================================================

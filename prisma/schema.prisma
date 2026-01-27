@@ -11,13 +11,16 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(uuid()) @db.Uuid
-  email        String    @unique
-  authProvider String?
-  region       String?
-  tier         String    @default("free")   // "free" | "premium"
-  createdAt    DateTime  @default(now())
-  profiles     Profile[]
+  id               String              @id @default(uuid()) @db.Uuid
+  email            String              @unique
+  authProvider     String?
+  region           String?
+  tier             String              @default("free")   // "free" | "premium"
+  createdAt        DateTime            @default(now())
+  profiles         Profile[]
+  planSubscription PlanSubscription?
+  referralCodes    ReferralCode[]      @relation("referrer")
+  referredBy       ReferralRedemption[] @relation("referred")
 }
 
 model Profile {
@@ -149,6 +152,7 @@ model Alert {
   alertType String
   services  String[]
   region    String
+  priority  String   @default("STANDARD") // "EARLY" | "STANDARD"
   status    String   // ACTIVE | FIRED | CANCELLED
   createdAt DateTime @default(now())
   profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
@@ -216,4 +220,41 @@ model Vote {
   title     Title        @relation(fields: [titleId], references: [id], onDelete: Cascade)
   @@index([sessionId])
   @@index([profileId])
+}
+
+model PlanSubscription {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @unique @db.Uuid
+  plan         String    @default("free")   // "free" | "premium"
+  status       String    @default("active") // "active" | "trial" | "cancelled" | "expired"
+  trialEndsAt  DateTime?
+  subscribedAt DateTime?
+  cancelledAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+
+model ReferralCode {
+  id          String               @id @default(uuid()) @db.Uuid
+  code        String               @unique
+  userId      String               @db.Uuid
+  maxUses     Int                  @default(10)
+  createdAt   DateTime             @default(now())
+  user        User                 @relation("referrer", fields: [userId], references: [id], onDelete: Cascade)
+  redemptions ReferralRedemption[]
+  @@index([userId])
+}
+
+model ReferralRedemption {
+  id               String       @id @default(uuid()) @db.Uuid
+  referralCodeId   String       @db.Uuid
+  redeemedByUserId String       @db.Uuid
+  createdAt        DateTime     @default(now())
+  referralCode     ReferralCode @relation(fields: [referralCodeId], references: [id], onDelete: Cascade)
+  redeemedBy       User         @relation("referred", fields: [redeemedByUserId], references: [id], onDelete: Cascade)
+  @@unique([referralCodeId, redeemedByUserId])
+  @@index([referralCodeId])
+  @@index([redeemedByUserId])
 }

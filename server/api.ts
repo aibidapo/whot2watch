@@ -12,7 +12,13 @@ import { logger } from './common/logger';
 import { normalizeDeepLink } from '../services/catalog/deeplink';
 import chatRouter from './chat/router';
 import nluRouter from './nlu/router';
-import { getCostControlConfig, isSocialFeedEnabled } from './agents/config';
+import { getCostControlConfig, isSocialFeedEnabled, isPlanEnforcementEnabled, getPlanConfig } from './agents/config';
+import { PlanService } from './plans/service';
+import { appendAffiliateParams as affiliateAppendParams, getDisclosureConfig } from './affiliates/params';
+import { getSocialAnalytics } from './plans/social-analytics';
+import { premiumGate } from './plans/gate';
+import { ReferralService } from './referrals/service';
+import { apiKeyGate } from './plans/api-key-gate';
 
 const OPENSEARCH_URL = process.env.OPENSEARCH_URL || 'http://localhost:9200';
 const PORT = Number(process.env.PORT || 4000);
@@ -718,6 +724,7 @@ app.get(
           minImdb: { type: 'integer' },
           minRt: { type: 'integer' },
           minMc: { type: 'integer' },
+          mood: { anyOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }] },
         },
       },
       response: {
@@ -745,6 +752,28 @@ app.get(
     const services = arr(parsed.query.service);
     const regions = arr(parsed.query.region);
     const types = arr(parsed.query.type);
+    const moods = arr(parsed.query.mood);
+
+    // Mood filter is a premium feature — gate when enforcement is on
+    if (moods && moods.length > 0 && isPlanEnforcementEnabled()) {
+      const userId = String(request.headers?.['x-user-id'] || (parsed.query as any).userId || '');
+      if (userId) {
+        const hasAccess = await planService.hasFeature(userId, 'advanced_filters');
+        if (!hasAccess) {
+          return (reply as any).code(403).send({
+            error: 'PREMIUM_REQUIRED',
+            message: 'The mood filter requires a premium subscription.',
+            upgradeUrl: '/upgrade',
+          });
+        }
+      } else if (isPlanEnforcementEnabled()) {
+        return (reply as any).code(403).send({
+          error: 'PREMIUM_REQUIRED',
+          message: 'The mood filter requires a premium subscription.',
+          upgradeUrl: '/upgrade',
+        });
+      }
+    }
     const yearMin = parsed.query.yearMin !== undefined ? Number(parsed.query.yearMin) : undefined;
     const yearMax = parsed.query.yearMax !== undefined ? Number(parsed.query.yearMax) : undefined;
     const runtimeMin =
@@ -797,6 +826,7 @@ app.get(
       filter.push({ range: { releaseYear: { gte: yearMin, lte: yearMax } } });
     if (runtimeMin !== undefined || runtimeMax !== undefined)
       filter.push({ range: { runtimeMin: { gte: runtimeMin, lte: runtimeMax } } });
+    if (moods && moods.length) filter.push({ terms: { moods: moods } });
     if (
       hasRatings ||
       minRating !== undefined ||
@@ -1840,7 +1870,7 @@ app.get(
   async (request, reply) => {
     const profileId = String((request.params as any).profileId || '');
     if (!profileId) {
-      return reply.code(400).send({ error: 'profileId is required' });
+      return (reply as any).code(400).send({ error: 'profileId is required' });
     }
 
     // Look up user tier
@@ -2055,7 +2085,19 @@ app.post(
     const services: string[] = Array.isArray(body.services) ? body.services : [];
     const region: string = typeof body.region === 'string' ? body.region : 'US';
     if (!profileId || (!titleId && services.length === 0)) return { error: 'invalid_input' };
-    const data: any = { profileId, alertType: 'AVAILABILITY', services, region, status: 'ACTIVE' };
+    // Premium users get EARLY priority alerts
+    let priority = 'STANDARD';
+    try {
+      const profile = await prisma.profile.findUnique({
+        where: { id: profileId },
+        select: { user: { select: { id: true } } },
+      });
+      if (profile?.user?.id) {
+        const tier = await planService.getEffectiveTier(profile.user.id);
+        if (tier === 'premium') priority = 'EARLY';
+      }
+    } catch {}
+    const data: any = { profileId, alertType: 'AVAILABILITY', services, region, status: 'ACTIVE', priority };
     if (titleId) data.titleId = titleId;
     const rec = await prisma.alert.create({ data });
     return { alert: rec };
@@ -2524,6 +2566,430 @@ app.get(
     } catch {}
     return response;
   },
+);
+
+// ── Plans (Epic 9 — Monetization) ───────────────────────────────────────────
+
+const planService = new PlanService(prisma);
+
+app.get(
+  '/plans/status/:userId',
+  {
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            plan: { type: 'string', enum: ['free', 'premium'] },
+            status: { type: 'string', enum: ['active', 'trial', 'cancelled', 'expired'] },
+            trialEndsAt: { type: 'string', format: 'date-time', nullable: true },
+            subscribedAt: { type: 'string', format: 'date-time', nullable: true },
+            cancelledAt: { type: 'string', format: 'date-time', nullable: true },
+            features: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
+    },
+  },
+  async (request, reply) => {
+    const userId = String((request.params as any).userId || '');
+    if (!userId) return (reply as any).code(400).send({ error: 'userId is required' });
+    try {
+      return await planService.getPlanStatus(userId);
+    } catch {
+      return (reply as any).code(404).send({ error: 'user_not_found' });
+    }
+  },
+);
+
+app.post(
+  '/plans/trial',
+  {
+    preHandler: authPreHandler,
+    schema: {
+      body: {
+        type: 'object',
+        properties: { userId: { type: 'string' } },
+        required: ['userId'],
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            plan: { type: 'string' },
+            status: { type: 'string' },
+            trialEndsAt: { type: 'string', format: 'date-time', nullable: true },
+            subscribedAt: { type: 'string', format: 'date-time', nullable: true },
+            cancelledAt: { type: 'string', format: 'date-time', nullable: true },
+            features: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
+    },
+  },
+  async (request, reply) => {
+    const userId = String((request.body as any)?.userId || '');
+    if (!userId) return (reply as any).code(400).send({ error: 'userId is required' });
+    try {
+      return await planService.startTrial(userId);
+    } catch {
+      return (reply as any).code(404).send({ error: 'user_not_found' });
+    }
+  },
+);
+
+app.post(
+  '/plans/subscribe',
+  {
+    preHandler: authPreHandler,
+    schema: {
+      body: {
+        type: 'object',
+        properties: { userId: { type: 'string' } },
+        required: ['userId'],
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            plan: { type: 'string' },
+            status: { type: 'string' },
+            trialEndsAt: { type: 'string', format: 'date-time', nullable: true },
+            subscribedAt: { type: 'string', format: 'date-time', nullable: true },
+            cancelledAt: { type: 'string', format: 'date-time', nullable: true },
+            features: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
+    },
+  },
+  async (request, reply) => {
+    const userId = String((request.body as any)?.userId || '');
+    if (!userId) return (reply as any).code(400).send({ error: 'userId is required' });
+    try {
+      return await planService.subscribe(userId);
+    } catch {
+      return (reply as any).code(404).send({ error: 'user_not_found' });
+    }
+  },
+);
+
+app.post(
+  '/plans/cancel',
+  {
+    preHandler: authPreHandler,
+    schema: {
+      body: {
+        type: 'object',
+        properties: { userId: { type: 'string' } },
+        required: ['userId'],
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            plan: { type: 'string' },
+            status: { type: 'string' },
+            trialEndsAt: { type: 'string', format: 'date-time', nullable: true },
+            subscribedAt: { type: 'string', format: 'date-time', nullable: true },
+            cancelledAt: { type: 'string', format: 'date-time', nullable: true },
+            features: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
+    },
+  },
+  async (request, reply) => {
+    const userId = String((request.body as any)?.userId || '');
+    if (!userId) return (reply as any).code(400).send({ error: 'userId is required' });
+    try {
+      return await planService.cancel(userId);
+    } catch {
+      return (reply as any).code(404).send({ error: 'user_not_found' });
+    }
+  },
+);
+
+// ── Referrals (Epic 9 — Growth Loops) ───────────────────────────────────────
+
+const referralService = new ReferralService(prisma);
+
+app.post(
+  '/referrals/generate',
+  {
+    preHandler: authPreHandler,
+    schema: {
+      body: {
+        type: 'object',
+        properties: { userId: { type: 'string' } },
+        required: ['userId'],
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            code: { type: 'string' },
+            userId: { type: 'string' },
+            maxUses: { type: 'integer' },
+            redemptions: { type: 'integer' },
+          },
+        },
+      },
+    },
+  },
+  async (request, reply) => {
+    if (process.env.REFERRAL_ENABLED !== 'true') {
+      return (reply as any).code(503).send({ error: 'referral_disabled' });
+    }
+    const userId = String((request.body as any)?.userId || '');
+    if (!userId) return (reply as any).code(400).send({ error: 'userId is required' });
+    try {
+      return await referralService.generateCode(userId);
+    } catch {
+      return (reply as any).code(500).send({ error: 'generate_failed' });
+    }
+  },
+);
+
+app.post(
+  '/referrals/redeem',
+  {
+    schema: {
+      body: {
+        type: 'object',
+        properties: {
+          code: { type: 'string' },
+          redeemedByUserId: { type: 'string' },
+        },
+        required: ['code', 'redeemedByUserId'],
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            error: { type: 'string' },
+          },
+        },
+      },
+    },
+  },
+  async (request, reply) => {
+    if (process.env.REFERRAL_ENABLED !== 'true') {
+      return (reply as any).code(503).send({ error: 'referral_disabled' });
+    }
+    const { code, redeemedByUserId } = (request.body as any) || {};
+    if (!code || !redeemedByUserId) {
+      return (reply as any).code(400).send({ error: 'code and redeemedByUserId required' });
+    }
+    try {
+      return await referralService.redeemCode(String(code), String(redeemedByUserId));
+    } catch {
+      return (reply as any).code(500).send({ error: 'redeem_failed' });
+    }
+  },
+);
+
+app.get(
+  '/referrals/stats/:userId',
+  {
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            code: { type: 'string', nullable: true },
+            totalReferred: { type: 'integer' },
+            activeReferred: { type: 'integer' },
+          },
+        },
+      },
+    },
+  },
+  async (request, reply) => {
+    if (process.env.REFERRAL_ENABLED !== 'true') {
+      return (reply as any).code(503).send({ error: 'referral_disabled' });
+    }
+    const userId = String((request.params as any).userId || '');
+    if (!userId) return (reply as any).code(400).send({ error: 'userId is required' });
+    try {
+      return await referralService.getStats(userId);
+    } catch {
+      return (reply as any).code(500).send({ error: 'stats_failed' });
+    }
+  },
+);
+
+// ── Social Analytics (Epic 9 — Premium) ─────────────────────────────────────
+
+app.get(
+  '/social/analytics/:profileId',
+  {
+    preHandler: premiumGate('social_analytics', prisma),
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            topGenresAmongFriends: { type: 'array', items: { type: 'object', additionalProperties: true } },
+            friendsWatchingNow: { type: 'integer' },
+            sharedTitles: { type: 'integer' },
+            topServicesAmongFriends: { type: 'array', items: { type: 'object', additionalProperties: true } },
+          },
+        },
+      },
+    },
+  },
+  async (request, reply) => {
+    const profileId = String((request.params as any).profileId || '');
+    if (!profileId) return (reply as any).code(400).send({ error: 'profileId is required' });
+    try {
+      return await getSocialAnalytics(profileId, prisma);
+    } catch {
+      return (reply as any).code(500).send({ error: 'analytics_error' });
+    }
+  },
+);
+
+// ── B2B: Embed Widget (Epic 9) ──────────────────────────────────────────────
+
+app.get(
+  '/embed/:listId',
+  {
+    preHandler: apiKeyGate,
+  },
+  async (request, reply) => {
+    const listId = String((request.params as any).listId || '');
+    if (!listId) return (reply as any).code(400).send({ error: 'listId required' });
+
+    const list = await prisma.list.findUnique({
+      where: { id: listId },
+      include: {
+        items: {
+          include: { title: true },
+          orderBy: { position: 'asc' },
+        },
+      },
+    });
+
+    if (!list || list.visibility !== 'PUBLIC') {
+      return (reply as any).code(404).send({ error: 'not_found' });
+    }
+
+    const items = list.items.map((item: any) => ({
+      name: item.title?.name || 'Unknown',
+      type: item.title?.type || '',
+      releaseYear: item.title?.releaseYear,
+      posterUrl: item.title?.posterUrl,
+    }));
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>${list.name} - Whot2Watch</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:system-ui,-apple-system,sans-serif; background:#fff; color:#333; padding:16px; }
+  h2 { font-size:1.25rem; margin-bottom:12px; }
+  .items { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; }
+  .item { text-align:center; }
+  .item img { width:100%; border-radius:8px; aspect-ratio:2/3; object-fit:cover; background:#eee; }
+  .item p { font-size:0.8rem; margin-top:4px; }
+  .footer { margin-top:16px; text-align:center; font-size:0.7rem; color:#aaa; }
+  .footer a { color:#22c55e; text-decoration:none; }
+</style>
+</head>
+<body>
+<h2>${list.name}</h2>
+${list.description ? `<p style="color:#666;margin-bottom:12px">${list.description}</p>` : ''}
+<div class="items">
+${items.map((i: any) => `<div class="item">
+  ${i.posterUrl ? `<img src="${i.posterUrl}" alt="${i.name}" loading="lazy" />` : '<div style="width:100%;aspect-ratio:2/3;background:#eee;border-radius:8px"></div>'}
+  <p>${i.name}${i.releaseYear ? ` (${i.releaseYear})` : ''}</p>
+</div>`).join('\n')}
+</div>
+<div class="footer">Powered by <a href="https://whot2watch.example.com" target="_blank" rel="noopener">Whot2Watch</a></div>
+</body>
+</html>`;
+
+    reply
+      .header('Access-Control-Allow-Origin', '*')
+      .header('X-Frame-Options', 'ALLOWALL')
+      .type('text/html')
+      .send(html);
+  },
+);
+
+// ── B2B: Demo Dashboard (Epic 9) ───────────────────────────────────────────
+
+app.get(
+  '/v1/admin/demo-dashboard',
+  {
+    preHandler: adminPreHandler,
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            totalUsers: { type: 'integer' },
+            premiumUsers: { type: 'integer' },
+            totalReferrals: { type: 'integer' },
+            topTrending: { type: 'array', items: { type: 'object', additionalProperties: true } },
+          },
+        },
+      },
+    },
+  },
+  async (_request, reply) => {
+    try {
+      const totalUsers = await prisma.user.count();
+      const premiumUsers = await prisma.user.count({ where: { tier: 'premium' } });
+      const totalReferrals = await (prisma as any).referralRedemption.count();
+
+      // Top trending titles
+      const sigs = await (prisma as any).trendingSignal.findMany({
+        select: { titleId: true, value: true },
+        orderBy: { value: 'desc' },
+        take: 10,
+      });
+      const trendIds = sigs.map((s: any) => s.titleId);
+      const trendTitles = await prisma.title.findMany({
+        where: { id: { in: trendIds } },
+        select: { id: true, name: true },
+      });
+      const titleMap = new Map(trendTitles.map((t) => [t.id, t.name]));
+      const topTrending = sigs.map((s: any) => ({
+        name: titleMap.get(s.titleId) || 'Unknown',
+        score: s.value,
+      }));
+
+      return { totalUsers, premiumUsers, totalReferrals, topTrending };
+    } catch {
+      return (reply as any).code(500).send({ error: 'dashboard_error' });
+    }
+  },
+);
+
+// ── Affiliates (Epic 9 — Disclosure) ────────────────────────────────────────
+
+app.get(
+  '/affiliates/disclosure',
+  {
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            enabled: { type: 'boolean' },
+            text: { type: 'string', nullable: true },
+          },
+        },
+      },
+    },
+  },
+  async () => getDisclosureConfig(),
 );
 
 // attach redis
