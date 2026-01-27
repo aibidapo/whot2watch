@@ -85,9 +85,42 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
+function buildJsonLd(list: ListDetail) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: list.name,
+    description:
+      list.description ||
+      `${list.itemCount} title${list.itemCount === 1 ? '' : 's'} curated by ${list.profileName}`,
+    numberOfItems: list.itemCount,
+    itemListElement: list.items.map((item, idx) => ({
+      '@type': 'ListItem',
+      position: idx + 1,
+      item: {
+        '@type': item.title.type === 'TV_SERIES' ? 'TVSeries' : 'Movie',
+        name: item.title.name,
+        ...(item.title.releaseYear ? { datePublished: String(item.title.releaseYear) } : {}),
+        ...(item.title.posterUrl ? { image: item.title.posterUrl } : {}),
+        ...(item.title.genres.length ? { genre: item.title.genres } : {}),
+      },
+    })),
+  };
+}
+
 export default async function ListDetailPage({ params }: PageProps) {
   const { listId } = await params;
   const list = await fetchList(listId);
 
-  return <ListDetailClient listId={listId} initialData={list} />;
+  return (
+    <>
+      {list && list.visibility !== 'PRIVATE' && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(buildJsonLd(list)) }}
+        />
+      )}
+      <ListDetailClient listId={listId} initialData={list} />
+    </>
+  );
 }

@@ -4,12 +4,14 @@ type ThumbProps = HTMLAttributes<HTMLDivElement> & {
   posterUrl?: string;
   backdropUrl?: string;
   voteAverage?: number;
+  alt?: string;
 };
 
 export function Thumb({
   posterUrl,
   backdropUrl,
   voteAverage,
+  alt,
   className = '',
   ...rest
 }: ThumbProps) {
@@ -21,7 +23,7 @@ export function Thumb({
       <div className={`group relative overflow-hidden ${className}`} {...rest}>
         <img
           src={posterUrl}
-          alt=""
+          alt={alt || ''}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
           onError={() => setImgError(true)}
@@ -42,6 +44,8 @@ export function Thumb({
       <div
         className={`relative thumb-backdrop ${className}`}
         style={{ backgroundImage: `url(${backdropUrl})` }}
+        role="img"
+        aria-label={alt || 'Title backdrop'}
         {...rest}
       >
         <div className="thumb-overlay" />

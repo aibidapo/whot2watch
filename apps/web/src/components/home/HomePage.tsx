@@ -632,8 +632,9 @@ export function HomePage() {
         )}
       </Card>
 
-      <section className="grid gap-3">
+      <section className="grid gap-3" aria-live="polite">
         <h2 className="text-xl font-semibold tracking-tight">Results</h2>
+        <span className="sr-only">{items.length} result{items.length === 1 ? '' : 's'} found</span>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {items.map((it) => (
             <Card key={it.id} interactive>

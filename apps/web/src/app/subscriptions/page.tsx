@@ -1,10 +1,14 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Card } from '@/components/ui/Card';
-import { STREAMING_SERVICES } from '@/constants/onboarding';
+import {
+  KNOWN_REGIONS,
+  REGION_SERVICE_PRESETS,
+  STORAGE_KEY_PROFILE_ID,
+  STREAMING_SERVICES,
+} from '@/constants/onboarding';
 
 type Sub = { id: string; service: string; region?: string };
 
@@ -17,12 +21,26 @@ export default function SubsPage() {
   const [error, setError] = useState<string | null>(null);
   const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', []);
 
+  // Auto-load profileId from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY_PROFILE_ID);
+    const id = stored || process.env.NEXT_PUBLIC_DEFAULT_PROFILE_ID || '';
+    if (id) setProfileId(id);
+  }, []);
+
   async function list() {
     if (!profileId) return;
     const res = await fetch(`${apiBase}/profiles/${profileId}/subscriptions`);
     const json = await res.json();
     setItems(json.items || []);
   }
+
+  // Auto-fetch subscriptions when profileId changes
+  useEffect(() => {
+    if (profileId) list();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileId]);
+
   async function upsert() {
     if (!profileId || !service) return;
     setLoading(true);
@@ -44,6 +62,36 @@ export default function SubsPage() {
       setLoading(false);
     }
   }
+
+  async function addAllForRegion() {
+    if (!profileId || !region) return;
+    const presets = REGION_SERVICE_PRESETS[region];
+    if (!presets) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const existing = new Set(items.map((i) => i.service));
+      for (const svc of presets) {
+        if (!existing.has(svc)) {
+          await fetch(`${apiBase}/profiles/${profileId}/subscriptions`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ service: svc, region }),
+          });
+        }
+      }
+      await list();
+    } catch (error_: unknown) {
+      const message =
+        typeof error_ === 'object' && error_ && 'message' in error_
+          ? String((error_ as any).message)
+          : 'Update failed';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function del(svc: string) {
     if (!profileId) return;
     await fetch(`${apiBase}/profiles/${profileId}/subscriptions`, {
@@ -54,21 +102,10 @@ export default function SubsPage() {
     await list();
   }
 
-  useEffect(() => {
-    /* no-op */
-  }, []);
-
   return (
     <div className="grid gap-4">
+      <h1 className="text-2xl font-bold tracking-tight">Subscriptions</h1>
       <Card className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-        <div className="md:col-span-2">
-          <label className="block text-sm text-muted">Profile ID</label>
-          <Input
-            value={profileId}
-            onChange={(e) => setProfileId(e.target.value)}
-            className="mt-1"
-          />
-        </div>
         <div>
           <label className="block text-sm text-muted">Service</label>
           <Select value={service} onChange={(e) => setService(e.target.value)} className="mt-1">
@@ -82,12 +119,14 @@ export default function SubsPage() {
         </div>
         <div>
           <label className="block text-sm text-muted">Region</label>
-          <Input
-            value={region}
-            onChange={(e) => setRegion(e.target.value)}
-            className="mt-1"
-            placeholder="US"
-          />
+          <Select value={region} onChange={(e) => setRegion(e.target.value)} className="mt-1">
+            <option value="">Select</option>
+            {KNOWN_REGIONS.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </Select>
         </div>
         <div className="flex gap-2">
           <Button onClick={upsert}>Save</Button>
@@ -95,6 +134,13 @@ export default function SubsPage() {
             Refresh
           </Button>
         </div>
+        {region && REGION_SERVICE_PRESETS[region] && (
+          <div className="md:col-span-2">
+            <Button variant="secondary" onClick={addAllForRegion}>
+              Add all for {region}
+            </Button>
+          </div>
+        )}
       </Card>
       {loading && <div className="text-muted">Saving…</div>}
       {error && <div className="text-error-text">{error}</div>}

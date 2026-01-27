@@ -9,13 +9,13 @@ Checklist
 - [x] Dev convenience script `pnpm dev:all`
 - [x] Picks page wired to backend (v1 scoring)
 - [x] Lists UI: add/remove inline
-- [ ] Subscriptions UI: service + region presets
+- [x] Subscriptions UI: service + region presets
 - [x] Watch now deep-links on cards (when available)
-- [ ] Public list sharing (PUBLIC only)
-- [ ] Reuse GraphQL client/types (optional if we keep REST MVP)
-- [ ] AI concierge UI (search bar augment + chat drawer) behind feature flag
-- [ ] Friends' feed module and Friends' Picks toggle
-- [ ] SEO improvements (next-seo, JSON-LD), PWA basics, a11y, i18n plan
+- [x] Public list sharing (PUBLIC only)
+- [x] Reuse GraphQL client/types (optional if we keep REST MVP)
+- [x] AI concierge UI (search bar augment + chat drawer) behind feature flag
+- [x] Friends' feed module and Friends' Picks toggle
+- [x] SEO improvements (next-seo, JSON-LD), PWA basics, a11y, i18n plan
 
 Acceptance Criteria
 

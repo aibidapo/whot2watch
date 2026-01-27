@@ -53,6 +53,7 @@ export default function ListsPage() {
 
   return (
     <div className="grid gap-4">
+      <h1 className="text-2xl font-bold tracking-tight">My Lists</h1>
       <Card className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
         <div className="md:col-span-2">
           <label className="block text-sm text-muted">Profile ID</label>

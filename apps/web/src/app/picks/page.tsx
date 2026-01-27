@@ -84,6 +84,7 @@ export default function PicksPage() {
 
   return (
     <div className="grid gap-4">
+      <h1 className="text-2xl font-bold tracking-tight">Daily Picks</h1>
       <Card className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
         <div className="md:col-span-2">
           <label className="block text-sm text-muted">Profile ID</label>
