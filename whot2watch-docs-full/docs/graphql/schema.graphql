@@ -395,11 +395,17 @@ type SocialAnalytics {
   topServicesAmongFriends: [ServiceCount!]!
 }
 
+"""
+Genre with occurrence count among friends.
+"""
 type GenreCount {
   genre: String!
   count: Int!
 }
 
+"""
+Streaming service with occurrence count among friends.
+"""
 type ServiceCount {
   service: String!
   count: Int!
@@ -429,6 +435,9 @@ type DemoDashboard {
   topTrending: [TrendingItem!]!
 }
 
+"""
+Trending title with composite score.
+"""
 type TrendingItem {
   name: String!
   score: Float!

@@ -4,7 +4,7 @@
  * Premium-gated social analytics: aggregated stats from friends' activity.
  */
 
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from '@prisma/client';
 
 export interface SocialAnalyticsData {
   topGenresAmongFriends: { genre: string; count: number }[];
@@ -21,8 +21,8 @@ export async function getSocialAnalytics(
   const friends = await prisma.friend.findMany({
     where: {
       OR: [
-        { fromProfileId: profileId, status: "ACCEPTED" },
-        { toProfileId: profileId, status: "ACCEPTED" },
+        { fromProfileId: profileId, status: 'ACCEPTED' },
+        { toProfileId: profileId, status: 'ACCEPTED' },
       ],
     },
     select: { fromProfileId: true, toProfileId: true },
@@ -45,7 +45,7 @@ export async function getSocialAnalytics(
   const friendFeedback = await prisma.feedback.findMany({
     where: {
       profileId: { in: friendProfileIds },
-      action: "LIKE",
+      action: 'LIKE',
     },
     select: { titleId: true, profileId: true },
     take: 500,
@@ -92,14 +92,12 @@ export async function getSocialAnalytics(
 
   // Shared titles: titles liked by both user and at least one friend
   const userFeedback = await prisma.feedback.findMany({
-    where: { profileId, action: "LIKE" },
+    where: { profileId, action: 'LIKE' },
     select: { titleId: true },
   });
   const userLikedIds = new Set(userFeedback.map((f) => f.titleId));
   const friendLikedIds = new Set(friendFeedback.map((f) => f.titleId));
-  const sharedTitles = [...userLikedIds].filter((id) =>
-    friendLikedIds.has(id),
-  ).length;
+  const sharedTitles = [...userLikedIds].filter((id) => friendLikedIds.has(id)).length;
 
   // Recent activity count (within last 24h)
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);

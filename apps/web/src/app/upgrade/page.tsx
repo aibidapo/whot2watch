@@ -77,15 +77,14 @@ export default function UpgradePage() {
     }
   }
 
-  const trialDaysLeft =
-    planStatus?.trialEndsAt
-      ? Math.max(
-          0,
-          Math.ceil(
-            (new Date(planStatus.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
-          ),
-        )
-      : null;
+  const trialDaysLeft = planStatus?.trialEndsAt
+    ? Math.max(
+        0,
+        Math.ceil(
+          (new Date(planStatus.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+        ),
+      )
+    : null;
 
   const isPremium = planStatus?.plan === 'premium';
 
@@ -229,8 +228,7 @@ export default function UpgradePage() {
       {planStatus && (
         <div style={{ marginTop: '2rem', color: '#888', fontSize: '0.875rem' }}>
           <p>
-            Plan: <strong>{planStatus.plan}</strong> | Status:{' '}
-            <strong>{planStatus.status}</strong>
+            Plan: <strong>{planStatus.plan}</strong> | Status: <strong>{planStatus.status}</strong>
             {planStatus.subscribedAt && (
               <> | Subscribed: {new Date(planStatus.subscribedAt).toLocaleDateString()}</>
             )}

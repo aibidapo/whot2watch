@@ -5,19 +5,19 @@
  * Reference: docs/adr/0002-mcp-agentic-architecture.md
  */
 
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from '@prisma/client';
 
 // ============================================================================
 // Intent Classification
 // ============================================================================
 
 export type UserIntent =
-  | "search" // Natural language search query
-  | "availability" // Where can I watch X?
-  | "recommendations" // What should I watch?
-  | "preferences" // Update my taste preferences
-  | "social" // Friends' activity / picks
-  | "unknown"; // Fallback to search
+  | 'search' // Natural language search query
+  | 'availability' // Where can I watch X?
+  | 'recommendations' // What should I watch?
+  | 'preferences' // Update my taste preferences
+  | 'social' // Friends' activity / picks
+  | 'unknown'; // Fallback to search
 
 export interface IntentClassification {
   intent: UserIntent;
@@ -41,11 +41,7 @@ export interface ExtractedEntities {
 // Worker Agents
 // ============================================================================
 
-export type WorkerType =
-  | "search"
-  | "availability"
-  | "preferences"
-  | "recommendations";
+export type WorkerType = 'search' | 'availability' | 'preferences' | 'recommendations';
 
 export interface WorkerContext {
   profileId?: string;
@@ -84,7 +80,7 @@ export interface TitleResult {
   id: string;
   tmdbId?: number;
   imdbId?: string;
-  type: "movie" | "tv";
+  type: 'movie' | 'tv';
   name: string;
   releaseYear?: number;
   runtimeMin?: number;
@@ -100,7 +96,7 @@ export interface AvailabilityResult {
   titleId: string;
   service: string;
   region: string;
-  offerType: "flatrate" | "rent" | "buy" | "free" | "ads";
+  offerType: 'flatrate' | 'rent' | 'buy' | 'free' | 'ads';
   deepLink?: string;
 }
 
@@ -203,7 +199,7 @@ export interface ChatQuota {
   remaining: number;
   limit: number;
   resetsAt: string;
-  tier: "free" | "premium";
+  tier: 'free' | 'premium';
 }
 
 export interface ChatResponse {
@@ -216,7 +212,7 @@ export interface ChatResponse {
 }
 
 export interface ChatStreamEvent {
-  type: "message" | "recommendation" | "done" | "error";
+  type: 'message' | 'recommendation' | 'done' | 'error';
   data: unknown;
 }
 
@@ -239,12 +235,12 @@ export interface AIFeatureFlags {
 
 export interface AIAnalyticsEvent {
   eventType:
-    | "chat_message_sent"
-    | "chat_response_received"
-    | "chat_fallback_triggered"
-    | "llm_request_count"
-    | "llm_tokens_used"
-    | "llm_cost_estimate";
+    | 'chat_message_sent'
+    | 'chat_response_received'
+    | 'chat_fallback_triggered'
+    | 'llm_request_count'
+    | 'llm_tokens_used'
+    | 'llm_cost_estimate';
   sessionId: string;
   profileId?: string;
   timestamp: Date;
@@ -265,7 +261,7 @@ export interface RateLimitStatus {
   remaining: number;
   limit: number;
   resetAt: Date;
-  tier: "free" | "premium";
+  tier: 'free' | 'premium';
 }
 
 export interface CostEstimate {
@@ -292,8 +288,5 @@ export interface RedisLike {
 }
 
 export interface OpenSearchLike {
-  search(params: {
-    index: string;
-    body: unknown;
-  }): Promise<{ body: unknown }>;
+  search(params: { index: string; body: unknown }): Promise<{ body: unknown }>;
 }

@@ -8,11 +8,11 @@
  */
 
 function getValidKeys(): Set<string> {
-  const raw = process.env.PUBLIC_API_KEYS || "";
+  const raw = process.env.PUBLIC_API_KEYS || '';
   if (!raw.trim()) return new Set();
   return new Set(
     raw
-      .split(",")
+      .split(',')
       .map((k) => k.trim())
       .filter(Boolean),
   );
@@ -27,11 +27,11 @@ export async function apiKeyGate(request: any, reply: any) {
   // If no keys configured, allow open access
   if (validKeys.size === 0) return;
 
-  const apiKey = String(request.headers?.["x-api-key"] || "").trim();
+  const apiKey = String(request.headers?.['x-api-key'] || '').trim();
   if (!apiKey || !validKeys.has(apiKey)) {
     reply.code(401).send({
-      error: "INVALID_API_KEY",
-      message: "A valid X-API-Key header is required.",
+      error: 'INVALID_API_KEY',
+      message: 'A valid X-API-Key header is required.',
     });
     return;
   }

@@ -7,9 +7,9 @@
  * No-op when the flag is off.
  */
 
-import type { PrismaClient } from "@prisma/client";
-import { isPlanEnforcementEnabled } from "../agents/config";
-import { PlanService } from "./service";
+import type { PrismaClient } from '@prisma/client';
+import { isPlanEnforcementEnabled } from '../agents/config';
+import { PlanService } from './service';
 
 /**
  * Creates a Fastify preHandler that gates access to a premium feature.
@@ -26,9 +26,9 @@ export function premiumGate(feature: string, prisma: PrismaClient) {
     const userId = resolveUserId(request);
     if (!userId) {
       reply.code(403).send({
-        error: "PREMIUM_REQUIRED",
+        error: 'PREMIUM_REQUIRED',
         message: `The feature "${feature}" requires a premium subscription.`,
-        upgradeUrl: "/upgrade",
+        upgradeUrl: '/upgrade',
       });
       return;
     }
@@ -36,9 +36,9 @@ export function premiumGate(feature: string, prisma: PrismaClient) {
     const hasAccess = await planService.hasFeature(userId, feature);
     if (!hasAccess) {
       reply.code(403).send({
-        error: "PREMIUM_REQUIRED",
+        error: 'PREMIUM_REQUIRED',
         message: `The feature "${feature}" requires a premium subscription.`,
-        upgradeUrl: "/upgrade",
+        upgradeUrl: '/upgrade',
       });
       return;
     }
@@ -51,7 +51,7 @@ export function premiumGate(feature: string, prisma: PrismaClient) {
  */
 function resolveUserId(request: any): string | undefined {
   // Header-based (set by auth middleware or gateway)
-  const headerUserId = request.headers?.["x-user-id"];
+  const headerUserId = request.headers?.['x-user-id'];
   if (headerUserId) return String(headerUserId);
 
   // Query param

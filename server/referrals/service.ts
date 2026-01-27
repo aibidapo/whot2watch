@@ -5,7 +5,7 @@
  * Anti-abuse: can't redeem own code, can't redeem twice, max uses cap.
  */
 
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from '@prisma/client';
 
 export interface ReferralStats {
   code: string | null;
@@ -17,8 +17,8 @@ export interface ReferralStats {
  * Generate a random 6-character alphanumeric code.
  */
 function generateCode(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no ambiguous chars (0/O, 1/I)
-  let code = "";
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars (0/O, 1/I)
+  let code = '';
   for (let i = 0; i < 6; i++) {
     code += chars[Math.floor(Math.random() * chars.length)];
   }
@@ -99,12 +99,12 @@ export class ReferralService {
     });
 
     if (!referralCode) {
-      return { success: false, error: "INVALID_CODE" };
+      return { success: false, error: 'INVALID_CODE' };
     }
 
     // Can't redeem own code
     if (referralCode.userId === redeemedByUserId) {
-      return { success: false, error: "SELF_REFERRAL" };
+      return { success: false, error: 'SELF_REFERRAL' };
     }
 
     // Can't redeem twice
@@ -112,12 +112,12 @@ export class ReferralService {
       (r: any) => r.redeemedByUserId === redeemedByUserId,
     );
     if (alreadyRedeemed) {
-      return { success: false, error: "ALREADY_REDEEMED" };
+      return { success: false, error: 'ALREADY_REDEEMED' };
     }
 
     // Max uses cap
     if (referralCode.redemptions.length >= referralCode.maxUses) {
-      return { success: false, error: "MAX_USES_REACHED" };
+      return { success: false, error: 'MAX_USES_REACHED' };
     }
 
     await this.db.referralRedemption.create({

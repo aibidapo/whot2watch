@@ -82,12 +82,7 @@ export default function EmbedPage() {
         {list.items.map((item, i) => (
           <div key={i} style={styles.item}>
             {item.posterUrl ? (
-              <img
-                src={item.posterUrl}
-                alt={item.name}
-                loading="lazy"
-                style={styles.poster}
-              />
+              <img src={item.posterUrl} alt={item.name} loading="lazy" style={styles.poster} />
             ) : (
               <div style={styles.posterPlaceholder} />
             )}

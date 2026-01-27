@@ -37,7 +37,14 @@ export default function AdminDemoPage() {
 
       {data && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr 1fr',
+              gap: '1rem',
+              marginBottom: '1.5rem',
+            }}
+          >
             <Card>
               <div style={{ padding: '1rem', textAlign: 'center' }}>
                 <p style={{ fontSize: '0.875rem', color: '#666' }}>Total Users</p>
@@ -66,7 +73,14 @@ export default function AdminDemoPage() {
               ) : (
                 <ol style={{ paddingLeft: '1.25rem', margin: 0 }}>
                   {data.topTrending.map((t, i) => (
-                    <li key={i} style={{ padding: '0.25rem 0', display: 'flex', justifyContent: 'space-between' }}>
+                    <li
+                      key={i}
+                      style={{
+                        padding: '0.25rem 0',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                      }}
+                    >
                       <span>{t.name}</span>
                       <span style={{ color: '#888' }}>{t.score.toFixed(1)}</span>
                     </li>

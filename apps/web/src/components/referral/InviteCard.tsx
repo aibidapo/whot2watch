@@ -94,7 +94,14 @@ export function InviteCard({ userId }: { userId: string }) {
         >
           {data.code}
         </div>
-        <p style={{ fontSize: '0.75rem', color: '#888', marginBottom: '0.75rem', textAlign: 'center' }}>
+        <p
+          style={{
+            fontSize: '0.75rem',
+            color: '#888',
+            marginBottom: '0.75rem',
+            textAlign: 'center',
+          }}
+        >
           {data.redemptions} / {data.maxUses} uses
         </p>
         <div style={{ display: 'flex', gap: 8 }}>

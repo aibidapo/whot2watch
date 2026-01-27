@@ -12,9 +12,17 @@ import { logger } from './common/logger';
 import { normalizeDeepLink } from '../services/catalog/deeplink';
 import chatRouter from './chat/router';
 import nluRouter from './nlu/router';
-import { getCostControlConfig, isSocialFeedEnabled, isPlanEnforcementEnabled, getPlanConfig } from './agents/config';
+import {
+  getCostControlConfig,
+  isSocialFeedEnabled,
+  isPlanEnforcementEnabled,
+  getPlanConfig,
+} from './agents/config';
 import { PlanService } from './plans/service';
-import { appendAffiliateParams as affiliateAppendParams, getDisclosureConfig } from './affiliates/params';
+import {
+  appendAffiliateParams as affiliateAppendParams,
+  getDisclosureConfig,
+} from './affiliates/params';
 import { getSocialAnalytics } from './plans/social-analytics';
 import { premiumGate } from './plans/gate';
 import { ReferralService } from './referrals/service';
@@ -1670,8 +1678,7 @@ app.get(
     const sorted = Array.from(titleMap.values())
       .sort(
         (a, b) =>
-          b.friendNames.size - a.friendNames.size ||
-          b.latestTs.getTime() - a.latestTs.getTime(),
+          b.friendNames.size - a.friendNames.size || b.latestTs.getTime() - a.latestTs.getTime(),
       )
       .slice(0, limit);
 
@@ -2097,7 +2104,14 @@ app.post(
         if (tier === 'premium') priority = 'EARLY';
       }
     } catch {}
-    const data: any = { profileId, alertType: 'AVAILABILITY', services, region, status: 'ACTIVE', priority };
+    const data: any = {
+      profileId,
+      alertType: 'AVAILABILITY',
+      services,
+      region,
+      status: 'ACTIVE',
+      priority,
+    };
     if (titleId) data.titleId = titleId;
     const rec = await prisma.alert.create({ data });
     return { alert: rec };
@@ -2831,10 +2845,16 @@ app.get(
         200: {
           type: 'object',
           properties: {
-            topGenresAmongFriends: { type: 'array', items: { type: 'object', additionalProperties: true } },
+            topGenresAmongFriends: {
+              type: 'array',
+              items: { type: 'object', additionalProperties: true },
+            },
             friendsWatchingNow: { type: 'integer' },
             sharedTitles: { type: 'integer' },
-            topServicesAmongFriends: { type: 'array', items: { type: 'object', additionalProperties: true } },
+            topServicesAmongFriends: {
+              type: 'array',
+              items: { type: 'object', additionalProperties: true },
+            },
           },
         },
       },
@@ -2905,10 +2925,14 @@ app.get(
 <h2>${list.name}</h2>
 ${list.description ? `<p style="color:#666;margin-bottom:12px">${list.description}</p>` : ''}
 <div class="items">
-${items.map((i: any) => `<div class="item">
+${items
+  .map(
+    (i: any) => `<div class="item">
   ${i.posterUrl ? `<img src="${i.posterUrl}" alt="${i.name}" loading="lazy" />` : '<div style="width:100%;aspect-ratio:2/3;background:#eee;border-radius:8px"></div>'}
   <p>${i.name}${i.releaseYear ? ` (${i.releaseYear})` : ''}</p>
-</div>`).join('\n')}
+</div>`,
+  )
+  .join('\n')}
 </div>
 <div class="footer">Powered by <a href="https://whot2watch.example.com" target="_blank" rel="noopener">Whot2Watch</a></div>
 </body>

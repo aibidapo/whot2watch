@@ -37,7 +37,11 @@ export default function InvitePage() {
         setRedeemed(true);
         setError(null);
       } else {
-        setError(data.error === 'ALREADY_REDEEMED' ? 'You already used this referral.' : data.error || 'Redemption failed');
+        setError(
+          data.error === 'ALREADY_REDEEMED'
+            ? 'You already used this referral.'
+            : data.error || 'Redemption failed',
+        );
       }
     } catch {
       setError('Network error. Please try again.');
@@ -73,7 +77,9 @@ export default function InvitePage() {
             ) : (
               <Button onClick={handleRedeem}>Apply Referral</Button>
             )}
-            {error && <p style={{ color: '#b91c1c', marginTop: '0.5rem', fontSize: '0.875rem' }}>{error}</p>}
+            {error && (
+              <p style={{ color: '#b91c1c', marginTop: '0.5rem', fontSize: '0.875rem' }}>{error}</p>
+            )}
           </div>
         </Card>
       )}

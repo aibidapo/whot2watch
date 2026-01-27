@@ -55,8 +55,8 @@ export default function SocialAnalyticsPage() {
         <Card>
           <div style={{ padding: '2rem' }}>
             <p style={{ marginBottom: '1rem', color: '#666' }}>
-              Social Analytics is a premium feature. Upgrade to see insights about your friends&apos;
-              viewing habits.
+              Social Analytics is a premium feature. Upgrade to see insights about your
+              friends&apos; viewing habits.
             </p>
             <Button onClick={() => (window.location.href = '/upgrade')}>Upgrade to Premium</Button>
           </div>
@@ -98,7 +98,11 @@ export default function SocialAnalyticsPage() {
                   {data.topGenresAmongFriends.map((g) => (
                     <li
                       key={g.genre}
-                      style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0' }}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        padding: '0.25rem 0',
+                      }}
                     >
                       <span>{g.genre}</span>
                       <strong>{g.count}</strong>
@@ -120,7 +124,11 @@ export default function SocialAnalyticsPage() {
                   {data.topServicesAmongFriends.map((s) => (
                     <li
                       key={s.service}
-                      style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0' }}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        padding: '0.25rem 0',
+                      }}
                     >
                       <span>{s.service}</span>
                       <strong>{s.count}</strong>
