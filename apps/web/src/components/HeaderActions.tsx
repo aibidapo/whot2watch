@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useSession, signIn, signOut } from 'next-auth/react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 
@@ -8,6 +9,7 @@ export function HeaderActions() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const { data: session, status } = useSession();
   const [q, setQ] = useState<string>('');
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window === 'undefined') return 'dark';
@@ -56,6 +58,24 @@ export function HeaderActions() {
       <Button variant="secondary" aria-label="Toggle theme" onClick={toggleTheme}>
         {theme === 'dark' ? '🌙' : '☀️'}
       </Button>
+      {status === 'loading' ? null : session ? (
+        <div className="flex items-center gap-2">
+          {session.user.image && (
+            <img
+              src={session.user.image}
+              alt={session.user.name || 'User'}
+              className="w-8 h-8 rounded-full"
+            />
+          )}
+          <Button variant="ghost" onClick={() => signOut()}>
+            Sign out
+          </Button>
+        </div>
+      ) : (
+        <Button variant="primary" onClick={() => signIn()}>
+          Sign in
+        </Button>
+      )}
     </div>
   );
 }
