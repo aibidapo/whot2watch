@@ -42,7 +42,7 @@
     "index:sample": "node scripts/require-venv.cjs && node -r ./scripts/load-env.cjs services/catalog/indexSample.js",
     "index:fromdb": "node scripts/require-venv.cjs && node -r ./scripts/load-env.cjs services/catalog/indexFromDb.js",
     "worker:ingest": "node scripts/require-venv.cjs && node -r ./scripts/load-env.cjs services/catalog/worker.ingest.js",
-    "pipeline:ingest-index": "pnpm worker:ingest && pnpm index:fromdb",
+    "pipeline:ingest-index": "pnpm worker:ingest && pnpm ingest:providers && pnpm index:fromdb",
     "ingest:providers": "node -r ./scripts/load-env.cjs services/catalog/ingestWatchProviders.js",
     "ingest:trending": "node -r ./scripts/load-env.cjs services/catalog/ingestTmdbTrending.js",
     "ingest:trakt": "node -r ./scripts/load-env.cjs services/catalog/ingestTraktTrending.js",

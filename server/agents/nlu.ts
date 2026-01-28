@@ -73,6 +73,74 @@ export const MOOD_MAP: Record<string, string> = {
   "mind-bending": "cerebral",
 };
 
+export const REGION_MAP: Record<string, string> = {
+  // Short ISO codes
+  us: "US",
+  uk: "GB",
+  ca: "CA",
+  au: "AU",
+  de: "DE",
+  fr: "FR",
+  jp: "JP",
+  kr: "KR",
+  in: "IN",
+  br: "BR",
+  mx: "MX",
+  es: "ES",
+  it: "IT",
+  nl: "NL",
+  se: "SE",
+  no: "NO",
+  dk: "DK",
+  fi: "FI",
+  nz: "NZ",
+  ie: "IE",
+  at: "AT",
+  ch: "CH",
+  be: "BE",
+  pt: "PT",
+  pl: "PL",
+  za: "ZA",
+  sg: "SG",
+  hk: "HK",
+
+  // Full country names and common aliases
+  usa: "US",
+  america: "US",
+  "united states": "US",
+  canada: "CA",
+  britain: "GB",
+  "great britain": "GB",
+  "united kingdom": "GB",
+  england: "GB",
+  australia: "AU",
+  germany: "DE",
+  france: "FR",
+  japan: "JP",
+  korea: "KR",
+  "south korea": "KR",
+  india: "IN",
+  brazil: "BR",
+  mexico: "MX",
+  spain: "ES",
+  italy: "IT",
+  netherlands: "NL",
+  sweden: "SE",
+  norway: "NO",
+  denmark: "DK",
+  finland: "FI",
+  "new zealand": "NZ",
+  ireland: "IE",
+  austria: "AT",
+  switzerland: "CH",
+  belgium: "BE",
+  portugal: "PT",
+  poland: "PL",
+  "south africa": "ZA",
+  singapore: "SG",
+  "hong kong": "HK",
+};
+
 // ============================================================================
 // Entity Extraction
 // ============================================================================
@@ -151,12 +219,18 @@ export function extractEntities(message: string): ExtractedEntities {
     };
   }
 
-  // Extract region
-  const regionMatch = lower.match(
-    /\b(?:in\s+the\s+)?(us|uk|ca|au|de|fr|jp|kr|in|br)\b/
+  // Extract region — check for country names and ISO codes via REGION_MAP
+  // Sort by length descending so "united kingdom" matches before "uk"
+  const regionEntries = Object.entries(REGION_MAP).sort(
+    (a, b) => b[0].length - a[0].length
   );
-  if (regionMatch) {
-    result.region = regionMatch[1]!.toUpperCase();
+  for (const [pattern, code] of regionEntries) {
+    // Match pattern with optional "in the" prefix, e.g. "in the uk" or "in canada"
+    const re = new RegExp(`\\b(?:in\\s+(?:the\\s+)?)?${pattern.replace(/\s+/g, "\\s+")}\\b`, "i");
+    if (re.test(lower)) {
+      result.region = code;
+      break;
+    }
   }
 
   // Extract potential title names (quoted strings)
@@ -179,8 +253,12 @@ const SERVICE_STRIP_PATTERNS: RegExp[] = Object.keys(SERVICE_MAP)
 
 const DURATION_STRIP = /(?:under|less\s+than|shorter\s+than|within|over|more\s+than|longer\s+than|at\s+least)\s+\d+\s*(?:min(?:utes?)?|hrs?|hours?)/gi;
 const YEAR_STRIP = /(?:from|after|since|before|until|up\s+to)\s+\d{4}/gi;
-const REGION_STRIP = /\b(?:in\s+the\s+)?(us|uk|ca|au|de|fr|jp|kr|in|br)\b/gi;
 const QUOTED_STRIP = /"[^"]+"/g;
+
+/** Build region strip patterns from REGION_MAP (longest first to avoid partial matches) */
+const REGION_STRIP_PATTERNS: RegExp[] = Object.keys(REGION_MAP)
+  .sort((a, b) => b.length - a.length) // longest first to avoid partial matches
+  .map((key) => new RegExp(`\\b(?:in\\s+(?:the\\s+)?)?${key.replace(/\s+/g, "\\s+")}\\b`, "gi"));
 
 export function stripEntities(message: string): string {
   let stripped = message;
@@ -200,8 +278,11 @@ export function stripEntities(message: string): string {
   // Remove year phrases
   stripped = stripped.replace(YEAR_STRIP, "");
 
-  // Remove region phrases
-  stripped = stripped.replace(REGION_STRIP, "");
+  // Remove region phrases (longest first)
+  for (const re of REGION_STRIP_PATTERNS) {
+    re.lastIndex = 0;
+    stripped = stripped.replace(re, "");
+  }
 
   // Collapse whitespace and trim
   return stripped.replace(/\s+/g, " ").trim();

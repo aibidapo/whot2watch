@@ -26,6 +26,7 @@ import {
 } from './affiliates/params';
 import { getSocialAnalytics } from './plans/social-analytics';
 import { premiumGate } from './plans/gate';
+import { REGION_MAP } from './agents/nlu';
 import { ReferralService } from './referrals/service';
 import { apiKeyGate } from './plans/api-key-gate';
 import { recordRequest, getApmSnapshot } from './apm/middleware';
@@ -722,6 +723,24 @@ async function indexOne(doc: any) {
   return res.ok;
 }
 
+/**
+ * Canonicalize region strings to ISO codes using REGION_MAP.
+ * Accepts ISO codes ("US", "GB"), common aliases ("uk", "usa"),
+ * and full country names ("united kingdom", "canada").
+ */
+function canonicalizeRegion(raw: string): string | null {
+  if (!raw) return null;
+  const key = raw.trim().toLowerCase();
+  // Check REGION_MAP for alias → ISO code
+  const mapped = REGION_MAP[key];
+  if (mapped) return mapped;
+  // If already an uppercase ISO code, return as-is
+  const upper = raw.trim().toUpperCase();
+  if (Object.values(REGION_MAP).includes(upper)) return upper;
+  // Unknown region — return uppercased for consistency
+  return upper;
+}
+
 app.get(
   '/search',
   {
@@ -770,7 +789,8 @@ app.get(
     const size = Number.isFinite(sizeRaw) ? Math.min(Math.max(sizeRaw, 1), 100) : 20;
     const from = Number.isFinite(fromRaw) ? Math.max(fromRaw, 0) : 0;
     const services = arr(parsed.query.service);
-    const regions = arr(parsed.query.region);
+    const rawRegions = arr(parsed.query.region);
+    const regions = rawRegions?.map(canonicalizeRegion).filter((r): r is string => !!r);
     const types = arr(parsed.query.type);
     const moods = arr(parsed.query.mood);
 
@@ -839,8 +859,30 @@ app.get(
 
     /* c8 ignore start */
     const filter: any[] = [];
-    if (services && services.length) filter.push({ terms: { availabilityServices: services } });
-    if (regions && regions.length) filter.push({ terms: { availabilityRegions: regions } });
+
+    // Build nested availability filter when both service AND region are specified.
+    // This ensures "Prime in GB" only matches titles with Prime available IN GB,
+    // not titles with Prime somewhere + GB somewhere (false conjunction).
+    if (services?.length && regions?.length) {
+      filter.push({
+        nested: {
+          path: 'availability',
+          query: {
+            bool: {
+              must: [
+                { terms: { 'availability.service': services } },
+                { terms: { 'availability.region': regions } },
+              ],
+            },
+          },
+        },
+      });
+    } else {
+      // Fallback to flat filters when only one is specified
+      if (services?.length) filter.push({ terms: { availabilityServices: services } });
+      if (regions?.length) filter.push({ terms: { availabilityRegions: regions } });
+    }
+
     if (types && types.length) filter.push({ terms: { type: types } });
     if (yearMin !== undefined || yearMax !== undefined)
       filter.push({ range: { releaseYear: { gte: yearMin, lte: yearMax } } });
