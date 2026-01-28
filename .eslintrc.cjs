@@ -25,6 +25,17 @@ module.exports = {
       'warn',
       { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
     ],
+    'no-restricted-imports': [
+      'error',
+      {
+        patterns: [
+          {
+            group: ['**/internal/*', '**/internal'],
+            message: 'Deep imports from internal modules are banned. Use barrel exports instead.',
+          },
+        ],
+      },
+    ],
   },
   overrides: [
     {

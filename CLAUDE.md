@@ -58,6 +58,9 @@ pnpm k6:load                         # Ramp to 50 VUs, P95 < 600 ms
 pnpm k6:stress                       # Ramp to 200 VUs, find breaking points
 pnpm k6:chat                         # AI concierge endpoint, P95 < 3 s
 
+# Mutation Testing (Stryker)
+pnpm test:mutate                     # Stryker mutation tests (nightly in CI)
+
 # Security Testing (ZAP)
 # ZAP baseline runs weekly in CI (ci-security.yml) and on manual dispatch.
 # Local: docker run ... ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://localhost:4000 -c zap/rules.tsv
@@ -153,7 +156,9 @@ AI/MCP variables (see `.env.example` for full list):
 
 - Pre-commit: format, lint, typecheck
 - Pre-push: contracts validation, coverage ≥ 80%
-- CI: all gates + GraphQL breaking changes + Prisma drift + gitleaks
+- CI: all gates + GraphQL breaking changes + Prisma drift + gitleaks + npm audit (prod, critical)
+- Nightly: Stryker mutation testing (`nightly-mutation.yml`)
+- Renovate: Weekly dependency updates with auto-merge for devDep minor/patch
 
 ## Windows/PowerShell Note
 

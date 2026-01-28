@@ -1,4 +1,6 @@
 /* eslint-disable no-console */
+// For real-time HTTP cache/backoff, see server/mcp/client.ts (Redis-backed with exponential backoff).
+// Batch ingestion scripts persist directly to Postgres; per-request caching is not beneficial here.
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE = process.env.TMDB_IMAGE_BASE || 'https://image.tmdb.org/t/p';
 const TMDB_POSTER_SIZE = process.env.TMDB_POSTER_SIZE || 'w342';

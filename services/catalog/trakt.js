@@ -1,4 +1,6 @@
 /* eslint-disable no-console */
+// For real-time HTTP cache/backoff, see server/mcp/client.ts (Redis-backed with exponential backoff).
+// Batch ingestion scripts persist directly to Postgres; per-request caching is not beneficial here.
 const TRAKT_BASE = 'https://api.trakt.tv';
 const TRAKT_CLIENT_ID = process.env.TRAKT_CLIENT_ID || process.env.TRAKT_API_KEY;
 

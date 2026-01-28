@@ -29,6 +29,31 @@ This project uses local `.env` files for development and GitHub Actions Secrets 
 - Rotate API keys periodically and revoke unused keys.
 - For external contributors, CI runs without TMDB secrets and uses mocked/sample data.
 
+## GitHub Environments
+
+Secrets are scoped to GitHub Environments to limit blast radius:
+
+| Environment | Purpose | Protection Rules |
+|-------------|---------|-----------------|
+| `staging`   | Pre-production validation | Required reviewers (1), deployment branch: `main` |
+| `production`| Live deployment | Required reviewers (2), deployment branch: `main`, wait timer: 10 min |
+
+- Environment secrets override repository-level secrets of the same name.
+- Use environment-scoped secrets for any value that differs between staging and production (e.g., database URLs, API keys for different tiers).
+- Repository-level secrets are appropriate for values shared across all environments (e.g., `GITHUB_TOKEN` extensions, static tool keys).
+
+## Rotation Plan
+
+| Secret | Cadence | Owner | Procedure |
+|--------|---------|-------|-----------|
+| `TMDB_API_KEY` / `TMDB_ACCESS_TOKEN` | 90 days | Platform lead | Regenerate at TMDB developer console → update GH Actions secrets → verify nightly pipeline |
+| `OMDB_API_KEY` | 90 days | Platform lead | Regenerate at OMDb portal → update GH Actions secrets → verify enrichment pipeline |
+| `TRAKT_CLIENT_ID` | 90 days | Platform lead | Regenerate at Trakt app settings → update GH Actions secrets → verify trending ingest |
+| `ANTHROPIC_API_KEY` | 90 days | AI lead | Rotate in Anthropic console → update GH Actions + staging/prod environments |
+| `OPENAI_API_KEY` | 90 days | AI lead | Rotate in OpenAI dashboard → update GH Actions + staging/prod environments |
+| `DATABASE_URL` (prod) | 180 days | Infra lead | Rotate Postgres credentials → update environment secret → run migration deploy |
+| `REDIS_URL` (prod) | 180 days | Infra lead | Rotate Redis auth → update environment secret → verify session/cache connectivity |
+
 ## Incident Response
 
 - If a secret is accidentally exposed:

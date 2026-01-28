@@ -1,0 +1,55 @@
+name: nightly-mutation
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  mutation-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        ports: ['5432:5432']
+        env:
+          POSTGRES_USER: w2w
+          POSTGRES_PASSWORD: w2w
+          POSTGRES_DB: w2w
+        options: >-
+          --health-cmd "pg_isready -U w2w -d w2w"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare env
+        run: |
+          echo "DATABASE_URL=postgresql://w2w:w2w@localhost:5432/w2w?schema=public" >> $GITHUB_ENV
+
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
+
+      - name: Run Stryker mutation tests
+        run: pnpm test:mutate
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stryker-report
+          path: reports/mutation/
+          retention-days: 14

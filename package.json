@@ -60,7 +60,8 @@
     "k6:smoke": "k6 run k6/scenarios/smoke.js",
     "k6:load": "k6 run k6/scenarios/load.js",
     "k6:stress": "k6 run k6/scenarios/stress.js",
-    "k6:chat": "k6 run k6/scenarios/chat.js"
+    "k6:chat": "k6 run k6/scenarios/chat.js",
+    "test:mutate": "stryker run"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",
@@ -97,6 +98,8 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.20.6",
     "typescript": "^5.6.2",
+    "@stryker-mutator/core": "^8.6.0",
+    "@stryker-mutator/vitest-runner": "^8.6.0",
     "vitest": "^2.0.5"
   },
   "prisma": {

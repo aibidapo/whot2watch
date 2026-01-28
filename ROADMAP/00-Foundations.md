@@ -13,22 +13,22 @@ Checklist
 - [x] Secrets policy/tooling (enforce in CONTRIBUTING and CI docs)
 - [x] Observability scaffolding (logger + request-id; Sentry placeholders later)
 - [x] Ingestion environment wiring: .env keys, flags, schedules
-- [ ] Minimal Redis-backed HTTP cache/backoff utility adopted across sources
-- [ ] Secrets management (provider: Vault/SOPS or GH Environments) and rotation plan
-- [ ] Monitoring & alerting: APM, logs aggregation, error taxonomy dashboards
-- [ ] CI/CD: deployment automation with rollback notes; staging/prod env strategy
+- [x] Minimal Redis-backed HTTP cache/backoff utility adopted across sources
+- [x] Secrets management (provider: Vault/SOPS or GH Environments) and rotation plan
+- [x] Monitoring & alerting: APM, logs aggregation, error taxonomy dashboards
+- [x] CI/CD: deployment automation with rollback notes; staging/prod env strategy
 
 Governance & Ownership
 
-- [ ] NERS for: `apps/mobile`, `apps/web`, `services/api`, `packages/ui`, `packages/types`, `Whot2Watch-docs`
+- [x] NERS for: `apps/mobile`, `apps/web`, `services/api`, `packages/ui`, `packages/types`, `Whot2Watch-docs`
 - [x] PR template with checklist: contracts changed? tests added? naming follows Glossary? no TODOs? no duplicate logic?
 - [x] ADRs directory `docs/adr/` with template; new modules/patterns must include ADR
 - [x] Branch protection policy documented (require CI + 1 owner review; dismiss stale approvals)
 
 Contracts & Types (anti-drift)
 
-- [ ] ESLint rule to enforce imports from `packages/types/*`; ban hand-rolled DTOs and deep-imports
-- [ ] Contract smoke tests (GraphQL introspection in non-prod; REST schema validation)
+- [x] ESLint rule to enforce imports from `packages/types/*`; ban hand-rolled DTOs and deep-imports
+- [x] Contract smoke tests (GraphQL introspection in non-prod; REST schema validation)
 
 Code Hygiene
 
@@ -53,19 +53,19 @@ Duplication & Dead Code
 
 Naming & Ubiquitous Language
 
-- [ ] `docs/Glossary.md` with canonical domain terms (Title, Availability, Provider, Region, Pick, List, Friend, GroupSession)
-- [ ] PRs reference glossary for new exports; optional ESLint regex to flag banned aliases
+- [x] `docs/Glossary.md` with canonical domain terms (Title, Availability, Provider, Region, Pick, List, Friend, GroupSession)
+- [x] PRs reference glossary for new exports; optional ESLint regex to flag banned aliases
 
 Tests, Coverage & Mutation
 
-- [ ] Negative tests matrix: authZ denials, bad input rejects, rate-limit 429s, GraphQL depth/cost rejections
-- [ ] Mutation testing (`stryker`) on scoring/auth policy (nightly)
+- [x] Negative tests matrix: authZ denials, bad input rejects, rate-limit 429s, GraphQL depth/cost rejections
+- [x] Mutation testing (`stryker`) on scoring/auth policy (nightly)
 
 Data Model & Migrations
 
 - [x] Prisma schema + initial migrations matching ERD
 - [x] CI schema drift check (`prisma migrate diff`)
-- [ ] Migrations for `imdbId`, `traktId`, `popularity`, `ExternalRating`, `TrendingSignal`, availability unique index
+- [x] Migrations for `imdbId`, `traktId`, `popularity`, `ExternalRating`, `TrendingSignal`, availability unique index
 
 Dependency & Tooling Health
 
@@ -73,8 +73,8 @@ Dependency & Tooling Health
 - [x] `.markdownlint.json` config (suppress MD013/MD033/MD041 for docs)
 - [x] Fix `qa:gitleaks` script (graceful skip when gitleaks binary not installed)
 - [x] Add `DATABASE_URL` skip guards to Prisma-dependent tests (`api.profiles.test.ts`, `api.branch.test.ts`)
-- [ ] Renovate (weekly) with safe automerge for dev deps; manual for prod deps
-- [ ] `npm audit` (prod) or Snyk in CI; fail on criticals unless risk-accepted
+- [x] Renovate (weekly) with safe automerge for dev deps; manual for prod deps
+- [x] `npm audit` (prod) or Snyk in CI; fail on criticals unless risk-accepted
 
 Monorepo Layout (prep)
 
