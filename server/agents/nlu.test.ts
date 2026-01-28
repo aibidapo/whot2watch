@@ -45,9 +45,24 @@ describe("extractEntities", () => {
     expect(entities.releaseYear).toEqual({ max: 1990 });
   });
 
-  it("extracts region", () => {
+  it("extracts region (ISO code)", () => {
     const entities = extractEntities("available in the UK");
-    expect(entities.region).toBe("UK");
+    expect(entities.region).toBe("GB");
+  });
+
+  it("extracts region from full country name", () => {
+    const entities = extractEntities("movies in canada");
+    expect(entities.region).toBe("CA");
+  });
+
+  it("extracts region from longer country name first", () => {
+    const entities = extractEntities("shows available in the united kingdom");
+    expect(entities.region).toBe("GB");
+  });
+
+  it("extracts region with alias", () => {
+    const entities = extractEntities("what can I watch in britain");
+    expect(entities.region).toBe("GB");
   });
 
   it("extracts quoted titles", () => {
@@ -99,9 +114,19 @@ describe("stripEntities", () => {
     expect(result).toContain("drama");
   });
 
-  it("strips region phrases", () => {
+  it("strips region phrases (short code)", () => {
     const result = stripEntities("movies in the US");
     expect(result).not.toMatch(/\bus\b/i);
+  });
+
+  it("strips region phrases (full country name)", () => {
+    const result = stripEntities("movies in canada");
+    expect(result).not.toMatch(/\bcanada\b/i);
+  });
+
+  it("strips region phrases (multi-word country name)", () => {
+    const result = stripEntities("shows in the united kingdom");
+    expect(result).not.toMatch(/united kingdom/i);
   });
 
   it("strips quoted titles", () => {
