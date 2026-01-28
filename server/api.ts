@@ -32,6 +32,7 @@ import { recordRequest, getApmSnapshot } from './apm/middleware';
 import { exportUserData, deleteUserData, enforceRetentionPolicy } from './privacy/service';
 import { NotificationService } from './notifications/service';
 import { validateAnalyticsEvent } from './analytics/validator';
+import { hppHook } from './security/hpp';
 
 const OPENSEARCH_URL = process.env.OPENSEARCH_URL || 'http://localhost:9200';
 const PORT = Number(process.env.PORT || 4000);
@@ -157,9 +158,23 @@ function arr(v: unknown): string[] | undefined {
 /* c8 ignore stop */
 
 const app = Fastify({ logger: false });
-app.register(cors, { origin: true });
+// Strict CORS: env-driven allowlist (comma-separated), allow no-origin (server-to-server)
+const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:3000')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+app.register(cors, {
+  origin: (origin, cb) => {
+    if (!origin || CORS_ALLOWED_ORIGINS.includes(origin)) {
+      cb(null, true);
+    } else {
+      cb(new Error('CORS origin not allowed'), false);
+    }
+  },
+});
 app.register(helmet, { contentSecurityPolicy: false });
 app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
+app.addHook('onRequest', hppHook);
 
 // Chat API (AI Concierge — Epic 8)
 app.register(chatRouter, { prisma });

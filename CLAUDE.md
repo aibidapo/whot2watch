@@ -103,6 +103,10 @@ LLM provider chain: Anthropic → OpenAI → NLU rules (fallback)
 | `Whot2Watch-docs/docs/rest/openapi.yaml` | REST API contract |
 | `Whot2Watch-docs/docs/graphql/schema.graphql` | GraphQL contract |
 | `services/catalog/worker.ingest.js` | Data pipeline orchestrator |
+| `server/security/graphqlEnvelop.ts` | GraphQL depth/cost limits, introspection control |
+| `server/security/hpp.ts` | HTTP Parameter Pollution protection |
+| `docs/SLO.md` | Service Level Objectives |
+| `docs/DisasterRecovery.md` | Disaster recovery plan (RTO/RPO, procedures) |
 
 ### Database Entities
 
@@ -139,6 +143,7 @@ AI/MCP variables (see `.env.example` for full list):
 - `LLM_PROVIDER` (anthropic/openai/none), `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`
 - `LLM_DAILY_LIMIT_FREE=10`, `LLM_DAILY_LIMIT_PREMIUM=1000` — cost controls
 - `AVAILABILITY_SOURCE` (LOCAL/TMDB/JUSTWATCH/WATCHMODE) — data source selection
+- `CORS_ALLOWED_ORIGINS` — comma-separated allowed CORS origins (default: `http://localhost:3000`)
 
 ## TypeScript & Code Style
 
@@ -156,7 +161,7 @@ AI/MCP variables (see `.env.example` for full list):
 
 - Pre-commit: format, lint, typecheck
 - Pre-push: contracts validation, coverage ≥ 80%
-- CI: all gates + GraphQL breaking changes + Prisma drift + gitleaks + npm audit (prod, critical)
+- CI: all gates + GraphQL breaking changes + Prisma drift + gitleaks + npm audit (prod, critical) + k6 smoke test
 - Nightly: Stryker mutation testing (`nightly-mutation.yml`)
 - Renovate: Weekly dependency updates with auto-merge for devDep minor/patch
 
