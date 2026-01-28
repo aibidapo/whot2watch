@@ -66,6 +66,20 @@ resolve_pnpm() {
 
 PNPM="$(resolve_pnpm)"
 
+# Resolve docker — on Windows/MINGW, use docker.exe to avoid stdout issues
+resolve_docker() {
+  if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "mingw"* || "$OSTYPE" == "cygwin" ]]; then
+    # On Windows Git Bash, docker stdout can be lost; use docker.exe explicitly
+    if command -v docker.exe &>/dev/null; then
+      echo "docker.exe"
+      return
+    fi
+  fi
+  echo "docker"
+}
+
+DOCKER="$(resolve_docker)"
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -132,7 +146,7 @@ read_pid() {
 
 # Check if a Docker container is running
 container_running() {
-  docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null | grep -q true
+  $DOCKER inspect -f '{{.State.Running}}' "$1" 2>/dev/null | grep -q true
 }
 
 # ---------------------------------------------------------------------------
@@ -148,13 +162,13 @@ start_docker() {
     return
   fi
 
-  docker compose up -d 2>&1
+  $DOCKER compose up -d 2>&1
   ok "Docker containers started"
 
   # Wait for services to be ready
   info "Waiting for PostgreSQL..."
   for i in $(seq 1 30); do
-    if docker exec "$PG_CONTAINER" pg_isready -U w2w &>/dev/null; then
+    if $DOCKER exec "$PG_CONTAINER" pg_isready -U w2w &>/dev/null; then
       ok "PostgreSQL ready"
       break
     fi
@@ -164,7 +178,7 @@ start_docker() {
 
   info "Waiting for Redis..."
   for i in $(seq 1 15); do
-    if docker exec "$REDIS_CONTAINER" redis-cli ping 2>/dev/null | grep -q PONG; then
+    if $DOCKER exec "$REDIS_CONTAINER" redis-cli ping 2>/dev/null | grep -q PONG; then
       ok "Redis ready"
       break
     fi
@@ -186,7 +200,7 @@ start_docker() {
 stop_docker() {
   info "Stopping Docker containers..."
   cd "$PROJECT_DIR"
-  docker compose down 2>&1
+  $DOCKER compose down 2>&1
   ok "Docker containers stopped"
 }
 
