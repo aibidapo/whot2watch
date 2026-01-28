@@ -13,6 +13,8 @@ export default function ListsPage() {
   const [name, setName] = useState('');
   const [lists, setLists] = useState<List[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (profileId) refresh();
@@ -21,19 +23,43 @@ export default function ListsPage() {
 
   async function refresh() {
     if (!profileId) return;
-    const res = await fetch(`${apiBase}/profiles/${profileId}/lists`);
-    const json = await res.json();
-    setLists(json.items || []);
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiBase}/profiles/${profileId}/lists`);
+      if (!res.ok) {
+        throw new Error(`Failed to load lists: ${res.status}`);
+      }
+      const json = await res.json();
+      setLists(json.items || []);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load lists';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
   }
   async function create() {
     if (!profileId || !name) return;
-    await fetch(`${apiBase}/profiles/${profileId}/lists`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name }),
-    });
-    setName('');
-    await refresh();
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiBase}/profiles/${profileId}/lists`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to create list: ${res.status}`);
+      }
+      setName('');
+      await refresh();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to create list';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleShare(listId: string) {
@@ -50,6 +76,8 @@ export default function ListsPage() {
   return (
     <div className="grid gap-4">
       <h1 className="text-2xl font-bold tracking-tight">My Lists</h1>
+      {loading && <div className="text-muted">Loading…</div>}
+      {error && <div className="text-error-text">{error}</div>}
       <Card className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
         <div className="md:col-span-2">
           <label className="block text-sm text-muted">Profile ID</label>

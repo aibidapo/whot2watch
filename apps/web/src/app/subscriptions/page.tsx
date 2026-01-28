@@ -22,9 +22,17 @@ export default function SubsPage() {
 
   async function list() {
     if (!profileId) return;
-    const res = await fetch(`${apiBase}/profiles/${profileId}/subscriptions`);
-    const json = await res.json();
-    setItems(json.items || []);
+    try {
+      const res = await fetch(`${apiBase}/profiles/${profileId}/subscriptions`);
+      if (!res.ok) {
+        throw new Error(`Failed to load subscriptions: ${res.status}`);
+      }
+      const json = await res.json();
+      setItems(json.items || []);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load subscriptions';
+      setError(message);
+    }
   }
 
   // Auto-fetch subscriptions when profileId changes
@@ -86,12 +94,24 @@ export default function SubsPage() {
 
   async function del(svc: string) {
     if (!profileId) return;
-    await fetch(`${apiBase}/profiles/${profileId}/subscriptions`, {
-      method: 'DELETE',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ service: svc }),
-    });
-    await list();
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiBase}/profiles/${profileId}/subscriptions`, {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ service: svc }),
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to remove subscription: ${res.status}`);
+      }
+      await list();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to remove subscription';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (profileLoading) return <div className="text-muted p-8 text-center">Loading profile...</div>;

@@ -23,7 +23,7 @@ type PickItem = {
 };
 
 export default function PicksPage() {
-  const { profileId, loading: profileLoading, error: profileError, apiBase, api } = useProfileId();
+  const { profileId, setProfileId, loading: profileLoading, error: profileError, apiBase, api } = useProfileId();
   const [items, setItems] = useState<PickItem[]>([]);
   const [profiles, setProfiles] = useState<{ id: string; name?: string }[]>([]);
   const [loading, setLoading] = useState(false);
