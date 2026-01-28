@@ -1,11 +1,10 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
-import createClient from 'clients/rest/client';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
-import { STORAGE_KEY_PROFILE_ID } from '@/constants/onboarding';
+import { useProfileId } from '@/hooks/useProfileId';
 
 type FriendItem = {
   id: string;
@@ -17,20 +16,11 @@ type FriendItem = {
 };
 
 export default function FriendsPage() {
-  const [profileId, setProfileId] = useState('');
+  const { profileId, loading: profileLoading, error: profileError, api } = useProfileId();
   const [friends, setFriends] = useState<FriendItem[]>([]);
   const [toProfileId, setToProfileId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', []);
-  const api = useMemo(() => createClient({ baseUrl: `${apiBase}/v1` }), [apiBase]);
-
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY_PROFILE_ID);
-    const id = stored || process.env.NEXT_PUBLIC_DEFAULT_PROFILE_ID || '';
-    if (id) setProfileId(id);
-  }, []);
 
   async function loadFriends() {
     if (!profileId) return;
@@ -96,6 +86,9 @@ export default function FriendsPage() {
 
   const pending = friends.filter((f) => f.status === 'REQUESTED');
   const accepted = friends.filter((f) => f.status === 'ACCEPTED');
+
+  if (profileLoading) return <div className="text-muted p-8 text-center">Loading profile...</div>;
+  if (profileError) return <div className="text-error-text p-8 text-center">{profileError}</div>;
 
   return (
     <div className="grid gap-6">

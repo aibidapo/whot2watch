@@ -1,11 +1,10 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
-import createClient from 'clients/rest/client';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
 import { Thumb } from '@/components/ui/Thumb';
-import { STORAGE_KEY_PROFILE_ID } from '@/constants/onboarding';
+import { useProfileId } from '@/hooks/useProfileId';
 
 type TitleSummary = {
   id: string;
@@ -36,22 +35,13 @@ type FriendsPickItem = {
 type Tab = 'feed' | 'friends-picks';
 
 export default function SocialPage() {
-  const [profileId, setProfileId] = useState('');
+  const { profileId, loading: profileLoading, error: profileError, api } = useProfileId();
   const [tab, setTab] = useState<Tab>('feed');
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [picksItems, setPicksItems] = useState<FriendsPickItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [disabled, setDisabled] = useState(false);
-
-  const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', []);
-  const api = useMemo(() => createClient({ baseUrl: `${apiBase}/v1` }), [apiBase]);
-
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY_PROFILE_ID);
-    const id = stored || process.env.NEXT_PUBLIC_DEFAULT_PROFILE_ID || '';
-    if (id) setProfileId(id);
-  }, []);
 
   async function loadFeed(before?: string) {
     if (!profileId) return;
@@ -110,6 +100,9 @@ export default function SocialPage() {
     else loadFriendsPicks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileId, tab]);
+
+  if (profileLoading) return <div className="text-muted p-8 text-center">Loading profile...</div>;
+  if (profileError) return <div className="text-error-text p-8 text-center">{profileError}</div>;
 
   if (disabled) {
     return (

@@ -55,10 +55,11 @@ export function OnboardingWizard({ profileId }: { profileId: string }) {
         minRating: null,
       });
 
+      const defaultRegion = process.env.NEXT_PUBLIC_DEFAULT_REGIONS?.split(',')[0] || 'US';
       for (const svc of services) {
         await api.post(`/profiles/${profileId}/subscriptions`, {
           service: svc,
-          region: 'US',
+          region: defaultRegion,
         });
       }
 

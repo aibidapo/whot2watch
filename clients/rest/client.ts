@@ -37,6 +37,9 @@ export default function createClient(cfg: ClientConfig = {}) {
       const payload = body === undefined ? undefined : JSON.stringify(body);
       return request<T>('PATCH', path, { body: payload });
     },
-    delete: <T = unknown>(path: string) => request<T>('DELETE', path),
+    delete: <T = unknown>(path: string, body?: unknown) => {
+      const payload = body === undefined ? undefined : JSON.stringify(body);
+      return request<T>('DELETE', path, { body: payload });
+    },
   };
 }

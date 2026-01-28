@@ -1,25 +1,18 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
-import { STORAGE_KEY_PROFILE_ID } from '@/constants/onboarding';
+import { useProfileId } from '@/hooks/useProfileId';
 
 type List = { id: string; name: string; visibility?: string };
 
 export default function ListsPage() {
-  const [profileId, setProfileId] = useState('');
+  const { profileId, loading: profileLoading, error: profileError, apiBase } = useProfileId();
   const [name, setName] = useState('');
   const [lists, setLists] = useState<List[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', []);
-
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY_PROFILE_ID);
-    const id = stored || process.env.NEXT_PUBLIC_DEFAULT_PROFILE_ID || '';
-    if (id) setProfileId(id);
-  }, []);
 
   useEffect(() => {
     if (profileId) refresh();
@@ -51,6 +44,9 @@ export default function ListsPage() {
     }).catch(() => {});
   }
 
+  if (profileLoading) return <div className="text-muted p-8 text-center">Loading profile...</div>;
+  if (profileError) return <div className="text-error-text p-8 text-center">{profileError}</div>;
+
   return (
     <div className="grid gap-4">
       <h1 className="text-2xl font-bold tracking-tight">My Lists</h1>
@@ -59,7 +55,7 @@ export default function ListsPage() {
           <label className="block text-sm text-muted">Profile ID</label>
           <Input
             value={profileId}
-            onChange={(e) => setProfileId(e.target.value)}
+            readOnly
             className="mt-1"
           />
         </div>

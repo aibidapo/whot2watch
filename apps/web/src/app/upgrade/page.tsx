@@ -1,7 +1,8 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { useProfileId } from '@/hooks/useProfileId';
 
 interface PlanStatus {
   plan: 'free' | 'premium';
@@ -31,19 +32,11 @@ const PREMIUM_FEATURES = [
 ];
 
 export default function UpgradePage() {
-  const [userId, setUserId] = useState<string>('');
+  const { profileId: userId, loading: profileLoading, error: profileError, apiBase } = useProfileId();
   const [planStatus, setPlanStatus] = useState<PlanStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', []);
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('w2w_user_id');
-      if (stored) setUserId(stored);
-    } catch {}
-  }, []);
 
   useEffect(() => {
     if (!userId) return;
@@ -87,6 +80,9 @@ export default function UpgradePage() {
     : null;
 
   const isPremium = planStatus?.plan === 'premium';
+
+  if (profileLoading) return <div className="text-muted p-8 text-center">Loading profile...</div>;
+  if (profileError) return <div className="text-error-text p-8 text-center">{profileError}</div>;
 
   return (
     <main style={{ maxWidth: 900, margin: '0 auto', padding: '2rem 1rem' }}>

@@ -1,12 +1,11 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
-import createClient from 'clients/rest/client';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { Thumb } from '@/components/ui/Thumb';
 import { Chip } from '@/components/ui/Chip';
-import { STORAGE_KEY_PROFILE_ID } from '@/constants/onboarding';
+import { useProfileId } from '@/hooks/useProfileId';
 
 type PickItem = {
   id: string;
@@ -24,14 +23,12 @@ type PickItem = {
 };
 
 export default function PicksPage() {
-  const [profileId, setProfileId] = useState<string>('');
+  const { profileId, loading: profileLoading, error: profileError, apiBase, api } = useProfileId();
   const [items, setItems] = useState<PickItem[]>([]);
   const [profiles, setProfiles] = useState<{ id: string; name?: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', []);
   const [ratingsBias, setRatingsBias] = useState<number>(0);
-  const api = useMemo(() => createClient({ baseUrl: `${apiBase}/v1` }), [apiBase]);
   const [autoLoaded, setAutoLoaded] = useState(false);
 
   async function loadPicks() {
@@ -57,21 +54,12 @@ export default function PicksPage() {
   }
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY_PROFILE_ID);
-    const id = stored || process.env.NEXT_PUBLIC_DEFAULT_PROFILE_ID || '';
-    if (id) {
-      setProfileId(id);
+    if (!profileLoading && profileId && !autoLoaded) {
       setAutoLoaded(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (autoLoaded && profileId) {
       loadPicks();
-      setAutoLoaded(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoLoaded, profileId]);
+  }, [profileLoading, profileId]);
 
   useEffect(() => {
     (async () => {
@@ -82,6 +70,9 @@ export default function PicksPage() {
     })();
   }, []);
 
+  if (profileLoading) return <div className="text-muted p-8 text-center">Loading profile...</div>;
+  if (profileError) return <div className="text-error-text p-8 text-center">{profileError}</div>;
+
   return (
     <div className="grid gap-4">
       <h1 className="text-2xl font-bold tracking-tight">Daily Picks</h1>
@@ -90,7 +81,7 @@ export default function PicksPage() {
           <label className="block text-sm text-muted">Profile ID</label>
           <Input
             value={profileId}
-            onChange={(e) => setProfileId(e.target.value)}
+            readOnly
             className="mt-1"
             placeholder="00000000-0000-0000-0000-000000000000"
           />

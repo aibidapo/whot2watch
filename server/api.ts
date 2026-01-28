@@ -157,7 +157,15 @@ function arr(v: unknown): string[] | undefined {
 }
 /* c8 ignore stop */
 
-const app = Fastify({ logger: false });
+const app = Fastify({
+  logger: false,
+  rewriteUrl(req) {
+    const url = req.url || '/';
+    if (url.startsWith('/v1/admin/')) return url;
+    if (url.startsWith('/v1/')) return url.slice(3);
+    return url;
+  },
+});
 // Strict CORS: env-driven allowlist (comma-separated), allow no-origin (server-to-server)
 const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:3000')
   .split(',')
@@ -188,33 +196,7 @@ app.addHook('onRequest', (req, reply, done) => {
   done();
 });
 
-// Support versioned routes: rewrite /v1/* to existing handlers without breaking old paths
-app.addHook('onRequest', (req, _reply, done) => {
-  try {
-    const inUrl: string = String((req.raw as any)?.url || (req as any).url || '');
-    let pathWithQuery = inUrl;
-    if (!pathWithQuery.startsWith('/')) {
-      try {
-        const u = new URL(pathWithQuery);
-        pathWithQuery = (u.pathname || '/') + (u.search || '');
-      } catch {
-        // keep as-is
-      }
-    }
-    // Do not rewrite admin endpoints which are explicitly mounted under /v1
-    if (pathWithQuery.startsWith('/v1/admin/')) return done();
-    if (pathWithQuery.startsWith('/v1/')) {
-      const rewritten = pathWithQuery.slice(3); // remove '/v1'
-      try {
-        (req.raw as any).url = rewritten;
-      } catch {}
-      try {
-        (req as any).url = rewritten;
-      } catch {}
-    }
-  } catch {}
-  done();
-});
+// URL rewrite from /v1/* to /* is handled by Fastify's rewriteUrl server option above
 
 // Log slow requests (>500ms) and record APM metrics
 app.addHook('onResponse', (request, reply, done) => {

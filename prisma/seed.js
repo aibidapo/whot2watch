@@ -1,16 +1,21 @@
 /* eslint-disable no-console */
 const { PrismaClient } = require('@prisma/client');
 
+const SEED_PROFILE_ID = '9f6e8a4d-4194-406a-9acb-b5d19b54c1ec';
+const SEED_USER_ID = 'seed-dev-user-001';
+
 async function main() {
   const prisma = new PrismaClient();
   try {
     const user = await prisma.user.upsert({
       where: { email: 'dev@example.com' },
       update: {},
-      create: { email: 'dev@example.com', region: 'US', authProvider: 'supabase' },
+      create: { id: SEED_USER_ID, email: 'dev@example.com', region: 'US', authProvider: 'supabase' },
     });
-    const profile = await prisma.profile.create({
-      data: { userId: user.id, name: 'Dev', locale: 'en-US', privateModeDefault: false },
+    const profile = await prisma.profile.upsert({
+      where: { id: SEED_PROFILE_ID },
+      update: {},
+      create: { id: SEED_PROFILE_ID, userId: user.id, name: 'Dev', locale: 'en-US', privateModeDefault: false },
     });
     await prisma.subscription.createMany({
       data: [

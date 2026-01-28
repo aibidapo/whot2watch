@@ -1,57 +1,34 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import createClient from 'clients/rest/client';
 import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
-import { STORAGE_KEY_PROFILE_ID } from '@/constants/onboarding';
+import { useProfileId } from '@/hooks/useProfileId';
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [profileId, setProfileId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', []);
-  const api = useMemo(() => createClient({ baseUrl: `${apiBase}/v1` }), [apiBase]);
+  const { profileId, loading, error, api } = useProfileId();
+  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
+    if (loading || !profileId || checked) return;
     (async () => {
       try {
-        const stored = localStorage.getItem(STORAGE_KEY_PROFILE_ID);
-        if (stored) {
-          const prefs = await api.get<{ onboardingComplete: boolean }>(
-            `/profiles/${stored}/preferences`,
-          );
-          if (prefs.onboardingComplete) {
-            router.replace('/picks');
-            return;
-          }
-          setProfileId(stored);
-          setLoading(false);
+        const prefs = await api.get<{ onboardingComplete: boolean }>(
+          `/profiles/${profileId}/preferences`,
+        );
+        if (prefs.onboardingComplete) {
+          router.replace('/picks');
           return;
-        }
-
-        const envId = process.env.NEXT_PUBLIC_DEFAULT_PROFILE_ID;
-        if (envId) {
-          setProfileId(envId);
-          setLoading(false);
-          return;
-        }
-
-        const json = await api.get<{ items: { id: string }[] }>('/profiles');
-        const first = Array.isArray(json.items) ? json.items[0] : undefined;
-        if (first) {
-          setProfileId(first.id);
         }
       } catch {
-        const envId = process.env.NEXT_PUBLIC_DEFAULT_PROFILE_ID;
-        if (envId) setProfileId(envId);
-      } finally {
-        setLoading(false);
+        // proceed to onboarding
       }
+      setChecked(true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loading, profileId]);
 
-  if (loading) {
+  if (loading || (!checked && profileId)) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-muted">Loading...</div>
@@ -59,10 +36,10 @@ export default function OnboardingPage() {
     );
   }
 
-  if (!profileId) {
+  if (error || !profileId) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="text-muted">No profile found. Please create one first.</div>
+        <div className="text-muted">{error || 'No profile found. Please create one first.'}</div>
       </div>
     );
   }

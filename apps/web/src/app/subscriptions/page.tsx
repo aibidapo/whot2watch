@@ -1,32 +1,24 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
 import { Card } from '@/components/ui/Card';
 import {
   KNOWN_REGIONS,
   REGION_SERVICE_PRESETS,
-  STORAGE_KEY_PROFILE_ID,
   STREAMING_SERVICES,
 } from '@/constants/onboarding';
+import { useProfileId } from '@/hooks/useProfileId';
 
 type Sub = { id: string; service: string; region?: string };
 
 export default function SubsPage() {
-  const [profileId, setProfileId] = useState('');
+  const { profileId, loading: profileLoading, error: profileError, apiBase } = useProfileId();
   const [service, setService] = useState('');
   const [region, setRegion] = useState('');
   const [items, setItems] = useState<Sub[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const apiBase = useMemo(() => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', []);
-
-  // Auto-load profileId from localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY_PROFILE_ID);
-    const id = stored || process.env.NEXT_PUBLIC_DEFAULT_PROFILE_ID || '';
-    if (id) setProfileId(id);
-  }, []);
 
   async function list() {
     if (!profileId) return;
@@ -101,6 +93,9 @@ export default function SubsPage() {
     });
     await list();
   }
+
+  if (profileLoading) return <div className="text-muted p-8 text-center">Loading profile...</div>;
+  if (profileError) return <div className="text-error-text p-8 text-center">{profileError}</div>;
 
   return (
     <div className="grid gap-4">
