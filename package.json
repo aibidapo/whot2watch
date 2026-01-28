@@ -56,7 +56,11 @@
     "dev:down": "node -r ./scripts/load-env.cjs scripts/dev-all.cjs --down",
     "dev:restart": "node -r ./scripts/load-env.cjs scripts/dev-all.cjs --restart",
     "gen:sdk": "openapi-typescript whot2watch-docs-full/docs/rest/openapi.yaml -o clients/rest/schema.d.ts",
-    "gen:sdk:client": "openapi-fetch-cli -i whot2watch-docs-full/docs/rest/openapi.yaml -o clients/rest/client.ts"
+    "gen:sdk:client": "openapi-fetch-cli -i whot2watch-docs-full/docs/rest/openapi.yaml -o clients/rest/client.ts",
+    "k6:smoke": "k6 run k6/scenarios/smoke.js",
+    "k6:load": "k6 run k6/scenarios/load.js",
+    "k6:stress": "k6 run k6/scenarios/stress.js",
+    "k6:chat": "k6 run k6/scenarios/chat.js"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.5.0",

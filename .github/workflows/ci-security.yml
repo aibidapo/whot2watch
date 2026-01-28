@@ -2,6 +2,9 @@ name: security-ci
 on:
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '0 3 * * 1' # Weekly Monday 3:00 AM UTC
+  workflow_dispatch:
 jobs:
   security:
     runs-on: ubuntu-latest
@@ -23,10 +26,22 @@ jobs:
           auditOn: push
 
   zap-baseline:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: OWASP ZAP Baseline (staging)
         uses: zapbot/zap-baseline-action@v0.14.0
         with:
           target: ${{ secrets.STAGING_URL }}
+          rules_file_name: 'zap/rules.tsv'
+          fail_action: 'warn'
+      - name: Upload ZAP Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-reports
+          path: |
+            zap-report.html
+            zap-report.json
+          retention-days: 30

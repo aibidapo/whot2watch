@@ -51,6 +51,16 @@ pnpm db:seed                         # Seed sample data
 # Data Pipeline
 pnpm pipeline:ingest-index           # Full ingest-to-index
 pnpm pipeline:nightly                # Nightly enrichment (ratings, providers, trending, reindex)
+
+# Load Testing (k6)
+pnpm k6:smoke                        # 1 VU sanity check
+pnpm k6:load                         # Ramp to 50 VUs, P95 < 600 ms
+pnpm k6:stress                       # Ramp to 200 VUs, find breaking points
+pnpm k6:chat                         # AI concierge endpoint, P95 < 3 s
+
+# Security Testing (ZAP)
+# ZAP baseline runs weekly in CI (ci-security.yml) and on manual dispatch.
+# Local: docker run ... ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://localhost:4000 -c zap/rules.tsv
 ```
 
 ## Architecture

@@ -108,8 +108,8 @@ Reference: `docs/adr/0002-mcp-agentic-architecture.md`
   - [x] Freemium gating
   - [x] LLM cost monitoring (`/v1/chat/metrics` endpoint)
   - [x] Safety filters enabled (input/output validation, PII redaction)
-  - [ ] Load testing (k6)
-  - [ ] Security testing (ZAP)
+  - [x] Load testing (k6)
+  - [x] Security testing (ZAP)
 
 Testing Strategy
 
